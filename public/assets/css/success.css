@@ -1,0 +1,12 @@
+* {
+    padding: 0;
+    margin: 0;
+    background-color: #26b469;
+    color: #fff;
+}
+
+.div-principal {
+    height: 50vh;
+    margin: 0 auto;
+}
+

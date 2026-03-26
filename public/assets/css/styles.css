@@ -1,0 +1,162 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    text-decoration: none;
+}
+
+.login-box {
+    min-width: 300px;
+}
+
+.login-box-body {
+    margin-top: 20%;
+    background: #fff;
+    padding: 20px;
+    border-top: 0;
+    color: #666;
+}
+
+footer {
+    background-color: #5a5a5a !important;
+    padding: 20px 0;
+    width: 100%;
+    margin: 0;
+}
+
+footer ul {
+    margin: 0;
+    padding: 0;
+}
+
+.text-muted {
+    color: #ffffff !important;
+}
+
+.modalResult {
+    color: #fff;
+    font-size: 1.5rem;
+    padding: 40px;
+}
+
+#modalResultPayment {
+    color: #fff;
+    font-size: 1.5rem;
+    padding: 40px;
+}
+
+#bookingDetail {
+    list-style-type: none;
+    padding: 15px;
+    margin: 0;
+    font-size: 20px;
+}
+
+#bookingDetail li {
+    margin-right: 10px;
+}
+
+input,
+select {
+    cursor: pointer;
+}
+
+#checkout-btn-total {
+    display: none;
+}
+
+.paymentsMethodsResume {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    border: 1px solid #ccc;
+    padding: 10px;
+    width: 300px;
+    margin: 0 auto;
+}
+
+.paymentsMethodsResume p {
+    margin: 5px 0;
+}
+
+.paymentsMethodsResume b {
+    color: #0e963b;
+}
+
+.paymentsMethodsResume hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+}
+
+.offerTitle {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-weight: 900;
+    font-size: 7rem;
+    color: #f09424;
+}
+
+.offerDescription {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-weight: 400;
+    font-size: 2rem;
+    color: #595959;
+}
+
+@media (max-width: 600px) {
+    .mainModalImg {
+        width: 330px;
+    }
+}
+
+#formUpload {
+    border: #000000 2px dashed;
+    padding: 30px;
+}
+
+#uploadButton {
+    background-color: #ed9425;
+}
+
+#uploadLogoButton {
+    background-color: #ed9425;
+}
+
+#deleteBg {
+    background-color: #595959;
+    color: #fff;
+}
+
+/* .botones-container {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    margin-top: 40px;
+} */
+
+.btn-mp {
+    background-color: #0055ff;
+    /* azul personalizado */
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    /* box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); */
+}
+
+.btn-mp:hover {
+    background-color: #276ffd;
+    /* tono más claro al pasar el mouse */
+    transform: translateY(-2px);
+}
+
+.btn-mp:active {
+    transform: translateY(0);
+    /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); */
+}

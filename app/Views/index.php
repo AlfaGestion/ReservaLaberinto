@@ -1,0 +1,464 @@
+<?php
+
+use App\Models\MercadoPagoKeysModel;
+use App\Models\UploadModel;
+
+$modelUploads = new UploadModel();
+$userData = $modelUploads->first();
+
+$mpKeysModel = new MercadoPagoKeysModel();
+$mpKeys = $mpKeysModel->first();
+
+
+?>
+
+<?php echo $this->extend('templates/dashboard') ?>
+
+
+
+<?php echo $this->section('content') ?>
+
+<div class="container">
+
+
+    <!-- Modal de bienvenida -->
+    <div class="modal fade" data-bs-backdrop="static" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content text-start p-4">
+
+                <div class="modal-header d-flex justify-content-center border-0 pb-2">
+                    <h5 class="modal-title fw-bold text-center" id="welcomeModalLabel">TÉRMINOS Y CONDICIONES DE VISITA</h5>
+                </div>
+
+                <div class="modal-body p-0">
+                    <div class="terms-container p-3 rounded" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
+
+                        <div class="mb-3 d-flex flex-column align-items-center justify-content-center">
+                            <h2 class="fw-bold text-center" style="color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Laberinto Patagonia - Reservas Grupales</h2>
+                            <p style="font-size: 0.9rem;" class="text-center">Al efectuar la reserva y el pago de una visita grupal a Laberinto Patagonia (en adelante, el “Parque”), el visitante y su grupo aceptan de manera plena, expresa e irrevocable los presentes Términos y Condiciones, que rigen la experiencia dentro de nuestro espacio natural y cultural.</p>
+                            <p>Leer los términos y condiciones y marcar la casilla para comenzar la reserva. ✅</p>
+                        </div>
+
+                        <hr class="my-3">
+
+                        <div class="form-check d-block" id="check1Div">
+                            <p><strong>1/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check1">
+                            <label class="form-check-label" for="check1">
+                                <h6 class="fw-bold" style="font-size: 1.5em">1. Riesgos inherentes a la actividad</h6>
+                                <p style="font-size: 0.9rem;">El recorrido del laberinto y del Parque se desarrolla en un entorno natural, con senderos rodeados de vegetación y aire libre. Esta experiencia puede implicar riesgos propios de la naturaleza: caminatas en superficies irregulares, cambios climáticos repentinos, exposición solar, viento, picaduras de insectos o eventuales tropiezos. Cada visitante asume estos riesgos y declara encontrarse en condiciones físicas y de salud aptas para disfrutar de la actividad.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check2Div">
+                            <p><strong>2/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check2">
+                            <label class="form-check-label" for="check2">
+                                <h6 class="fw-bold" style="font-size: 1.5em">2. Responsabilidad del visitante</h6>
+                                <p style="font-size: 0.9rem;">Cada persona es responsable de sus objetos personales. El Parque no responde por pérdidas, extravíos, hurtos o robos. Los adultos responsables de grupos familiares o escolares deben garantizar en todo momento la supervisión de los menores. No está permitido el ingreso con objetos peligrosos, sustancias prohibidas ni elementos que afecten la seguridad o la armonía del lugar.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check3Div">
+                            <p><strong>3/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check3">
+                            <label class="form-check-label" for="check3">
+                                <h6 class="fw-bold" style="font-size: 1.5em">3. Exoneración de responsabilidad</h6>
+                                <p style="font-size: 0.9rem;">El visitante y/o responsable del grupo reconoce la naturaleza recreativa y contemplativa de la actividad, y renuncia expresamente a realizar reclamos o acciones legales contra el Parque, sus propietarios o colaboradores, por accidentes, lesiones, pérdidas o daños ocurridos durante la visita, salvo en los casos en que se acredite dolo o negligencia grave por parte del Parque.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check4Div">
+                            <p><strong>4/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check4">
+                            <label class="form-check-label" for="check4">
+                                <h6 class="fw-bold" style="font-size: 1.5em">4. Uso de instalaciones</h6>
+                                <p style="font-size: 0.9rem;">El espíritu del Parque invita a disfrutar con respeto. Por ello, cada visitante se compromete a: Utilizar baños, senderos e instalaciones de manera adecuada. No dañar ni retirar plantas, árboles, señalética ni elementos que forman parte del predio. Cumplir con las indicaciones del personal del Parque, guardianes del orden y la experiencia.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check5Div">
+                            <p><strong>5/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check5">
+                            <label class="form-check-label" for="check5">
+                                <h6 class="fw-bold" style="font-size: 1.5em">5. Condiciones médicas</h6>
+                                <p style="font-size: 0.9rem;">El Parque no se responsabiliza por descompensaciones médicas, enfermedades preexistentes ni reacciones alérgicas que pudieran producirse durante la visita. Se sugiere que cada grupo cuente con un botiquín básico y cobertura médica propia.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check6Div">
+                            <p><strong>6/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check6">
+                            <label class="form-check-label" for="check6">
+                                <h6 class="fw-bold" style="font-size: 1.5em">6. Permanencia en el Parque</h6>
+                                <p style="font-size: 0.9rem;">Para preservar la calidad de la experiencia, cada grupo dispone de un máximo de dos (2) horas de estadía, contadas desde el horario asignado en la reserva. La llegada tardía no modifica el horario de finalización.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check7Div">
+                            <p><strong>7/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check7">
+                            <label class="form-check-label" for="check7">
+                                <h6 class="fw-bold" style="font-size: 1.5em">7. Cancelaciones y reprogramaciones</h6>
+                                <p style="font-size: 0.9rem;">Las reservas abonadas podrán reprogramarse con un aviso mínimo de siete (7) días corridos. Si las condiciones climáticas extremas impidieran la visita, el Parque ofrecerá reprogramar la fecha sin costo adicional. No habrá reintegros por llegadas tardías, inasistencia o retiro anticipado.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check8Div">
+                            <p><strong>8/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check8">
+                            <label class="form-check-label" for="check8">
+                                <h6 class="fw-bold" style="font-size: 1.5em">8. Autorización de uso de imagen</h6>
+                                <p style="font-size: 0.9rem;">El visitante autoriza al Parque a registrar y difundir fotografías o videos tomados durante la visita en medios institucionales, digitales o promocionales, sin derecho a compensación económica. Quien no lo consienta deberá manifestarlo por escrito previo al ingreso.</p>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check d-none" id="check9Div">
+                            <p><strong>9/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check9">
+                            <label class="form-check-label" for="check9">
+                                <h6 class="fw-bold" style="font-size: 1.5em">9. Normas de convivencia</h6>
+                                <p style="font-size: 0.9rem;">El Parque es un espacio de contemplación, juego y encuentro con la naturaleza. Por ello: Se solicita mantener un comportamiento respetuoso y sereno. No se permite reproducir música a volumen elevado ni realizar conductas que perturben la experiencia de otros visitantes. Los menores de 12 años deberán permanecer acompañados en todo momento por un adulto responsable.</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check d-none" id="check10Div">
+                            <p><strong>10/10</strong></p>
+                            <input class="form-check-input term-check" type="checkbox" id="check10">
+                            <label class="form-check-label" for="check10">
+                                <h6 class="fw-bold" style="font-size: 1.5em">10. Jurisdicción y ley aplicable</h6>
+                                <p style="font-size: 0.9rem;">Toda controversia derivada de la interpretación o aplicación de estos Términos y Condiciones será resuelta por los tribunales ordinarios con asiento en la Provincia de Chubut, República Argentina, con renuncia expresa a cualquier otro fuero.</p>
+                            </label>
+                        </div>
+
+                        <hr class="my-3">
+                        <p class="fw-bold text-center" style="font-size: 0.9rem;">📌 Confirmar la reserva y efectuar el pago constituye aceptación plena y definitiva de todos los puntos aquí establecidos.</p>
+                    </div>
+                </div>
+
+                <div class="modal-header d-flex justify-content-center border-0 pb-2">
+                    <a href="<?= base_url('customers/booking') ?>" id="showBooking" class="modal-title fw-bold text-center btn btn-primary">Ver mi reserva</a>
+                </div>
+
+                <div class="d-flex justify-content-center mb-3 mt-3">
+                    <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn d-none" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" data-bs-backdrop="static" id="verifyVisitorsModal" aria-hidden="true" aria-labelledby="welcomeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="welcomeModal">Validar datos</h5>
+                </div>
+
+                <div class="modal-body">
+                    <div class="d-flex justify-content-center align-items-center-flex-column" style="width: 100%;">
+                        <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row me-1" style="width: 30%;">
+                            <input type="number" class="form-control" name="codigoArea" id="inputCodigoArea" placeholder="Ingrese el código de área" aria-label="codigo" required>
+                            <label for="codigoArea">Código de área</label>
+                        </div>
+
+                        <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row" style="width: 70%;">
+                            <input type="number" class="form-control" name="telefono" id="inputTelefono" placeholder="Ingrese el teléfono" aria-label="name" required>
+                            <label for="telefono">Teléfono</label>
+                        </div>
+                    </div>
+                    <div class="form-floating flex-nowrap mb-3">
+                        <input type="text" class="form-control" name="inputEmail" id="inputEmail" aria-label="name">
+                        <label for="inputEmail">Email</label>
+                    </div>
+
+                    <div id="divMessages"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="validateDataButton" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;">Validar</button>
+                    <button data-bs-dismiss="modal" class="btn btn-secondary d-none" id="closeModalValidate" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Comenzar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal de bienvenida -->
+
+    <!-- Modal de oferta -->
+    <div class="modal fade" data-bs-backdrop="static" id="ofertaModal" tabindex="-1" aria-labelledby="ofertaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content d-flex justify-content-center align-items-center flex-column text-center" id="ofertaModalContent">
+
+            </div>
+        </div>
+    </div>
+    <!-- Modal de oferta -->
+
+    <input type="text" name="publicKeyMp" id="publicKeyMp" class="form-control" value="<?= isset($mpKeys) ? $mpKeys['public_key'] : '' ?>" aria-label="date" hidden>
+
+    <div id="isSunday" class="d-flex justify-content-center align-items-center mt-5 d-none">
+        <span style="color: #fff; font-weight: bold; background-color: red; padding: 10px 10px; border-radius: 30px">Hoy el Laberinto permanecerá cerrado</span>
+    </div>
+
+    <div id="formBooking" class="">
+        <form action="" id="bookingForm">
+
+            <?php if (session('msg')) : ?>
+                <div class="alert alert-<?= session('msg.type') ?> alert-dismissible fade show" role="alert">
+                    <small> <?= session('msg.body') ?> </small>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
+            <div class="d-flex flex-column align-items-start justify-content-center">
+                <div class="form-floating mb-1 mt-3" style="width: 100%;">
+                    <input type="date" name="fecha" id="fecha" class="form-control" value="" aria-label="date">
+                    <label for="fecha">Fecha</label>
+                </div>
+
+                <div style="width: 50%;" class="mb-3">
+                    <button type="button" class="btn btn-sm" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="showAvailability">Ver disponibilidad <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <div class="horario d-flex flex-row">
+                <div class="form-floating" id="div-time-h" style="width: 100%;">
+                    <select class="form-select mb-3" name="horarioDesde" id="horarioDesde" aria-label="l">
+                        <option value="">Seleccionar</option>
+
+                        <?php if (!empty($time)): ?>
+                            <?php
+                            $totalHours = count($time);
+                            foreach ($time as $key => $hour):
+                                if ($key !== $totalHours - 1):
+                            ?>
+                                    <option value="<?= $hour ?>"><?= $hour ?></option>
+                            <?php
+                                endif;
+                            endforeach;
+                            ?>
+                        <?php else: ?>
+                            <option value="">No hay horarios cargados</option>
+                        <?php endif; ?>
+
+                    </select>
+                    <label for="horarioDesde">Horario desde</label>
+                </div>
+
+                <div class="form-floating  ms-4 d-none" id="div-time" style="width: 49%;">
+                    <select class="form-select mb-3" name="horarioHasta" id="horarioHasta" aria-label="" disabled>
+                        <option value="">Seleccionar</option>
+                        <?php if ($time != null) : ?>
+
+                            <?php foreach ($time as $hour) : ?>
+                                <option value="<?= $hour ?>"><?= $hour ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                    </select>
+                    <label for="horarioHasta">Horario hasta</label>
+                </div>
+            </div>
+
+            <div id="divSelectCancha" class="d-flex flex-row">
+                <div class="form-floating" style="width: 50%;" id="selectServicio">
+                    <select class="form-select mb-3 d-none" name="cancha" id="cancha" aria-label="Default floating label" disabled>
+                        <?php foreach ($fields as $field) : ?>
+                            <option selected value="<?= $field['id'] ?>"><?= $field['name'] ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="cancha">Seleccionar servicio</label>
+                </div>
+
+                <div class="form-floating flex-nowrap mb-3 ms-4 d-none" style="width: 50%;" id="div-qtyvisitors">
+                    <input type="text" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
+                    <label for="inputqtyvisitors">Cantidad de personas</label>
+                </div>
+            </div>
+
+            <div class="form-floating flex-nowrap mb-3 d-none" id="div-monto">
+                <input type="text" class="form-control" name="inputMonto" id="inputMonto" value="0" aria-label="name" disabled>
+                <label for="inputMonto">Monto</label>
+            </div>
+
+            <div class="d-flex justify-content-center align-items-center-flex-column" style="width: 100%;">
+                <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row me-1" style="width: 30%;">
+                    <input type="number" class="form-control" name="codigoArea" id="codigoArea" placeholder="Ingrese el código de área" aria-label="codigo" required>
+                    <label for="codigoArea">Código de área</label>
+                </div>
+
+                <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row" style="width: 70%;">
+                    <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingrese el teléfono" aria-label="name" required>
+                    <label for="telefono">Teléfono</label>
+                </div>
+            </div>
+
+            <div class="form-floating flex-nowrap mb-3">
+                <input type="text" class="form-control" name="nombre" id="nombre" placeholder="Ingrese el nombre" aria-label="name" required>
+                <label for="nombre">Nombre</label>
+            </div>
+
+            <?php if (session()->logueado) : ?>
+                <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarAdminReserva">Confirmar reserva</button>
+            <?php else : ?>
+                <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarReserva">Confirmar reserva</button>
+            <?php endif; ?>
+
+            <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
+
+        </form>
+    </div>
+    <div>
+        <!-- First modal -->
+        <div class="modal fade" id="modalConfirmarReserva" data-bs-backdrop="static" aria-hidden="true" aria-labelledby="confirmarReservaLabel" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="confirmarReservaLabel">Resumen reserva</h1>
+                        <button type="button" id="buttonCancel" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-resume-body">
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="abonarReservaBoton" data-bs-toggle="modal">Abonar reserva</button>
+                        <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Volver</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Modal -->
+        <div class="modal fade" id="ingresarPago" aria-hidden="true" data-bs-backdrop="static" aria-labelledby="ingresarPagoLabel" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="ingresarPagoLabel">Ingresar pago</h1>
+                        <button type="button" id="buttonCancel" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+
+                        <?php if (session()->logueado) : ?>
+                            <div class="mb-3">
+                                <div class="form-floating flex-nowrap mb-3">
+                                    <input type="text" class="form-control" name="adminBookingTotalAmount" id="adminBookingTotalAmount" placeholder="Ingrese el monto" aria-label="Amount" required>
+                                    <label for="adminBookingTotalAmount">Ingresar total de la reserva</label>
+                                </div>
+
+                                <div class="form-floating flex-nowrap mb-3">
+                                    <input type="text" class="form-control" name="adminBookingAmount" id="adminBookingAmount" placeholder="Ingrese el monto" aria-label="Amount" required>
+                                    <label for="adminBookingAmount">Ingresar monto a abonar de la reserva</label>
+                                </div>
+
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="adminPaymentMethod" aria-label="Floating label select example" required>
+                                        <option value="">Seleccionar medio de pago</option>
+                                        <option value="Efectivo">Efectivo</option>
+                                        <option value="Transferencia">Transferencia</option>
+                                        <option value="Mercado Pago">Mercado Pago</option>
+                                    </select>
+                                    <label for="adminPaymentMethod">Medio de pago</label>
+                                </div>
+
+                                <div class="form-floating">
+                                    <textarea class="form-control" placeholder="Ingrese el motivo de la reserva" id="adminBookingDescription"></textarea>
+                                    <label for="adminBookingDescription">Descripción</label>
+                                </div>
+                            </div>
+
+                        <?php else : ?>
+                            <div class="mb-3">
+                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                    <small style="font-size: 0.65rem;">Importante: Lo que está por abonar corresponde únicamente a la seña para al reserva. El saldo restante se abona al momento de concurrir al establecimiento. En caso de abonar el total de la reserva no deberá realizar ningún pago adicional al momento de asistir.
+                                    </small>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" name="switchPagoTotal" id="switchPagoTotal">
+                                    <label class="form-check-label" for="switchPagoTotal">Pagar el total</label>
+                                </div>
+                                <label for="inputPagoReserva" class="form-label">A abonar</label>
+                                <input type="text" class="form-control" id="inputPagoReserva" name="inputPagoReserva" placeholder="" disabled value="0" style="font-size: 1.5rem;">
+                            </div>
+
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                <small style="font-size: 0.65rem;"> <b>UNA VEZ EFECTUADO EL PAGO, AGUARDE EL TIEMPO ESTIPULADO POR MERCADO PAGO PARA SER REDIRECCIONADO AL SITIO. DE OTRA FORMA, EL PAGO NO SERÁ CONFIRMADO.</b></small>
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+                    <div class="modal-footer d-flex justify-contente-center align-items-center">
+                        <div class="botones-container" id="botones-container">
+                            <button id="btn-parcial" class="btn-mp d-none">💳 Pagar reserva parcial</button>
+                            <button id="btn-total" class="btn-mp d-none">💳 Pagar total reserva</button>
+                        </div>
+                        <!-- <div id="checkout-btn-parcial"></div>
+                        <div id="checkout-btn-total"></div> -->
+                        <?php if (session()->logueado) : ?>
+                            <button type="button" class="btn btn-primary" id="confirmBooking">Reservar</button>
+                        <?php endif; ?>
+                        <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" id="" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal result -->
+        <div class="modal fade" id="modalResult" tabindex="-1" data-bs-backdrop="static" aria-labelledby="modalResultLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" id="bookingResult">
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal availability -->
+        <div class="modal fade" id="modalAvailability" tabindex="-1" data-bs-backdrop="static" aria-labelledby="modalAvailabilityLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAvailabilityLabel">Disponibilidad</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="availabilityResult" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- modal spinner -->
+        <div class=" modal fade" id="modalSpinner" tabindex="-1" data-bs-backdrop="static" aria-labelledby="modalSpinnerLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered d-flex justify-content-center">
+
+                <div class="d-flex justify-content-center align-items-center">
+                    <div class="spinner-border" style="width: 4rem; height: 4rem; color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" role="status">
+                        <span class="visually-hidden">Procesando reserva...</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<?php echo $this->endSection() ?>
+
+<?php echo $this->section('footer') ?>
+<?php echo $this->endSection() ?>
+
+<?php echo $this->section('scripts') ?>
+<script>
+    let esDomingo = <?php echo json_encode($esDomingo); ?>;
+</script>
+<script>
+    const time = <?= json_encode((new \App\Models\TimeModel())->schedules); ?>;
+</script>
+
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js") ?>"></script>
+
+
+<?php echo $this->endSection() ?>

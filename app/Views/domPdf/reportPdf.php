@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de cobro</title>
+
+    <?php
+
+    use App\Models\UploadModel;
+
+    $modelUploads = new UploadModel();
+    $userData = $modelUploads->first();
+
+
+    ?>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        div {
+            margin-top: 20px;
+        }
+
+        img {
+            max-width: 100%;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* Estilos para las celdas del encabezado */
+        th {
+            background-color: <?= $userData['main_color'] ?>;
+            color: white;
+        }
+
+        /* Estilos para el contenido de la tabla */
+        td {
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Estilos para la fila al pasar el cursor por encima */
+        tr:hover {
+            background-color: #e2e2e2;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <img src="<?= base_url(PUBLIC_FOLDER . "assets/images/logo_pdf.png") ?>" style="width: 100px;" alt="Logo">
+    </div>
+
+    <?php
+    $total = 0;
+    ?>
+
+    <?php
+
+    $totalEfectivo = 0;
+    $totalMercadoPago = 0;
+    $totalTransferencia = 0;
+
+    if (isset($data)) {
+        foreach ($data as $cobro) {
+            // Normalizamos el método de pago: pasamos a minúsculas y reemplazamos guiones bajos
+            $metodo = strtolower(str_replace('_', ' ', $cobro['metodoPago'] ?? ''));
+
+            switch ($metodo) {
+                case 'efectivo':
+                    $totalEfectivo += intval($cobro['pago']);
+                    break;
+                case 'mercado pago':
+                    $totalMercadoPago += intval($cobro['pago']);
+                    break;
+                case 'transferencia':
+                    $totalTransferencia += intval($cobro['pago']);
+                    break;
+            }
+        }
+    }
+
+    ?>
+
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Usuario</th>
+                <th scope="col">Cobro</th>
+                <th scope="col">Metodo de pago</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Telefono</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            <?php foreach ($data as $cobro) : ?>
+                <?php $total = intval($cobro['pago']) + $total ?>
+                <tr>
+                    <td><?= $cobro['fecha'] ?></td>
+                    <td><?= $cobro['usuario'] ?></td>
+                    <td>$<?= $cobro['pago'] ?></td>
+                    <td><?= $cobro['metodoPago'] ?></td>
+                    <td><?= $cobro['cliente'] ?></td>
+                    <td><?= $cobro['telefonoCliente'] ?></td>
+                </tr>
+            <?php endforeach; ?>
+
+        </tbody>
+    </table>
+
+    <p>Total de cobros por Efectivo: $<?= $totalEfectivo ?> </p>
+    <p>Total de cobros por Mercado Pago: $<?= $totalMercadoPago ?> </p>
+    <p>Total de cobros por Transferencia: $<?= $totalTransferencia ?> </p>
+
+    <p>Total de cobros: <strong>$<?= $total ?></strong> </p>
+
+</body>
+
+</html>
