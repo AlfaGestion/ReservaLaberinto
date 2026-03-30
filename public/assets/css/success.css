@@ -1,12 +1,249 @@
+:root {
+    --green-800: #0f4d34;
+    --green-700: #156a47;
+    --green-600: #1f8f55;
+    --green-500: #27b36a;
+    --green-200: #d3f5e2;
+    --ink-900: #13221a;
+    --ink-700: #4f6a5b;
+    --border: #dfe9e2;
+    --white: #ffffff;
+}
+
 * {
-    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
     margin: 0;
-    background-color: #26b469;
-    color: #fff;
+    min-height: 100vh;
+    padding: 36px 16px 56px;
+    font-family: "Poppins", "Segoe UI", Tahoma, sans-serif;
+    color: var(--white);
+    background:
+        radial-gradient(820px 420px at 50% -10%, rgba(255, 176, 57, 0.34), transparent 60%),
+        radial-gradient(1100px 700px at 15% 0%, #35cf7d 0%, #29b56d 40%, #1b874f 100%);
+}
+
+.page {
+    max-width: 880px;
+    margin: 0 auto;
+    display: grid;
+    gap: 24px;
 }
 
 .div-principal {
-    height: 50vh;
-    margin: 0 auto;
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 22px 28px 24px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 22px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
 }
 
+.brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-top img {
+    max-width: 128px;
+}
+
+.brand img {
+    max-width: 128px;
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.18));
+}
+
+.status-title {
+    margin: 2px 0 0;
+    font-size: 30px;
+    line-height: 1.1;
+    font-weight: 700;
+    color: var(--white);
+}
+
+.status-copy {
+    margin: 0;
+    max-width: 560px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 16px;
+}
+
+.status-icon {
+    font-size: 50px;
+    color: var(--green-200);
+}
+
+.result {
+    padding: 28px;
+    border-radius: 22px;
+    background: var(--white);
+    color: var(--ink-900);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.18);
+}
+
+.header {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.header h2 {
+    margin: 2px 0 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ink-900);
+}
+
+.header p {
+    margin: 0;
+    max-width: 520px;
+    color: var(--ink-700);
+}
+
+.result hr {
+    margin: 24px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.detail-item,
+.summary-card,
+.payment-meta {
+    background: #f8fbf9;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+
+.detail-item {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+}
+
+.detail-label,
+.summary-label,
+.payment-meta-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--green-700);
+}
+
+.detail-value,
+.payment-meta-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink-900);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.summary-card {
+    display: grid;
+    gap: 6px;
+    padding: 18px;
+}
+
+.summary-value {
+    font-size: 24px;
+    line-height: 1.1;
+    color: var(--ink-900);
+}
+
+.payment-meta {
+    margin-top: 18px;
+    padding: 18px;
+    display: grid;
+    gap: 8px;
+}
+
+.cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.cta-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cta-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+}
+
+.cta-primary {
+    background: var(--white);
+    color: var(--ink-900);
+}
+
+.cta-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: var(--white);
+}
+
+@media (max-width: 760px) {
+    body {
+        padding: 24px 12px 40px;
+    }
+
+    .div-principal,
+    .result {
+        padding: 22px 18px;
+    }
+
+    .status-title {
+        font-size: 26px;
+    }
+
+    .header h2 {
+        font-size: 24px;
+    }
+
+    .details-grid,
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-value,
+    .payment-meta-value {
+        font-size: 16px;
+    }
+
+    .summary-value {
+        font-size: 22px;
+    }
+}

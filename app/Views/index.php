@@ -19,24 +19,27 @@ $mpKeys = $mpKeysModel->first();
 <?php echo $this->section('content') ?>
 
 <div class="container">
-
-
     <!-- Modal de bienvenida -->
     <div class="modal fade" data-bs-backdrop="static" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content text-start p-4">
 
                 <div class="modal-header d-flex justify-content-center border-0 pb-2">
-                    <h5 class="modal-title fw-bold text-center" id="welcomeModalLabel">TÉRMINOS Y CONDICIONES DE VISITA</h5>
+                    <h5 class="modal-title fw-bold text-center" id="welcomeModalLabel">TERMINOS Y CONDICIONES DE VISITA</h5>
                 </div>
 
                 <div class="modal-body p-0">
+                    <div class="terms-audio-actions d-flex justify-content-center mb-3">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleTermsAudio">
+                            Escuchar terminos
+                        </button>
+                    </div>
                     <div class="terms-container p-3 rounded" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
 
                         <div class="mb-3 d-flex flex-column align-items-center justify-content-center">
                             <h2 class="fw-bold text-center" style="color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Laberinto Patagonia - Reservas Grupales</h2>
-                            <p style="font-size: 0.9rem;" class="text-center">Al efectuar la reserva y el pago de una visita grupal a Laberinto Patagonia (en adelante, el “Parque”), el visitante y su grupo aceptan de manera plena, expresa e irrevocable los presentes Términos y Condiciones, que rigen la experiencia dentro de nuestro espacio natural y cultural.</p>
-                            <p>Leer los términos y condiciones y marcar la casilla para comenzar la reserva. ✅</p>
+                            <p style="font-size: 0.9rem;" class="text-center">Al efectuar la reserva y el pago de una visita grupal a Laberinto Patagonia, el visitante y su grupo aceptan de manera plena, expresa e irrevocable los presentes terminos y condiciones, que rigen la experiencia dentro de nuestro espacio natural y cultural.</p>
+                            <p>Leer los terminos y condiciones y marcar la casilla para comenzar la reserva.</p>
                         </div>
 
                         <hr class="my-3">
@@ -46,102 +49,106 @@ $mpKeys = $mpKeysModel->first();
                             <input class="form-check-input term-check" type="checkbox" id="check1">
                             <label class="form-check-label" for="check1">
                                 <h6 class="fw-bold" style="font-size: 1.5em">1. Riesgos inherentes a la actividad</h6>
-                                <p style="font-size: 0.9rem;">El recorrido del laberinto y del Parque se desarrolla en un entorno natural, con senderos rodeados de vegetación y aire libre. Esta experiencia puede implicar riesgos propios de la naturaleza: caminatas en superficies irregulares, cambios climáticos repentinos, exposición solar, viento, picaduras de insectos o eventuales tropiezos. Cada visitante asume estos riesgos y declara encontrarse en condiciones físicas y de salud aptas para disfrutar de la actividad.</p>
+                                <p style="font-size: 0.9rem;">El recorrido del laberinto y del Parque se desarrolla en un entorno natural, con senderos rodeados de vegetacion y aire libre. Esta experiencia puede implicar riesgos propios de la naturaleza: caminatas en superficies irregulares, cambios climaticos repentinos, exposicion solar, viento, picaduras de insectos o eventuales tropiezos. Cada visitante asume estos riesgos y declara encontrarse en condiciones fisicas y de salud aptas para disfrutar de la actividad.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check2Div">
+                        <div class="form-check d-block" id="check2Div">
                             <p><strong>2/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check2">
                             <label class="form-check-label" for="check2">
                                 <h6 class="fw-bold" style="font-size: 1.5em">2. Responsabilidad del visitante</h6>
-                                <p style="font-size: 0.9rem;">Cada persona es responsable de sus objetos personales. El Parque no responde por pérdidas, extravíos, hurtos o robos. Los adultos responsables de grupos familiares o escolares deben garantizar en todo momento la supervisión de los menores. No está permitido el ingreso con objetos peligrosos, sustancias prohibidas ni elementos que afecten la seguridad o la armonía del lugar.</p>
+                                <p style="font-size: 0.9rem;">Cada persona es responsable de sus objetos personales. El Parque no responde por perdidas, extravios, hurtos o robos. Los adultos responsables de grupos familiares o escolares deben garantizar en todo momento la supervision de los menores. No esta permitido el ingreso con objetos peligrosos, sustancias prohibidas ni elementos que afecten la seguridad o la armonia del lugar.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check3Div">
+                        <div class="form-check d-block" id="check3Div">
                             <p><strong>3/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check3">
                             <label class="form-check-label" for="check3">
-                                <h6 class="fw-bold" style="font-size: 1.5em">3. Exoneración de responsabilidad</h6>
-                                <p style="font-size: 0.9rem;">El visitante y/o responsable del grupo reconoce la naturaleza recreativa y contemplativa de la actividad, y renuncia expresamente a realizar reclamos o acciones legales contra el Parque, sus propietarios o colaboradores, por accidentes, lesiones, pérdidas o daños ocurridos durante la visita, salvo en los casos en que se acredite dolo o negligencia grave por parte del Parque.</p>
+                                <h6 class="fw-bold" style="font-size: 1.5em">3. Exoneracion de responsabilidad</h6>
+                                <p style="font-size: 0.9rem;">El visitante y/o responsable del grupo reconoce la naturaleza recreativa y contemplativa de la actividad, y renuncia expresamente a realizar reclamos o acciones legales contra el Parque, sus propietarios o colaboradores, por accidentes, lesiones, perdidas o danos ocurridos durante la visita, salvo en los casos en que se acredite dolo o negligencia grave por parte del Parque.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check4Div">
+                        <div class="form-check d-block" id="check4Div">
                             <p><strong>4/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check4">
                             <label class="form-check-label" for="check4">
                                 <h6 class="fw-bold" style="font-size: 1.5em">4. Uso de instalaciones</h6>
-                                <p style="font-size: 0.9rem;">El espíritu del Parque invita a disfrutar con respeto. Por ello, cada visitante se compromete a: Utilizar baños, senderos e instalaciones de manera adecuada. No dañar ni retirar plantas, árboles, señalética ni elementos que forman parte del predio. Cumplir con las indicaciones del personal del Parque, guardianes del orden y la experiencia.</p>
+                                <p style="font-size: 0.9rem;">El espiritu del Parque invita a disfrutar con respeto. Por ello, cada visitante se compromete a: Utilizar banos, senderos e instalaciones de manera adecuada. No danar ni retirar plantas, arboles, senaletica ni elementos que forman parte del predio. Cumplir con las indicaciones del personal del Parque, guardianes del orden y la experiencia.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check5Div">
+                        <div class="form-check d-block" id="check5Div">
                             <p><strong>5/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check5">
                             <label class="form-check-label" for="check5">
-                                <h6 class="fw-bold" style="font-size: 1.5em">5. Condiciones médicas</h6>
-                                <p style="font-size: 0.9rem;">El Parque no se responsabiliza por descompensaciones médicas, enfermedades preexistentes ni reacciones alérgicas que pudieran producirse durante la visita. Se sugiere que cada grupo cuente con un botiquín básico y cobertura médica propia.</p>
+                                <h6 class="fw-bold" style="font-size: 1.5em">5. Condiciones medicas</h6>
+                                <p style="font-size: 0.9rem;">El Parque no se responsabiliza por descompensaciones medicas, enfermedades preexistentes ni reacciones alergicas que pudieran producirse durante la visita. Se sugiere que cada grupo cuente con un botiquin basico y cobertura medica propia.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check6Div">
+                        <div class="form-check d-block" id="check6Div">
                             <p><strong>6/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check6">
                             <label class="form-check-label" for="check6">
                                 <h6 class="fw-bold" style="font-size: 1.5em">6. Permanencia en el Parque</h6>
-                                <p style="font-size: 0.9rem;">Para preservar la calidad de la experiencia, cada grupo dispone de un máximo de dos (2) horas de estadía, contadas desde el horario asignado en la reserva. La llegada tardía no modifica el horario de finalización.</p>
+                                <p style="font-size: 0.9rem;">Para preservar la calidad de la experiencia, cada grupo dispone de un maximo de dos (2) horas de estadia, contadas desde el horario asignado en la reserva. La llegada tardia no modifica el horario de finalizacion.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check7Div">
+                        <div class="form-check d-block" id="check7Div">
                             <p><strong>7/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check7">
                             <label class="form-check-label" for="check7">
                                 <h6 class="fw-bold" style="font-size: 1.5em">7. Cancelaciones y reprogramaciones</h6>
-                                <p style="font-size: 0.9rem;">Las reservas abonadas podrán reprogramarse con un aviso mínimo de siete (7) días corridos. Si las condiciones climáticas extremas impidieran la visita, el Parque ofrecerá reprogramar la fecha sin costo adicional. No habrá reintegros por llegadas tardías, inasistencia o retiro anticipado.</p>
+                                <p style="font-size: 0.9rem;">Las reservas abonadas podran reprogramarse con un aviso minimo de siete (7) dias corridos. Si las condiciones climaticas extremas impidieran la visita, el Parque ofrecera reprogramar la fecha sin costo adicional. No habra reintegros por llegadas tardias, inasistencia o retiro anticipado.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check8Div">
+                        <div class="form-check d-block" id="check8Div">
                             <p><strong>8/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check8">
                             <label class="form-check-label" for="check8">
-                                <h6 class="fw-bold" style="font-size: 1.5em">8. Autorización de uso de imagen</h6>
-                                <p style="font-size: 0.9rem;">El visitante autoriza al Parque a registrar y difundir fotografías o videos tomados durante la visita en medios institucionales, digitales o promocionales, sin derecho a compensación económica. Quien no lo consienta deberá manifestarlo por escrito previo al ingreso.</p>
+                                <h6 class="fw-bold" style="font-size: 1.5em">8. Autorizacion de uso de imagen</h6>
+                                <p style="font-size: 0.9rem;">El visitante autoriza al Parque a registrar y difundir fotografias o videos tomados durante la visita en medios institucionales, digitales o promocionales, sin derecho a compensacion economica. Quien no lo consienta debera manifestarlo por escrito previo al ingreso.</p>
                             </label>
                         </div>
                         
-                        <div class="form-check d-none" id="check9Div">
+                        <div class="form-check d-block" id="check9Div">
                             <p><strong>9/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check9">
                             <label class="form-check-label" for="check9">
                                 <h6 class="fw-bold" style="font-size: 1.5em">9. Normas de convivencia</h6>
-                                <p style="font-size: 0.9rem;">El Parque es un espacio de contemplación, juego y encuentro con la naturaleza. Por ello: Se solicita mantener un comportamiento respetuoso y sereno. No se permite reproducir música a volumen elevado ni realizar conductas que perturben la experiencia de otros visitantes. Los menores de 12 años deberán permanecer acompañados en todo momento por un adulto responsable.</p>
+                                <p style="font-size: 0.9rem;">El Parque es un espacio de contemplacion, juego y encuentro con la naturaleza. Por ello: Se solicita mantener un comportamiento respetuoso y sereno. No se permite reproducir musica a volumen elevado ni realizar conductas que perturben la experiencia de otros visitantes. Los menores de 12 anos deberan permanecer acompanados en todo momento por un adulto responsable.</p>
                             </label>
                         </div>
 
-                        <div class="form-check d-none" id="check10Div">
+                        <div class="form-check d-block" id="check10Div">
                             <p><strong>10/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check10">
                             <label class="form-check-label" for="check10">
-                                <h6 class="fw-bold" style="font-size: 1.5em">10. Jurisdicción y ley aplicable</h6>
-                                <p style="font-size: 0.9rem;">Toda controversia derivada de la interpretación o aplicación de estos Términos y Condiciones será resuelta por los tribunales ordinarios con asiento en la Provincia de Chubut, República Argentina, con renuncia expresa a cualquier otro fuero.</p>
+                                <h6 class="fw-bold" style="font-size: 1.5em">10. Jurisdiccion y ley aplicable</h6>
+                                <p style="font-size: 0.9rem;">Toda controversia derivada de la interpretacion o aplicacion de estos terminos y condiciones sera resuelta por los tribunales ordinarios con asiento en la Provincia de Chubut, Republica Argentina, con renuncia expresa a cualquier otro fuero.</p>
                             </label>
                         </div>
 
                         <hr class="my-3">
-                        <p class="fw-bold text-center" style="font-size: 0.9rem;">📌 Confirmar la reserva y efectuar el pago constituye aceptación plena y definitiva de todos los puntos aquí establecidos.</p>
+                        <p class="fw-bold text-center" style="font-size: 0.9rem;">Confirmar la reserva y efectuar el pago constituye aceptacion plena y definitiva de todos los puntos aqui establecidos.</p>
+                        <div class="terms-acceptance form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="termsAccepted">
+                            <label class="form-check-label fw-semibold" for="termsAccepted">Lei y acepto los terminos y condiciones de visita.</label>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-header d-flex justify-content-center border-0 pb-2">
-                    <a href="<?= base_url('customers/booking') ?>" id="showBooking" class="modal-title fw-bold text-center btn btn-primary">Ver mi reserva</a>
+                    <a href="<?= base_url('MisReservas') ?>" id="showBooking" class="modal-title fw-bold text-center btn btn-primary">Ver mi reserva</a>
                 </div>
 
                 <div class="d-flex justify-content-center mb-3 mt-3">
-                    <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn d-none" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
+                    <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
                 </div>
 
             </div>
@@ -156,16 +163,9 @@ $mpKeys = $mpKeysModel->first();
                 </div>
 
                 <div class="modal-body">
-                    <div class="d-flex justify-content-center align-items-center-flex-column" style="width: 100%;">
-                        <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row me-1" style="width: 30%;">
-                            <input type="number" class="form-control" name="codigoArea" id="inputCodigoArea" placeholder="Ingrese el código de área" aria-label="codigo" required>
-                            <label for="codigoArea">Código de área</label>
-                        </div>
-
-                        <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row" style="width: 70%;">
-                            <input type="number" class="form-control" name="telefono" id="inputTelefono" placeholder="Ingrese el teléfono" aria-label="name" required>
-                            <label for="telefono">Teléfono</label>
-                        </div>
+                    <div class="form-floating flex-nowrap mb-3">
+                        <input type="number" class="form-control" name="telefono" id="inputTelefono" placeholder="Ingresa el telefono" aria-label="telefono" required>
+                        <label for="inputTelefono">Telefono</label>
                     </div>
                     <div class="form-floating flex-nowrap mb-3">
                         <input type="text" class="form-control" name="inputEmail" id="inputEmail" aria-label="name">
@@ -197,7 +197,7 @@ $mpKeys = $mpKeysModel->first();
     <input type="text" name="publicKeyMp" id="publicKeyMp" class="form-control" value="<?= isset($mpKeys) ? $mpKeys['public_key'] : '' ?>" aria-label="date" hidden>
 
     <div id="isSunday" class="d-flex justify-content-center align-items-center mt-5 d-none">
-        <span style="color: #fff; font-weight: bold; background-color: red; padding: 10px 10px; border-radius: 30px">Hoy el Laberinto permanecerá cerrado</span>
+        <span style="color: #fff; font-weight: bold; background-color: red; padding: 10px 10px; border-radius: 30px">Hoy el Laberinto permanecera cerrado</span>
     </div>
 
     <div id="formBooking" class="">
@@ -212,7 +212,7 @@ $mpKeys = $mpKeysModel->first();
 
             <div class="d-flex flex-column align-items-start justify-content-center">
                 <div class="form-floating mb-1 mt-3" style="width: 100%;">
-                    <input type="date" name="fecha" id="fecha" class="form-control" value="" aria-label="date">
+                    <input type="text" name="fecha" id="fecha" class="form-control" value="" aria-label="date" placeholder="Selecciona una fecha" autocomplete="off">
                     <label for="fecha">Fecha</label>
                 </div>
 
@@ -271,7 +271,7 @@ $mpKeys = $mpKeysModel->first();
                 </div>
 
                 <div class="form-floating flex-nowrap mb-3 ms-4 d-none" style="width: 50%;" id="div-qtyvisitors">
-                    <input type="text" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
+                    <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
                     <label for="inputqtyvisitors">Cantidad de personas</label>
                 </div>
             </div>
@@ -281,16 +281,9 @@ $mpKeys = $mpKeysModel->first();
                 <label for="inputMonto">Monto</label>
             </div>
 
-            <div class="d-flex justify-content-center align-items-center-flex-column" style="width: 100%;">
-                <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row me-1" style="width: 30%;">
-                    <input type="number" class="form-control" name="codigoArea" id="codigoArea" placeholder="Ingrese el código de área" aria-label="codigo" required>
-                    <label for="codigoArea">Código de área</label>
-                </div>
-
-                <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row" style="width: 70%;">
-                    <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingrese el teléfono" aria-label="name" required>
-                    <label for="telefono">Teléfono</label>
-                </div>
+            <div class="form-floating flex-nowrap mb-3">
+                <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingresa el telefono" aria-label="telefono" required>
+                <label for="telefono">Telefono</label>
             </div>
 
             <div class="form-floating flex-nowrap mb-3">
@@ -307,6 +300,28 @@ $mpKeys = $mpKeysModel->first();
             <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
 
         </form>
+    </div>
+
+    <div class="modal fade" id="publicNoticeModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="publicNoticeTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content public-notice-modal">
+                <button type="button" class="btn-close public-notice-modal__close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-body">
+                    <div class="public-notice-inline" id="publicNoticeInline">
+                        <div class="public-notice-inline__icon" id="publicNoticeIcon">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </div>
+                        <div class="public-notice-inline__content">
+                            <span class="public-notice-inline__title" id="publicNoticeTitle">Importante</span>
+                            <span class="public-notice-inline__message" id="publicNoticeMessage"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 justify-content-center">
+                    <button type="button" class="btn public-notice-modal__button" id="publicNoticeAccept">Aceptar</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div>
         <!-- First modal -->
@@ -362,14 +377,14 @@ $mpKeys = $mpKeysModel->first();
 
                                 <div class="form-floating">
                                     <textarea class="form-control" placeholder="Ingrese el motivo de la reserva" id="adminBookingDescription"></textarea>
-                                    <label for="adminBookingDescription">Descripción</label>
+                                    <label for="adminBookingDescription">Descripcion</label>
                                 </div>
                             </div>
 
                         <?php else : ?>
                             <div class="mb-3">
                                 <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                                    <small style="font-size: 0.65rem;">Importante: Lo que está por abonar corresponde únicamente a la seña para al reserva. El saldo restante se abona al momento de concurrir al establecimiento. En caso de abonar el total de la reserva no deberá realizar ningún pago adicional al momento de asistir.
+                                    <small style="font-size: 0.65rem;">Importante: Lo que esta por abonar corresponde unicamente a la sena para la reserva. El saldo restante se abona al momento de concurrir al establecimiento. En caso de abonar el total de la reserva no debera realizar ningun pago adicional al momento de asistir.
                                     </small>
                                 </div>
                                 <div class="form-check form-switch mb-2">
@@ -381,18 +396,14 @@ $mpKeys = $mpKeysModel->first();
                             </div>
 
                             <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                                <small style="font-size: 0.65rem;"> <b>UNA VEZ EFECTUADO EL PAGO, AGUARDE EL TIEMPO ESTIPULADO POR MERCADO PAGO PARA SER REDIRECCIONADO AL SITIO. DE OTRA FORMA, EL PAGO NO SERÁ CONFIRMADO.</b></small>
+                                <small style="font-size: 0.65rem;"> <b>UNA VEZ EFECTUADO EL PAGO, AGUARDE EL TIEMPO ESTIPULADO POR MERCADO PAGO PARA SER REDIRECCIONADO AL SITIO. DE OTRA FORMA, EL PAGO NO SERA CONFIRMADO.</b></small>
                             </div>
                         <?php endif; ?>
 
                     </div>
                     <div class="modal-footer d-flex justify-contente-center align-items-center">
-                        <div class="botones-container" id="botones-container">
-                            <button id="btn-parcial" class="btn-mp d-none">💳 Pagar reserva parcial</button>
-                            <button id="btn-total" class="btn-mp d-none">💳 Pagar total reserva</button>
-                        </div>
-                        <!-- <div id="checkout-btn-parcial"></div>
-                        <div id="checkout-btn-total"></div> -->
+                        <div id="checkout-btn-parcial"></div>
+                        <div id="checkout-btn-total" style="display:none;"></div>
                         <?php if (session()->logueado) : ?>
                             <button type="button" class="btn btn-primary" id="confirmBooking">Reservar</button>
                         <?php endif; ?>
@@ -456,6 +467,87 @@ $mpKeys = $mpKeysModel->first();
 <script>
     const time = <?= json_encode((new \App\Models\TimeModel())->schedules); ?>;
 </script>
+<style>
+    .public-notice-modal {
+        position: relative;
+        border: 0;
+        border-radius: 24px;
+        box-shadow: 0 26px 60px rgba(21, 36, 24, 0.2);
+        overflow: hidden;
+    }
+
+    .public-notice-modal__close {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        z-index: 2;
+        opacity: 1;
+    }
+
+    .public-notice-inline {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 10px 4px 0;
+    }
+
+    .public-notice-inline__icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: #fdecee;
+        color: #dc3545;
+    }
+
+    .public-notice-inline--info .public-notice-inline__icon {
+        background: #eef4ff;
+        color: #0d6efd;
+    }
+
+    .public-notice-inline--success .public-notice-inline__icon {
+        background: #edf7f0;
+        color: #198754;
+    }
+
+    .public-notice-inline__content {
+        min-width: 0;
+    }
+
+    .public-notice-inline__title {
+        display: block;
+        font-weight: 800;
+        font-size: 1.25rem;
+        margin-bottom: 6px;
+        color: #1e2e22;
+    }
+
+    .public-notice-inline__message {
+        display: block;
+        line-height: 1.6;
+        font-size: 1.08rem;
+        color: #556a5d;
+    }
+
+    .public-notice-modal__button {
+        min-width: 220px;
+        min-height: 52px;
+        border-radius: 16px;
+        border: 0;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #0d6a3a 0%, #157347 100%);
+        box-shadow: 0 16px 28px rgba(13, 106, 58, 0.22);
+    }
+
+    .public-notice-modal__button:hover {
+        color: #fff;
+        background: linear-gradient(135deg, #0b5c33 0%, #12643d 100%);
+    }
+</style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js") ?>"></script>

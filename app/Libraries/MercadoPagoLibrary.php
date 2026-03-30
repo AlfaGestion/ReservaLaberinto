@@ -22,6 +22,8 @@ class MercadoPagoLibrary
             throw new \Exception("Mercado Pago Access Token no encontrado.");
         }
 
+        $caFile = $this->ensureCaBundle();
+        $this->configureSdkHttpClient($caFile);
         SDK::setAccessToken($mpKeys['access_token']);
 
         try {
@@ -39,9 +41,12 @@ class MercadoPagoLibrary
             $item->currency_id = 'ARS';
 
             $preference->items = [$item];
+            $envBaseUrl = getenv('MP_BACK_URL_BASE');
+            $appConfig = config('App');
+            $baseUrl = rtrim($envBaseUrl ?: $appConfig->baseURL, '/') . '/';
             $preference->back_urls = [
-            "success" => 'https://webreservas.com.ar/laberintopatagonia/payment/success',
-            "failure" => 'https://webreservas.com.ar/laberintopatagonia/payment/failure',
+            "success" => $baseUrl . 'payment/success',
+            "failure" => $baseUrl . 'payment/failure',
             ];
 
             $preference->auto_return = "approved";
@@ -66,6 +71,66 @@ class MercadoPagoLibrary
         } catch (\Exception $e) {
             // Captura cualquier error de la SDK, incluyendo la excepción que forzamos arriba.
             throw new \Exception("Error al crear la preferencia de pago: " . $e->getMessage());
+        }
+    }
+
+    private function ensureCaBundle()
+    {
+        $caFile = ini_get('curl.cainfo');
+        if (!$caFile) {
+            $caFile = ini_get('openssl.cafile');
+        }
+        if (!$caFile) {
+            $candidates = [
+                'C:\\php\\cacert.pem',
+                'C:\\app\\ReservasLaBarca\\cacert.pem',
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (is_file($candidate)) {
+                    $caFile = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if ($caFile && is_file($caFile)) {
+            ini_set('curl.cainfo', $caFile);
+            ini_set('openssl.cafile', $caFile);
+            putenv("CURL_CA_BUNDLE={$caFile}");
+            putenv("SSL_CERT_FILE={$caFile}");
+        }
+
+        return $caFile;
+    }
+
+    private function configureSdkHttpClient($caFile): void
+    {
+        SDK::initialize();
+
+        try {
+            $reflection = new \ReflectionClass(SDK::class);
+            $restClientProperty = $reflection->getProperty('_restClient');
+            $restClientProperty->setAccessible(true);
+            $restClient = $restClientProperty->getValue();
+
+            if (!$restClient) {
+                return;
+            }
+
+            if (ENVIRONMENT !== 'production') {
+                $restClient->setHttpParam('use_ssl', false);
+                $restClient->setHttpParam('verify_mode', 0);
+                return;
+            }
+
+            if ($caFile && is_file($caFile)) {
+                $restClient->setHttpParam('ca_file', $caFile);
+                $restClient->setHttpParam('use_ssl', true);
+                $restClient->setHttpParam('verify_mode', 2);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo configurar el cliente HTTP de Mercado Pago: ' . $e->getMessage());
         }
     }
 }

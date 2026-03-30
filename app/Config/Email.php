@@ -6,9 +6,23 @@ use CodeIgniter\Config\BaseConfig;
 
 class Email extends BaseConfig
 {
-    public string $fromEmail  = '';
-    public string $fromName   = '';
+    public string $fromEmail  = 'enviosreservaalfagestion@gmail.com';
+    public string $fromName   = 'Reservas';
     public string $recipients = '';
+    public array $accounts = [
+        [
+            'fromEmail' => 'enviosreservaalfagestion@gmail.com',
+            'fromName' => 'Reservas',
+            'SMTPUser' => 'enviosreservaalfagestion@gmail.com',
+            'SMTPPass' => 'ukag ewra bmcl zqpq',
+        ],
+        [
+            'fromEmail' => 'enviosalfagestion@gmail.com',
+            'fromName' => 'Reservas',
+            'SMTPUser' => 'enviosalfagestion@gmail.com',
+            'SMTPPass' => 'vheq qqxs ifrr jlat',
+        ],
+    ];
 
     /**
      * The "user agent"
@@ -18,7 +32,7 @@ class Email extends BaseConfig
     /**
      * The mail sending protocol: mail, sendmail, smtp
      */
-    public string $protocol = 'mail';
+    public string $protocol = 'smtp';
 
     /**
      * The server path to Sendmail.
@@ -28,27 +42,27 @@ class Email extends BaseConfig
     /**
      * SMTP Server Address
      */
-    public string $SMTPHost = '';
+    public string $SMTPHost = 'smtp.gmail.com';
 
     /**
      * SMTP Username
      */
-    public string $SMTPUser = '';
+    public string $SMTPUser = 'enviosreservaalfagestion@gmail.com';
 
     /**
      * SMTP Password
      */
-    public string $SMTPPass = '';
+    public string $SMTPPass = 'ukag ewra bmcl zqpq';
 
     /**
      * SMTP Port
      */
-    public int $SMTPPort = 25;
+    public int $SMTPPort = 587;
 
     /**
      * SMTP Timeout (in seconds)
      */
-    public int $SMTPTimeout = 5;
+    public int $SMTPTimeout = 8;
 
     /**
      * Enable persistent SMTP connections
@@ -59,6 +73,22 @@ class Email extends BaseConfig
      * SMTP Encryption. Either tls or ssl
      */
     public string $SMTPCrypto = 'tls';
+
+    /**
+     * SMTP settings for SSL/TLS.
+     */
+    public array $SMTPOptions = [
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+        'tls' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+    ];
 
     /**
      * Enable word-wrap

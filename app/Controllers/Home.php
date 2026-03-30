@@ -45,7 +45,7 @@ class Home extends BaseController
         $openingTime = array_slice($timeModel->getOpeningTime(), 0, -7);
 
         $firstRow = $timeModel->first();
-        $isSunday = $firstRow ? $firstRow['is_sunday'] : null;
+        $isSunday = $firstRow['is_sunday'] ?? 0;
 
 
         // $time = [];
@@ -136,7 +136,6 @@ class Home extends BaseController
             'horarioHasta' => $data->horarioHasta,
             'nombre'       => $data->nombre,
             'telefono'     => $data->telefono,
-            'codigoArea'   => $data->codigoArea,
             'visitantes'   => $data->visitantes
         ];
 

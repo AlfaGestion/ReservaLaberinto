@@ -1,171 +1,226 @@
+<?php
+
+use App\Models\UploadModel;
+
+$uploadModel = new UploadModel();
+$branding = $uploadModel->first();
+$logoFile = trim((string) ($branding['name'] ?? ''));
+
+$candidatePaths = [];
+if ($logoFile !== '') {
+    $candidatePaths[] = FCPATH . 'assets/images/uploads/' . $logoFile;
+}
+$candidatePaths[] = FCPATH . 'assets/images/logo_pdf.png';
+$candidatePaths[] = FCPATH . 'assets/images/sinlogo2.png';
+
+$logoDataUri = '';
+foreach ($candidatePaths as $candidatePath) {
+    if (!is_file($candidatePath)) {
+        continue;
+    }
+
+    $extension = strtolower(pathinfo($candidatePath, PATHINFO_EXTENSION));
+    if (!extension_loaded('gd') && !in_array($extension, ['jpg', 'jpeg'], true)) {
+        continue;
+    }
+
+    $mimeType = match ($extension) {
+        'jpg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        default => 'image/png',
+    };
+    $binary = @file_get_contents($candidatePath);
+    if ($binary === false) {
+        continue;
+    }
+
+    $logoDataUri = 'data:' . $mimeType . ';base64,' . base64_encode($binary);
+    break;
+}
+
+$fechaReserva = trim((string) ($data['fecha'] ?? ''));
+$fechaReservaFormateada = $fechaReserva;
+if ($fechaReserva !== '') {
+    $parsedDate = DateTime::createFromFormat('Y-m-d', $fechaReserva)
+        ?: DateTime::createFromFormat('d/m/Y', $fechaReserva)
+        ?: date_create($fechaReserva);
+
+    if ($parsedDate instanceof DateTimeInterface) {
+        $fechaReservaFormateada = $parsedDate->format('d/m/Y');
+    }
+}
+
+$estadoPagoRaw = trim((string) ($data['estado_pago'] ?? ''));
+$estadoPagoTexto = 'No corresponde';
+$estadoPagoClase = 'status-na';
+
+if ($estadoPagoRaw === 'approved') {
+    $estadoPagoTexto = 'Aprobado';
+    $estadoPagoClase = 'status-approved';
+} elseif ($estadoPagoRaw === 'pending') {
+    $estadoPagoTexto = 'Pendiente';
+    $estadoPagoClase = 'status-pending';
+} elseif ($estadoPagoRaw !== '') {
+    $estadoPagoTexto = ucfirst($estadoPagoRaw);
+    $estadoPagoClase = 'status-rejected';
+}
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmacion de Reserva</title>
+    <title>Datos de la reserva</title>
     <style>
-        /* La fuente 'DejaVu Sans' se mantiene por compatibilidad con Dompdf y tildes */
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'DejaVu Sans', sans-serif;
+            background-color: #f4f7f5;
             margin: 0;
-            padding: 0;
-            background-color: #f8f8f8;
-            /* Fondo muy claro */
-            text-align: center;
+            padding: 28px;
+            color: #15251b;
         }
 
-        /* Contenedor principal del documento, simula un recibo */
-        .container {
-            width: 90%;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 30px;
-            background-color: #ffffff;
-            /* Fondo blanco para el contenido */
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            /* Sombra suave */
-            text-align: left;
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            border: 1px solid #dfe8e2;
         }
 
-        /* Estilo para el logo */
         .header {
             text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #0d6a3a;
-            /* Color primario azul */
+            margin-bottom: 18px;
         }
 
-        .header img {
-            width: 250px;
-            height: auto;
+        .logo {
+            width: 170px;
+            margin: 0 auto 12px;
+            display: block;
         }
 
-        /* Estilos de las secciones de datos */
-        .section-title {
-            color: #0d6a3a;
-            /* Título en azul */
-            font-size: 1.2em;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            border-bottom: 1px dashed #eee;
-            padding-bottom: 5px;
+        .title {
+            font-size: 21px;
             font-weight: bold;
+            color: #0d6a3a;
+            margin: 0;
         }
 
-        .data-list {
+        .subtitle {
+            font-size: 12px;
+            color: #56685d;
+            margin: 6px 0 0;
+        }
+
+        .section {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #e3e9e6;
+        }
+
+        .section-title {
+            margin: 0 0 12px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #0d6a3a;
+        }
+
+        ul {
             list-style: none;
             padding: 0;
             margin: 0;
         }
 
-        .data-list li {
+        li {
             margin: 8px 0;
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1.5;
         }
 
-        .data-list strong {
+        .label {
             display: inline-block;
-            width: 45%;
-            /* Espacio para alinear las etiquetas */
-            color: #333;
-            font-weight: 600;
+            width: 44%;
+            font-weight: bold;
+            color: #1f6e43;
         }
 
-        /* Estilo específico para el estado de pago */
         .status-approved {
-            color: #28a745;
-            /* Verde */
+            color: #118447;
             font-weight: bold;
         }
 
         .status-pending {
-            color: #ffc107;
-            /* Amarillo */
+            color: #c68d08;
             font-weight: bold;
         }
 
         .status-rejected {
-            color: #dc3545;
-            /* Rojo */
+            color: #c73d4a;
             font-weight: bold;
         }
 
-        .status-nc {
-            color: #a9a3a4ff;
-            /* Rojo */
+        .status-na {
+            color: #6d7a72;
             font-weight: bold;
         }
 
-        /* Estilo para la política (sección inferior) */
-        .policy {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 13px;
-            color: #666;
+        .footer {
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid #e3e9e6;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #425249;
             text-align: justify;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-
+    <div class="card">
         <div class="header">
-            <img src="<?= base_url(PUBLIC_FOLDER . "assets/images/logo_pdf.png") ?>" style="width: 100px;" alt="Logo">
+            <?php if ($logoDataUri !== '') : ?>
+                <img class="logo" src="<?= $logoDataUri ?>" alt="Logo">
+            <?php endif; ?>
+            <p class="title">Detalle de la reserva</p>
+            <p class="subtitle">Comprobante de pago y datos de la visita</p>
         </div>
 
-        <div class="section-title">Detalles de la Reserva</div>
-        <ul class="data-list">
-            <li><strong>Nombre:</strong> <?= $data['nombre'] ?></li>
-            <li><strong>Telefono:</strong> <?= $data['telefono'] ?></li>
-            <hr style="border-top: 1px solid #eee; margin: 10px 0;">
-            <li><strong>Fecha:</strong> <?= date('d/m/Y', strtotime($data['fecha'])) ?></li>
-            <li><strong>Horario:</strong> <?= $data['horario'] ?></li>
-            <li><strong>Servicio:</strong> <?= $data['servicio'] ?></li>
-            <li><strong>Detalle:</strong> <?= $data['detalle'] == '' || $data['detalle'] == null ? 'Reserva Estandar' : $data['detalle'] ?></li>
-        </ul>
+        <div class="section">
+            <p class="section-title">Detalles de la reserva</p>
+            <ul>
+                <li><span class="label">Nombre:</span> <?= esc((string) ($data['nombre'] ?? '')) ?></li>
+                <li><span class="label">Telefono:</span> <?= esc((string) ($data['telefono'] ?? '')) ?></li>
+                <li><span class="label">Fecha:</span> <?= esc($fechaReservaFormateada) ?></li>
+                <li><span class="label">Horario:</span> <?= esc((string) ($data['horario'] ?? '')) ?></li>
+                <li><span class="label">Servicio:</span> <?= esc((string) ($data['servicio'] ?? '')) ?></li>
+                <li><span class="label">Detalle:</span> <?= esc(((string) ($data['detalle'] ?? '')) !== '' ? (string) $data['detalle'] : 'Reserva Estandar') ?></li>
+            </ul>
+        </div>
 
-        <div class="section-title">Informacion de Pago</div>
-        <ul class="data-list">
-            <li><strong>Valor Total:</strong> <?= $data['total_servicio'] ?></li>
-            <li><strong>Pagado:</strong> <?= $data['pagado'] ?></li>
-            <li><strong>Restan (Saldo):</strong> <?= $data['saldo'] ?></li>
-            <hr style="border-top: 1px solid #eee; margin: 10px 0;">
-            <li><strong>Codigo pago MP:</strong> <?= $data['id_mercado_pago'] ?? 'No corresponde' ?> </li>
-            <li>
-                <strong>Estado del Pago:</strong>
-                <?php
-                $statusClass = 'status-nc';
-                $statusText = 'No corresponde';
+        <div class="section">
+            <p class="section-title">Informacion de pago</p>
+            <ul>
+                <li><span class="label">Valor total:</span> <?= esc((string) ($data['total_servicio'] ?? '')) ?></li>
+                <li><span class="label">Pagado:</span> <?= esc((string) ($data['pagado'] ?? '')) ?></li>
+                <li><span class="label">Saldo:</span> <?= esc((string) ($data['saldo'] ?? '')) ?></li>
+                <li><span class="label">Codigo pago MP:</span> <?= esc((string) ($data['id_mercado_pago'] ?? 'No corresponde')) ?></li>
+                <li>
+                    <span class="label">Estado del pago:</span>
+                    <span class="<?= esc($estadoPagoClase) ?>"><?= esc($estadoPagoTexto) ?></span>
+                </li>
+            </ul>
+        </div>
 
-                if (isset($data['estado_pago'])) {
-                    if ($data['estado_pago'] == 'approved') {
-                        $statusClass = 'status-approved';
-                        $statusText = 'Aprobado';
-                    } elseif ($data['estado_pago'] == 'pending') {
-                        $statusClass = 'status-pending';
-                        $statusText = 'Pendiente';
-                    }
-                }
-
-                ?>
-                <span class="<?= $statusClass ?>"><?= $statusText ?></span>
-            </li>
-        </ul>
-
-        <div class="policy">
-            **Terminos y Condiciones de la Reserva:**
-            Al realizar el pago de una reserva (ya sea parcial o total), se asume el
-            compromiso y la responsabilidad de asistir en el dia y horario acordados.
-            En caso de inasistencia, no se realizaran devoluciones de dinero, y la
-            reprogramacion quedara sujeta a disponibilidad.
+        <div class="footer">
+            Al realizar el pago de una reserva, se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados.
+            En caso de inasistencia, no se realizaran devoluciones de dinero y la reprogramacion quedara sujeta a disponibilidad.
         </div>
     </div>
 </body>

@@ -7,13 +7,53 @@ use App\Models\ValuesModel;
 
 class Customers extends BaseController
 {
+    private function resolvePreferredCustomer(array $customers): ?array
+    {
+        if ($customers === []) {
+            return null;
+        }
+
+        usort($customers, static function (array $left, array $right): int {
+            $leftScore = 0;
+            $rightScore = 0;
+
+            if (!empty($left['type_institution'])) {
+                $leftScore += 100;
+            }
+            if (!empty($right['type_institution'])) {
+                $rightScore += 100;
+            }
+
+            if (!empty($left['email'])) {
+                $leftScore += 50;
+            }
+            if (!empty($right['email'])) {
+                $rightScore += 50;
+            }
+
+            if ($leftScore === $rightScore) {
+                return ((int) ($right['id'] ?? 0)) <=> ((int) ($left['id'] ?? 0));
+            }
+
+            return $rightScore <=> $leftScore;
+        });
+
+        return $customers[0] ?? null;
+    }
+
 
     public function register()
     {
         $valuesModel = new ValuesModel();
         $types = $valuesModel->findAll();
+        $isEmbedded = $this->request->getGet('embed') === '1';
 
-        return view('customers/register', ['types' => $types]);
+        return view('customers/register', [
+            'types' => $types,
+            'prefillPhone' => $this->request->getGet('phone') ?? '',
+            'prefillEmail' => $this->request->getGet('email') ?? '',
+            'isEmbedded' => $isEmbedded,
+        ]);
     }
 
     public function dbRegister()
@@ -21,25 +61,27 @@ class Customers extends BaseController
         $modelCustomers = new CustomersModel();
 
         $phone = $this->request->getVar('phone');
-        $areaCode = $this->request->getVar('areaCode');
         $name = $this->request->getVar('name');
         $lastName = $this->request->getVar('last_name');
         $dni = $this->request->getVar('dni');
         $city = $this->request->getVar('city');
         $email = $this->request->getVar('email');
         $type = $this->request->getVar('type_institution');
+        $isEmbedded = $this->request->getVar('embed') === '1';
 
-        $completePhone = $areaCode . $phone;
+        $completePhone = $phone;
 
         $existingPhone = $modelCustomers->where('phone', $phone)->where('deleted', 0)->findAll();
         $existingEmail = $modelCustomers->where('email', $email)->where('deleted', 0)->findAll();
 
-        if ($phone == '' || $areaCode == '' || $name == '' || $email == '' || $dni == '' || $city == '' || $type == '') {
-            return redirect()->to('customers/register')->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
+        if ($phone == '' || $name == '' || $email == '' || $dni == '' || $city == '' || $type == '') {
+            $registerUrl = 'customers/register' . ($isEmbedded ? '?embed=1' : '');
+            return redirect()->to($registerUrl)->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
         }
 
         if ($existingPhone || $existingEmail) {
-            return redirect()->to('customers/register')->with('msg', ['type' => 'danger', 'body' => 'Los datos coinciden con un usuario ya registrado']);
+            $registerUrl = 'customers/register' . ($isEmbedded ? '?embed=1' : '');
+            return redirect()->to($registerUrl)->with('msg', ['type' => 'danger', 'body' => 'Los datos coinciden con un usuario ya registrado']);
         }
 
         $query = [
@@ -47,7 +89,6 @@ class Customers extends BaseController
             'last_name' => $lastName,
             'dni' => $dni,
             'phone' => $phone,
-            'area_code' => $areaCode,
             'complete_phone' => $completePhone,
             'email' => $email,
             'type_institution' => $type,
@@ -58,12 +99,21 @@ class Customers extends BaseController
 
 
         try {
-            $modelCustomers->insert($query);
+            $newId = $modelCustomers->insert($query);
         } catch (\Exception $e) {
             return "Error al insertar datos: " . $e->getMessage();
         }
 
-        return redirect()->to(base_url())->with('msg', ['type' => 'success', 'body' => 'Usuario registrado correctamente']);
+        if ($isEmbedded) {
+            return view('customers/embed_result', [
+                'message' => 'Cliente guardado correctamente',
+                'action' => 'created',
+                'customer' => $modelCustomers->find($newId),
+            ]);
+        }
+
+        $redirectUrl = base_url('/?registered=1&phone=' . rawurlencode((string) $phone) . '&email=' . rawurlencode((string) $email));
+        return redirect()->to($redirectUrl)->with('msg', ['type' => 'success', 'body' => 'Usuario registrado correctamente']);
     }
 
     public function createOffer()
@@ -90,8 +140,9 @@ class Customers extends BaseController
         $valuesModel = new ValuesModel();
         $customer = $customersModel->find($id);
         $types = $valuesModel->findAll();
+        $isEmbedded = $this->request->getGet('embed') === '1';
 
-        return view('customers/editar', ['customer' => $customer, 'types' => $types]);
+        return view('customers/editar', ['customer' => $customer, 'types' => $types, 'isEmbedded' => $isEmbedded]);
     }
 
     public function edit()
@@ -107,12 +158,14 @@ class Customers extends BaseController
         $city = $this->request->getVar('city');
         $email = $this->request->getVar('email');
         $type = $this->request->getVar('type_institution');
+        $isEmbedded = $this->request->getVar('embed') === '1';
 
         $query = [
             'name' => $name,
             'last_name' => $lastName,
             'dni' => $dni,
             'phone' => $phone,
+            'complete_phone' => $phone,
             'email' => $email,
             'type_institution' => $type,
             'offer' => $offer,
@@ -121,8 +174,18 @@ class Customers extends BaseController
 
         try {
             $customersModel->update($id, $query);
+            if ($isEmbedded) {
+                return view('customers/embed_result', [
+                    'message' => 'Cliente editado correctamente',
+                    'action' => 'updated',
+                    'customer' => $customersModel->find($id),
+                ]);
+            }
             return redirect()->to('abmAdmin')->with('msg', ['type' => 'success', 'body' => 'Cliente editado existosamente']);
         } catch (\Exception $e) {
+            if ($isEmbedded) {
+                return redirect()->to('customers/editWindow/' . $id . '?embed=1')->with('msg', ['type' => 'danger', 'body' => 'El cliente no se pudo editar']);
+            }
             return redirect()->to('abmAdmin')->with('msg', ['type' => 'danger', 'body' => 'El cliente no se pudo editar']);
         }
     }
@@ -130,8 +193,21 @@ class Customers extends BaseController
     public function getCustomer($phone)
     {
         $customersModel = new CustomersModel();
-
-        $customer = $customersModel->like('complete_phone', $phone, 'both')->where('deleted', 0)->first();
+        $normalizedPhone = trim((string) $phone);
+        $customers = $customersModel->builder()
+            ->select('*')
+            ->groupStart()
+                ->like('complete_phone', $normalizedPhone, 'both')
+                ->orWhere('phone', $normalizedPhone)
+            ->groupEnd()
+            ->groupStart()
+                ->where('deleted', 0)
+                ->orWhere('deleted IS NULL', null, false)
+            ->groupEnd()
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getResultArray();
+        $customer = $this->resolvePreferredCustomer($customers);
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
@@ -143,14 +219,61 @@ class Customers extends BaseController
     public function validateCustomer($phone, $email)
     {
         $customersModel = new CustomersModel();
+        $normalizedPhone = trim((string) $phone);
+        $normalizedEmail = strtolower(trim((string) $email));
 
-        $customer = $customersModel->where('phone', $phone)
-            ->where('email', $email)->where('deleted', 0)->first();
+        $customers = $customersModel->builder()
+            ->select('*')
+            ->groupStart()
+                ->where('phone', $normalizedPhone)
+                ->orWhere('complete_phone', $normalizedPhone)
+            ->groupEnd()
+            ->where("LOWER(email) = '{$normalizedEmail}'", null, false)
+            ->groupStart()
+                ->where('deleted', 0)
+                ->orWhere('deleted IS NULL', null, false)
+            ->groupEnd()
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getResultArray();
+        $customer = $this->resolvePreferredCustomer($customers);
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
+        }
+    }
+
+    public function validateCustomerLookup()
+    {
+        $customersModel = new CustomersModel();
+        $jsonData = $this->request->getJSON(true);
+        $rawData = $this->request->getRawInput();
+
+        $phone = trim((string) ($jsonData['phone'] ?? $rawData['phone'] ?? $this->request->getVar('phone') ?? ''));
+        $email = strtolower(trim((string) ($jsonData['email'] ?? $rawData['email'] ?? $this->request->getVar('email') ?? '')));
+
+        $customers = $customersModel->builder()
+            ->select('*')
+            ->groupStart()
+                ->where('phone', $phone)
+                ->orWhere('complete_phone', $phone)
+            ->groupEnd()
+            ->where("LOWER(email) = '{$email}'", null, false)
+            ->groupStart()
+                ->where('deleted', 0)
+                ->orWhere('deleted IS NULL', null, false)
+            ->groupEnd()
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getResultArray();
+        $customer = $this->resolvePreferredCustomer($customers);
+
+        try {
+            return $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
+        } catch (\Exception $e) {
+            return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
     }
 

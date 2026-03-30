@@ -18,17 +18,16 @@ $userData = $modelUploads->first();
 ?>
 
 <?php if (session('msg')) : ?>
-    <div class="alert alert-<?= session('msg.type') ?> alert-dismissible fade show" role="alert">
+    <div class="alert alert-<?= session('msg.type') ?> alert-dismissible fade show admin-alert" role="alert">
         <small> <?= session('msg.body') ?> </small>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 <?php endif; ?>
 
-<div class="container">
-    <div class="row">
-        <div class="col-12">
-            <nav>
-                <div class="nav nav-tabs mt-3" id="nav-tab" role="tablist">
+<div class="admin-shell">
+    <div class="admin-card">
+        <nav>
+            <div class="nav nav-tabs admin-tabs" id="nav-tab" role="tablist">
                     <button class="nav-link active" id="nav-bookings-tab" data-bs-toggle="tab" data-bs-target="#nav-bookings" type="button" role="tab" aria-controls="nav-bookings" aria-selected="false"><i class="fa-regular fa-calendar-days"></i> Reservas</button>
                     <button class="nav-link" id="nav-general-tab" data-bs-toggle="tab" data-bs-target="#nav-general" type="button" role="tab" aria-controls="nav-general" aria-selected="false"><i class="fa-solid fa-gear"></i> General</button>
                     <button class="nav-link" id="nav-reports-tab" data-bs-toggle="tab" data-bs-target="#nav-reports" type="button" role="tab" aria-controls="nav-reports" aria-selected="true"><i class="fa-solid fa-file-lines"></i> Reportes de cobro</button>
@@ -41,46 +40,45 @@ $userData = $modelUploads->first();
                         <button class="nav-link" id="nav-customers-tab" data-bs-toggle="tab" data-bs-target="#nav-customers" type="button" role="tab" aria-controls="nav-customers" aria-selected="false"><i class="fa-solid fa-user"></i> Clientes</button>
                     <?php endif; ?>
 
-                </div>
-            </nav>
+            </div>
+        </nav>
 
-            <div class="tab-content" id="nav-tabContent">
+        <div class="tab-content" id="nav-tabContent">
 
-                <div class="tab-pane fade  show active" id="nav-bookings" role="tabpanel" aria-labelledby="nav-bookings-tab" tabindex="0">
+                <div class="tab-pane fade show active admin-pane" id="nav-bookings" role="tabpanel" aria-labelledby="nav-bookings-tab" tabindex="0">
                     <?= view('superadmin/tabBookings', ['bookings' => $bookings]) ?>
                 </div>
 
-                <div class="tab-pane fade" id="nav-general" role="tabpanel" aria-labelledby="nav-general-tab" tabindex="0">
+                <div class="tab-pane fade admin-pane" id="nav-general" role="tabpanel" aria-labelledby="nav-general-tab" tabindex="0">
                     <?= view('superadmin/tabGeneral', ['users' => $users]) ?>
                 </div>
 
-                <div class="tab-pane fade" id="nav-fields" role="tabpanel" aria-labelledby="nav-fields-tab" tabindex="0">
+                <div class="tab-pane fade admin-pane" id="nav-fields" role="tabpanel" aria-labelledby="nav-fields-tab" tabindex="0">
                     <?= view('superadmin/tabFields', ['fields' => $fields]) ?>
                 </div>
 
-                <div class="tab-pane fade" id="nav-values" role="tabpanel" aria-labelledby="nav-values-tab" tabindex="0">
+                <div class="tab-pane fade admin-pane" id="nav-values" role="tabpanel" aria-labelledby="nav-values-tab" tabindex="0">
                     <?= view('superadmin/tabValues', ['values' => $values]) ?>
                 </div>
 
                 <?php if (session()->superadmin) : ?>
-                    <div class="tab-pane fade" id="nav-fields" role="tabpanel" aria-labelledby="nav-fields-tab" tabindex="0">
+                    <div class="tab-pane fade admin-pane" id="nav-fields" role="tabpanel" aria-labelledby="nav-fields-tab" tabindex="0">
                         <?= view('superadmin/tabFields', ['fields' => $fields]) ?>
                     </div>
 
-                    <div class="tab-pane fade" id="nav-time" role="tabpanel" aria-labelledby="nav-time-tab" tabindex="0">
+                    <div class="tab-pane fade admin-pane" id="nav-time" role="tabpanel" aria-labelledby="nav-time-tab" tabindex="0">
                         <?= view('superadmin/tabTime') ?>
                     </div>
 
-                    <div class="tab-pane fade" id="nav-customers" role="tabpanel" aria-labelledby="nav-customers-tab" tabindex="0">
+                    <div class="tab-pane fade admin-pane" id="nav-customers" role="tabpanel" aria-labelledby="nav-customers-tab" tabindex="0">
                         <?= view('superadmin/tabCustomers', ['customers' => $customers]) ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="tab-pane fade" id="nav-reports" role="tabpanel" aria-labelledby="nav-reports-tab" tabindex="0">
+                <div class="tab-pane fade admin-pane" id="nav-reports" role="tabpanel" aria-labelledby="nav-reports-tab" tabindex="0">
                     <?= view('superadmin/tabReports', ['users' => $users]) ?>
                 </div>
 
-            </div>
         </div>
     </div>
 </div>

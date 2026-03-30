@@ -91,6 +91,48 @@ document.addEventListener('click', async (e) => {
             
             completePayment(`${baseUrl}completePayment/${bookingId}`, data)
 
+        } else if (e.target.id == 'resendBookingEmail') {
+            const resendButton = e.target
+            const resendBookingId = resendButton.dataset.id
+
+            resendButton.disabled = true
+            resendButton.innerText = 'Reenviando...'
+
+            try {
+                const response = await fetch(`${baseUrl}resendBookingEmail/${resendBookingId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+
+                const responseData = await response.json()
+
+                if (response.ok && !responseData.error) {
+                    if (typeof showAdminNotice === 'function') {
+                        showAdminNotice(responseData.message || 'Se intento reenviar el email')
+                    } else {
+                        alert(responseData.message || 'Se intento reenviar el email')
+                    }
+                } else {
+                    if (typeof showAdminNotice === 'function') {
+                        showAdminNotice(responseData.message || 'No se pudo reenviar el email', 'error')
+                    } else {
+                        alert(responseData.message || 'No se pudo reenviar el email')
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error)
+                if (typeof showAdminNotice === 'function') {
+                    showAdminNotice('No se pudo reenviar el email', 'error')
+                } else {
+                    alert('No se pudo reenviar el email')
+                }
+            } finally {
+                resendButton.disabled = false
+                resendButton.innerText = 'Reenviar email'
+            }
+
         }
     }
 })
@@ -287,6 +329,7 @@ async function fillTableBookings(data) {
                         </button>
                         <ul class="dropdown-menu">
                             <input type="text" id="userId" data-id="${sessionUserId}" hidden>                        
+                            <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar email</button></li>
                             ${anular}
     
                             ${edit}
@@ -323,6 +366,7 @@ async function fillTableBookings(data) {
                 </button>
                 <ul class="dropdown-menu">
                     <input type="text" id="userId" data-id="${sessionUserId}" hidden>
+                    <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar email</button></li>
                     ${reserva.diferencia > 0 ? `<li><button type="button" class="btn btn-primary dropdown-item" id="modalCambiarEstado" data-id="${reserva.id}">Cambiar estado de pago</button></li>` : ''
                     }
                     ${reserva.diferencia > 0 ? `<li><button type="button" class="btn btn-primary dropdown-item" id="modalCompletarPago" data-id="${reserva.id}">Completar pago</button></li>` : ''
@@ -368,4 +412,3 @@ async function fillTableBookings(data) {
 
     divBookings.innerHTML = tr
 }
-

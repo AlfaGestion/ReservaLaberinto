@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Libraries\PrintBookings;
+use App\Models\BookingSlotsModel;
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
 use App\Models\FieldsModel;
@@ -16,9 +17,74 @@ use App\Models\UploadModel;
 use App\Models\RateModel;
 use App\Models\ValuesModel;
 use CodeIgniter\I18n\Time;
+use Config\Services;
 
 class Bookings extends BaseController
 {
+    private function createEmailService()
+    {
+        $email = Services::email();
+        $email->SMTPTimeout = 8;
+
+        return $email;
+    }
+
+    private function sendEmailWithFallback($to, string $subject, string $message): bool
+    {
+        $emailConfig = config('Email');
+        $accounts = $emailConfig->accounts ?? [];
+
+        if ($accounts === []) {
+            $accounts = [[
+                'fromEmail' => $emailConfig->fromEmail,
+                'fromName' => $emailConfig->fromName,
+                'SMTPUser' => $emailConfig->SMTPUser,
+                'SMTPPass' => $emailConfig->SMTPPass,
+            ]];
+        }
+
+        foreach ($accounts as $account) {
+            try {
+                $email = $this->createEmailService();
+                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
+                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
+                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
+                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
+                $email->setFrom($email->fromEmail, $email->fromName);
+                $email->setTo($to);
+                $email->setSubject($subject);
+                $email->setMessage($message);
+
+                if ($email->send()) {
+                    return true;
+                }
+
+                log_message('error', 'Fallo envio SMTP con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
+            } catch (\Throwable $e) {
+                log_message('error', 'Fallo envio SMTP con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    private function expireActiveBookingSlots(BookingSlotsModel $bookingSlotsModel, array $conditions): void
+    {
+        $builder = $bookingSlotsModel->where('active', 1);
+
+        foreach ($conditions as $field => $value) {
+            $builder->where($field, $value);
+        }
+
+        $slots = $builder->findAll();
+        foreach ($slots as $slot) {
+            $bookingSlotsModel->update($slot['id'], [
+                'active' => 0,
+                'status' => 'cancelled',
+            ]);
+        }
+    }
+
     public function saveBooking()
     {
         $bookingsModel = new BookingsModel();
@@ -31,7 +97,8 @@ class Bookings extends BaseController
         $queryCustomer = [
             'name'  => $data->nombre,
             'phone' => $data->telefono,
-            'area_code' => $data->codigoArea,
+            'complete_phone' => $data->telefono,
+            'email' => $data->email ?? '',
             'offer' => 0,
         ];
 
@@ -60,6 +127,10 @@ class Bookings extends BaseController
                 'quantity' => $existingCustomer['quantity'] + 1
             ];
 
+            if (empty($existingCustomer['email']) && !empty($data->email)) {
+                $queryCustomer['email'] = $data->email;
+            }
+
             $customersModel->update($existingCustomer['id'], $queryCustomer);
         }
 
@@ -75,7 +146,7 @@ class Bookings extends BaseController
             'time_until'            => $data->horarioHasta,
             'name'                  => $data->nombre,
             'visitors'              => $data->visitantes,
-            'phone'                 => $data->codigoArea . $data->telefono,
+            'phone'                 => $data->telefono,
             'payment'               => $data->monto,
             'approved'              => 0,
             'total'                 => $data->total,
@@ -85,8 +156,8 @@ class Bookings extends BaseController
             'code'                  => $this->codeGenerate(),
             'total_payment'         => $data->pagoTotal,
             'payment_method'        => $data->metodoDePago,
-            'id_preference_parcial' => $data->preferenceIdParcial,
-            'id_preference_total'   => $data->preferenceIdTotal,
+            'id_preference_parcial' => $data->preferenceIdParcial ?? null,
+            'id_preference_total'   => $data->preferenceIdTotal ?? null,
             'use_offer'             => $data->oferta,
             'booking_time'          => date("Y-m-d H:i:s"),
             'mp'                    => 0,
@@ -97,7 +168,8 @@ class Bookings extends BaseController
 
         try {
             if (count($queryBooking) != 0) {
-                $bookingsModel->insert($queryBooking);
+                $bookingId = $bookingsModel->insert($queryBooking);
+                $this->sendBookingNotificationEmail($bookingsModel->find($bookingId), $data);
                 return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
             }
         } catch (\Exception $e) {
@@ -110,18 +182,49 @@ class Bookings extends BaseController
     public function getBookings($fecha)
     {
         $bookingsModel = new BookingsModel();
+        $bookingSlotsModel = new BookingSlotsModel();
         $fieldsModel = new FieldsModel();
         $timeModel = new TimeModel();
 
         $time = $timeModel->getOpeningTime();
+        $occupied = [];
 
         if ($fecha != '') {
+            $now = date('Y-m-d H:i:s');
+
+            $this->expireActiveBookingSlots($bookingSlotsModel, [
+                'status' => 'pending',
+                'expires_at <' => $now,
+            ]);
+
             $bookings = $bookingsModel->where('date', $fecha)->where('annulled', 0)->findAll();
+
+            foreach ($bookings as $booking) {
+                $occupied[] = [
+                    'id_field' => $booking['id_field'],
+                    'time_from' => $booking['time_from'],
+                    'time_until' => $booking['time_until'],
+                ];
+            }
+
+            $pendingSlots = $bookingSlotsModel->where('date', $fecha)
+                ->where('active', 1)
+                ->where('status', 'pending')
+                ->where('expires_at >=', $now)
+                ->findAll();
+
+            foreach ($pendingSlots as $slot) {
+                $occupied[] = [
+                    'id_field' => $slot['id_field'],
+                    'time_from' => $slot['time_from'],
+                    'time_until' => $slot['time_until'],
+                ];
+            }
         }
 
         $timeBookings = [];
 
-        foreach ($bookings as $booking) {
+        foreach ($occupied as $booking) {
             $found = false;
 
             foreach ($timeBookings as &$timeBooking) {
@@ -159,7 +262,7 @@ class Bookings extends BaseController
         }
 
 
-        if ($bookings) {
+        if ($occupied) {
             try {
                 return $this->response->setJSON($this->setResponse(null, null, [
                     'reservas' => $timeBookings,
@@ -335,6 +438,137 @@ class Bookings extends BaseController
         }
     }
 
+    private function sendBookingNotificationEmail(array $booking, object $requestData): void
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first();
+        $notificationEmail = trim($config['notification_email'] ?? '');
+        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+
+        if ($notificationEmailList === []) {
+            return;
+        }
+
+        $formattedDate = $this->formatBookingDate((string) ($requestData->fecha ?? ''));
+        $subjectName = trim((string) ($requestData->nombre ?? ''));
+        $subjectTimeFrom = trim((string) ($requestData->horarioDesde ?? ''));
+        $subjectSuffix = trim($formattedDate . ' ' . $subjectTimeFrom);
+        $subject = "Reserva - Laberinto: {$subjectName} - {$subjectSuffix}";
+
+        $message = "Se recibio una nueva reserva.\n\n";
+        $message .= 'Nombre: ' . ($requestData->nombre ?? '') . "\n";
+        $message .= 'Telefono: ' . ($requestData->telefono ?? '') . "\n";
+        $message .= 'Fecha: ' . $formattedDate . "\n";
+        $message .= 'Horario desde: ' . ($requestData->horarioDesde ?? '') . "\n";
+        $message .= 'Horario hasta: ' . ($requestData->horarioHasta ?? '') . "\n";
+        $message .= 'Visitantes: ' . ($requestData->visitantes ?? '') . "\n";
+        $message .= 'Total: ' . ($requestData->total ?? '') . "\n";
+        $message .= 'Codigo: ' . ($booking['code'] ?? '') . "\n";
+        $message .= 'Ver reserva: ' . site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+                'code' => (string) ($booking['code'] ?? ''),
+            ]))) . "\n";
+
+        $this->sendEmailWithFallback($notificationEmailList, $subject, $message);
+
+        $this->sendCustomerBookingConfirmationEmail($booking, $requestData);
+    }
+
+    private function sendCustomerBookingConfirmationEmail(array $booking, object $requestData): void
+    {
+        try {
+            $customerEmail = $this->resolveCustomerEmail($booking, $requestData);
+
+            if ($customerEmail === '') {
+                return;
+            }
+
+            $formattedDate = $this->formatBookingDate((string) ($requestData->fecha ?? ''));
+            $customerName = trim((string) ($requestData->nombre ?? 'Cliente'));
+            $timeFrom = trim((string) ($requestData->horarioDesde ?? ''));
+            $timeUntil = trim((string) ($requestData->horarioHasta ?? ''));
+            $visitors = trim((string) ($requestData->visitantes ?? ''));
+            $total = trim((string) ($requestData->total ?? ($booking['total'] ?? '')));
+            $bookingCode = trim((string) ($booking['code'] ?? ''));
+            $bookingLink = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+                'code' => (string) ($booking['code'] ?? ''),
+                'phone' => (string) ($requestData->telefono ?? ($booking['phone'] ?? '')),
+                'email' => $customerEmail,
+            ])));
+            $subject = "Reserva confirmada - Laberinto: {$customerName}";
+
+            $message = "Hola {$customerName}, tu reserva fue registrada correctamente.\n\n";
+            $message .= 'Nombre: ' . $customerName . "\n";
+            $message .= 'Fecha: ' . $formattedDate . "\n";
+            $message .= 'Horario: ' . trim($timeFrom . ' a ' . $timeUntil) . "\n";
+            $message .= 'Cantidad: ' . $visitors . "\n";
+            $message .= 'Total: ' . $total . "\n";
+            $message .= 'Codigo: ' . $bookingCode . "\n\n";
+            $message .= "Importante:\n";
+            $message .= "Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. ";
+            $message .= "En caso de inasistencia, no se realizaran devoluciones de dinero y la reprogramacion quedara sujeta a disponibilidad.\n\n";
+            $message .= "Ver tus reservas:\n{$bookingLink}\n";
+
+            $this->sendEmailWithFallback($customerEmail, $subject, $message);
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo enviar el email de confirmacion al cliente: ' . $e->getMessage());
+        }
+    }
+
+    private function resolveCustomerEmail(array $booking, object $requestData): string
+    {
+        $requestEmail = trim((string) ($requestData->email ?? ''));
+        if ($requestEmail !== '' && filter_var($requestEmail, FILTER_VALIDATE_EMAIL)) {
+            return $requestEmail;
+        }
+
+        $customersModel = new CustomersModel();
+
+        if (!empty($booking['id_customer'])) {
+            $customer = $customersModel->find($booking['id_customer']);
+            $customerEmail = trim((string) ($customer['email'] ?? ''));
+
+            if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                return $customerEmail;
+            }
+        }
+
+        $phone = trim((string) ($requestData->telefono ?? ($booking['phone'] ?? '')));
+        if ($phone !== '') {
+            $customer = $customersModel->groupStart()
+                ->where('phone', $phone)
+                ->orWhere('complete_phone', $phone)
+                ->groupEnd()
+                ->where('deleted', 0)
+                ->first();
+
+            $customerEmail = trim((string) ($customer['email'] ?? ''));
+
+            if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                return $customerEmail;
+            }
+        }
+
+        return '';
+    }
+
+    private function formatBookingDate(string $rawDate): string
+    {
+        $rawDate = trim($rawDate);
+        if ($rawDate === '') {
+            return '';
+        }
+
+        $parsedDate = \DateTime::createFromFormat('Y-m-d', $rawDate)
+            ?: \DateTime::createFromFormat('d/m/Y', $rawDate)
+            ?: date_create($rawDate);
+
+        if ($parsedDate === false) {
+            return $rawDate;
+        }
+
+        return $parsedDate->format('d/m/Y');
+    }
+
     public function getMpPayments()
     {
         $bookingsModel = new BookingsModel();
@@ -401,7 +635,7 @@ class Bookings extends BaseController
         }
 
         $pagoTotal = ($data->monto == $data->total) ? 1 : 0;
-        $telefonoCompleto = $data->codigoArea . $data->telefono;
+        $telefonoCompleto = $data->telefono;
 
         // Intentar buscar cliente por teléfono
         $existingCustomer = $customersModel->where('phone', $data->telefono)->first();
@@ -456,13 +690,28 @@ class Bookings extends BaseController
                     $queryCustomer = [
                         'name'  => $data->nombre,
                         'phone' => $data->telefono,
-                        'area_code' => $data->codigoArea,
+                        'complete_phone' => $data->telefono,
                         'quantity' => 1,
                         'offer' => 0,
                     ];
                     $customersModel->insert($queryCustomer);
                     $idCustomer = $customersModel->getInsertID();
                 }
+
+                if (!empty($idCustomer)) {
+                    $bookingsModel->update($bookingsModel->getInsertID(), ['id_customer' => $idCustomer]);
+                }
+
+                $savedBooking = $bookingsModel->find($bookingsModel->getInsertID());
+                $this->sendBookingNotificationEmail($savedBooking, (object) [
+                    'nombre' => $data->nombre ?? '',
+                    'telefono' => $data->telefono ?? '',
+                    'fecha' => $data->fecha ?? '',
+                    'horarioDesde' => $data->horarioDesde ?? '',
+                    'horarioHasta' => $data->horarioHasta ?? '',
+                    'visitantes' => $data->visitantes ?? '',
+                    'total' => $data->total ?? '',
+                ]);
             }
 
             return $this->response->setJSON($this->setResponse(null, null, null, 'Reserva guardada exitosamente'));
@@ -480,7 +729,12 @@ class Bookings extends BaseController
         $fieldsModel = new FieldsModel();
 
         $booking = $bookingsModel->getBooking($bookingId);
+        if (!$booking) {
+            return $this->response->setStatusCode(404)->setBody('Reserva no encontrada.');
+        }
+
         $mpPayment = $mercadoPagoModel->where('id_booking', $bookingId)->first();
+        $mpPayment = $mpPayment ?? ['payment_id' => 'No corresponde', 'status' => ''];
 
         //Generar PDF
         $printData = [
@@ -492,15 +746,17 @@ class Bookings extends BaseController
             'total_servicio' => '$' . $booking['total'],
             'pagado' => '$' . $booking['payment'],
             'saldo' => '$' . $booking['diference'],
-            'detalle' => $booking['description'],
+            'detalle' => $booking['description'] ?? '',
+            'id_mercado_pago' => $mpPayment['payment_id'],
+            'estado_pago' => $mpPayment['status'],
         ];
 
-        if ($mpPayment) {
-            $printData['id_mercado_pago'] = $mpPayment['payment_id'];
-            $printData['estado_pago'] = $mpPayment['status'];
-        };
+        $pdf = $pdfLibrary->renderBooking($printData);
 
-        $pdfLibrary->printBooking($printData);
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $pdf['name'] . '"')
+            ->setBody($pdf['content']);
     }
 
     public function generateReportPdf($user, $fechaDesde, $fechaHasta)
@@ -709,7 +965,7 @@ class Bookings extends BaseController
         }
     }
 
-    public function viewBookings()
+    public function viewBookings($token = null)
     {
         $bookingsModel = new BookingsModel();
         $fieldsModel = new FieldsModel();
@@ -726,7 +982,7 @@ class Bookings extends BaseController
         $values = $valuesModel->where('disabled', 0)->findAll();
 
         $firstRow = $timeModel->first();
-        $isSunday = $firstRow ? $firstRow['is_sunday'] : null;
+        $isSunday = $firstRow['is_sunday'] ?? 0;
 
         $bookings = [];
 
@@ -783,20 +1039,110 @@ class Bookings extends BaseController
 
         $logo = $uploadModel->first();
 
-        return view('customers/booking', ['bookings' => $bookings, 'rate' => $rate, 'customers' => $customers, 'time' => $time, 'openingTime' => $openingTime, 'fields' => $fields, 'users' => $users, 'offerRate' => $offerRate, 'logo' => $logo, 'values' => $values, 'esDomingo' => $isSunday]);
+        $prefill = $this->parseReservationAccessToken($token);
+
+        if (!empty($prefill['code'])) {
+            $selectedBooking = $bookingsModel->where('code', $prefill['code'])->where('annulled', 0)->first();
+
+            if ($selectedBooking) {
+                if (empty($prefill['phone']) && !empty($selectedBooking['phone'])) {
+                    $prefill['phone'] = $selectedBooking['phone'];
+                }
+
+                if (empty($prefill['email'])) {
+                    $resolvedCustomerEmail = '';
+
+                    if (!empty($selectedBooking['id_customer'])) {
+                        $selectedCustomer = $customersModel->find($selectedBooking['id_customer']);
+                        $resolvedCustomerEmail = trim((string) ($selectedCustomer['email'] ?? ''));
+                    }
+
+                    if ($resolvedCustomerEmail === '' && !empty($selectedBooking['phone'])) {
+                        $selectedCustomer = $customersModel->groupStart()
+                            ->where('phone', $selectedBooking['phone'])
+                            ->orWhere('complete_phone', $selectedBooking['phone'])
+                            ->groupEnd()
+                            ->first();
+                        $resolvedCustomerEmail = trim((string) ($selectedCustomer['email'] ?? ''));
+                    }
+
+                    if ($resolvedCustomerEmail !== '') {
+                        $prefill['email'] = $resolvedCustomerEmail;
+                    }
+                }
+            }
+        }
+
+        return view('customers/booking', ['bookings' => $bookings, 'rate' => $rate, 'customers' => $customers, 'time' => $time, 'openingTime' => $openingTime, 'fields' => $fields, 'users' => $users, 'offerRate' => $offerRate, 'logo' => $logo, 'values' => $values, 'esDomingo' => $isSunday, 'prefill' => $prefill]);
     }
 
     public function showCustomerBooking($code)
     {
         $bookingsModel = new BookingsModel();
-        $booking = $bookingsModel->where('code', $code)->first();
+        $fieldsModel = new FieldsModel();
+        $booking = $bookingsModel->where('code', $code)->where('annulled', 0)->first();
         if ($booking) {
+            $field = $fieldsModel->find($booking['id_field']);
+            $booking['service_name'] = $field['name'] ?? 'Reserva';
             try {
                 return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Respuesta exitosa'));
             } catch (\Exception $e) {
                 return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
             }
         }
+
+        return $this->response->setJSON($this->setResponse(404, true, null, 'No se encontro la reserva'));
+    }
+
+    public function showCustomerBookings()
+    {
+        $bookingsModel = new BookingsModel();
+        $customersModel = new CustomersModel();
+        $fieldsModel = new FieldsModel();
+        $data = $this->request->getJSON();
+
+        $phone = trim((string) ($data->phone ?? ''));
+        $email = trim((string) ($data->email ?? ''));
+
+        if ($phone === '' || $email === '') {
+            return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar telefono y email'));
+        }
+
+        $customer = $customersModel->groupStart()
+            ->where('phone', $phone)
+            ->orWhere('complete_phone', $phone)
+            ->groupEnd()
+            ->where('email', $email)
+            ->first();
+
+        if (!$customer) {
+            return $this->response->setJSON($this->setResponse(404, true, null, 'No se encontraron reservas para ese cliente'));
+        }
+
+        $bookings = $bookingsModel->groupStart()
+            ->where('id_customer', $customer['id'])
+            ->orGroupStart()
+                ->where('phone', $phone)
+                ->where('id_customer', null)
+            ->groupEnd()
+            ->groupEnd()
+            ->where('annulled', 0)
+            ->orderBy('date', 'DESC')
+            ->orderBy('time_from', 'DESC')
+            ->findAll();
+
+        if (!$bookings) {
+            return $this->response->setJSON($this->setResponse(404, true, null, 'No se encontraron reservas para ese cliente'));
+        }
+
+        $result = [];
+        foreach ($bookings as $booking) {
+            $field = $fieldsModel->find($booking['id_field']);
+            $booking['service_name'] = $field['name'] ?? 'Reserva';
+            $result[] = $booking;
+        }
+
+        return $this->response->setJSON($this->setResponse(null, null, $result, 'Respuesta exitosa'));
     }
 
 

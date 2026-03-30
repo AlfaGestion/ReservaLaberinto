@@ -6,6 +6,7 @@
 const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
 const inputRate = document.getElementById('rate')
 const inputQtyVisitors = document.getElementById('visitors')
+const inputNotificationEmail = document.getElementById('notificationEmail')
 const inputOfferRate = document.getElementById('offerRate')
 const descriptionOffer = document.getElementById('descriptionOffer')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
@@ -26,33 +27,300 @@ const selectEditField = document.getElementById('selectEditField')
 const editFieldDiv = document.getElementById('editFieldDiv')
 const selectEditFields = document.getElementById('selectEditFields')
 const adminTabs = new bootstrap.Tab(document.getElementById('nav-tab'))
+const fieldForm = document.getElementById('fieldForm')
+const fieldName = document.getElementById('fieldName')
+const disableFieldInput = document.getElementById('disableField')
+const fieldModalElement = document.getElementById('fieldModal')
+const fieldModal = fieldModalElement ? new bootstrap.Modal(fieldModalElement) : null
+const fieldsTableBody = document.getElementById('fieldsTableBody')
 
-const enterValues = document.getElementById('enterValues')
 const serviceName = document.getElementById('serviceName')
 const serviceValue = document.getElementById('serviceValue')
 const serviceAmount = document.getElementById('serviceAmount')
-const editValueDiv = document.getElementById('editValueDiv')
-const selectEditValues = document.getElementById('selectEditValues')
-const buttonEditValue = document.getElementById('buttonEditValue')
+const serviceDiscountPercentage = document.getElementById('serviceDiscountPercentage')
+const serviceFinalAmount = document.getElementById('serviceFinalAmount')
 const idValue = document.getElementById('idValue')
+const valueModalElement = document.getElementById('valueModal')
+const valueModal = valueModalElement ? new bootstrap.Modal(valueModalElement) : null
+const valueForm = document.getElementById('valueForm')
+const valuesTableBody = document.getElementById('valuesTableBody')
 
 let idBooking
+let currentFieldId = null
 
-adminTabs._element.addEventListener("shown.bs.tab", (e) => {
-    enterFieldsForm.classList.add('d-none')
-    selectEditField.classList.add('d-none')
-})
+function showAdminNotice(message, type = 'success', title = '') {
+    const container = document.getElementById('adminNoticeContainer')
 
-selectEditField.addEventListener('change', async (e) => {
-    getEditField(selectEditFields.value)
-})
+    if (!container) {
+        return
+    }
+
+    const notice = document.createElement('div')
+    const iconMap = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-xmark',
+        info: 'fa-circle-info'
+    }
+
+    notice.className = `admin-notice admin-notice--${type}`
+    notice.innerHTML = `
+        <div class="admin-notice__icon">
+            <i class="fa-solid ${iconMap[type] || iconMap.info}"></i>
+        </div>
+        <div class="admin-notice__content">
+            <span class="admin-notice__title">${title || (type === 'error' ? 'No se pudo completar' : 'Listo')}</span>
+            <span class="admin-notice__message">${message}</span>
+        </div>
+    `
+
+    container.appendChild(notice)
+
+    setTimeout(() => {
+        notice.remove()
+    }, 4500)
+}
+
+adminTabs._element.addEventListener("shown.bs.tab", () => {})
 
 serviceName.addEventListener('input', (e) => {
     serviceValue.value = serviceName.value.toLowerCase().replace(/\s+/g, '_')
 })
 
+function updateServiceFinalAmount() {
+    if (!serviceFinalAmount) {
+        return
+    }
+
+    const amount = parseFloat(serviceAmount?.value || 0)
+    const discount = parseFloat(serviceDiscountPercentage?.value || 0)
+
+    if (Number.isNaN(amount)) {
+        serviceFinalAmount.value = ''
+        return
+    }
+
+    const finalAmount = amount - ((amount * (Number.isNaN(discount) ? 0 : discount)) / 100)
+    serviceFinalAmount.value = finalAmount.toFixed(2)
+}
+
+function renderFieldRow(item) {
+    const row = document.createElement('tr')
+    row.id = `field-row-${item.id}`
+    row.innerHTML = `
+        <td>${item?.name ?? 'No indicado'}</td>
+        <td>${item?.disabled == 1 ? 'Deshabilitado' : 'Activo'}</td>
+        <td>
+            <button
+                type="button"
+                class="btn btn-primary btn-sm mb-1 field-edit-trigger"
+                data-id="${item.id}"
+                data-name="${item.name}"
+                data-disabled="${item.disabled == 1 ? 1 : 0}">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button
+                type="button"
+                class="btn btn-danger btn-sm mb-1 field-delete-trigger"
+                data-id="${item.id}">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </td>
+    `
+
+    return row
+}
+
+function upsertFieldRow(item, action = 'updated') {
+    if (!fieldsTableBody || !item) {
+        return
+    }
+
+    const newRow = renderFieldRow(item)
+    const existingRow = document.getElementById(`field-row-${item.id}`)
+
+    if (existingRow) {
+        existingRow.replaceWith(newRow)
+        return
+    }
+
+    if (action === 'created') {
+        fieldsTableBody.prepend(newRow)
+    } else {
+        fieldsTableBody.appendChild(newRow)
+    }
+}
+
+function renderValueRow(item) {
+    const amount = parseFloat(item?.amount || 0)
+    const discount = parseFloat(item?.discount_percentage || 0)
+    const finalAmount = amount - ((amount * discount) / 100)
+
+    const row = document.createElement('tr')
+    row.id = `value-row-${item.id}`
+    row.innerHTML = `
+        <td>${item?.name ?? 'No indicado'}</td>
+        <td>${item?.discount_percentage ?? 0}%</td>
+        <td>${item?.amount ?? 'No indicado'}</td>
+        <td>${finalAmount.toFixed(2)}</td>
+        <td>
+            <button
+                type="button"
+                class="btn btn-primary btn-sm mb-1 value-edit-trigger"
+                data-id="${item.id}"
+                data-name="${item.name}"
+                data-amount="${item.amount}"
+                data-discount-percentage="${item.discount_percentage ?? 0}"
+                data-value="${item.value}">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </td>
+    `
+
+    return row
+}
+
+function upsertValueRow(item, action = 'updated') {
+    if (!valuesTableBody || !item) {
+        return
+    }
+
+    const newRow = renderValueRow(item)
+    const existingRow = document.getElementById(`value-row-${item.id}`)
+
+    if (existingRow) {
+        existingRow.replaceWith(newRow)
+        return
+    }
+
+    if (action === 'created') {
+        valuesTableBody.prepend(newRow)
+    } else {
+        valuesTableBody.appendChild(newRow)
+    }
+}
+
+serviceAmount?.addEventListener('input', updateServiceFinalAmount)
+serviceDiscountPercentage?.addEventListener('input', updateServiceFinalAmount)
+
+fieldForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    const actionUrl = currentFieldId ? `${baseUrl}editField/${currentFieldId}` : fieldForm.action
+    const formData = new FormData(fieldForm)
+
+    try {
+        const response = await fetch(actionUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || result.error) {
+            showAdminNotice(result.message || 'No se pudo guardar el servicio', 'error')
+            return
+        }
+
+        upsertFieldRow(result.item, result.action)
+        fieldModal?.hide()
+        showAdminNotice(result.message || 'Servicio guardado correctamente')
+    } catch (error) {
+        console.error('Error:', error)
+        showAdminNotice('No se pudo guardar el servicio', 'error')
+    }
+})
+
+valueForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    const formData = new FormData(valueForm)
+
+    try {
+        const response = await fetch(valueForm.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || result.error) {
+            showAdminNotice(result.message || 'No se pudo guardar el valor', 'error')
+            return
+        }
+
+        upsertValueRow(result.item, result.action)
+        valueModal?.hide()
+        showAdminNotice(result.message || 'Valor guardado correctamente')
+    } catch (error) {
+        console.error('Error:', error)
+        showAdminNotice('No se pudo guardar el valor', 'error')
+    }
+})
+
 
 document.addEventListener('click', async (e) => {
+    const editFieldButton = e.target.closest('.field-edit-trigger')
+    if (editFieldButton) {
+        currentFieldId = editFieldButton.dataset.id
+        fieldName.value = editFieldButton.dataset.name || ''
+        disableFieldInput.checked = editFieldButton.dataset.disabled == '1'
+        fieldModal?.show()
+        return
+    }
+
+    const deleteFieldButton = e.target.closest('.field-delete-trigger')
+    if (deleteFieldButton) {
+        const fieldId = deleteFieldButton.dataset.id
+        if (!confirm('Desea deshabilitar este servicio?')) {
+            return
+        }
+
+        try {
+            const response = await fetch(`${baseUrl}disableField/${fieldId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || result.error) {
+                showAdminNotice(result.message || 'No se pudo deshabilitar el servicio', 'error')
+                return
+            }
+
+            const row = document.getElementById(`field-row-${fieldId}`)
+            if (row) {
+                row.remove()
+            }
+            showAdminNotice(result.message || 'Servicio deshabilitado')
+        } catch (error) {
+            console.error('Error:', error)
+            showAdminNotice('No se pudo deshabilitar el servicio', 'error')
+        }
+        return
+    }
+
+    const editValueButton = e.target.closest('.value-edit-trigger')
+
+    if (editValueButton) {
+        serviceName.value = editValueButton.dataset.name
+        serviceValue.value = editValueButton.dataset.value || editValueButton.dataset.name.toLowerCase().replace(/\s+/g, '_')
+        serviceAmount.value = editValueButton.dataset.amount
+        serviceDiscountPercentage.value = editValueButton.dataset.discountPercentage || '0'
+        idValue.value = editValueButton.dataset.id
+        updateServiceFinalAmount()
+        valueModal?.show()
+        return
+    }
+
     if (e.target) {
         if (e.target.id == 'botonCompletarPago') {
 
@@ -80,7 +348,7 @@ document.addEventListener('click', async (e) => {
 
             completePayment(`${baseUrl}completePayment/${bookingId}`, data)
 
-        } else if (e.target.id == 'saveRate') {
+        } else if (e.target.id == 'saveRate' || e.target.id == 'saveRateSettings') {
 
             let data = {
                 value: inputRate.value,
@@ -88,6 +356,15 @@ document.addEventListener('click', async (e) => {
             }
 
             saveRate(`${baseUrl}saveRate`, data)
+
+        } else if (e.target.id == 'saveGeneralSettings') {
+
+            let data = {
+                qty_visitors: inputQtyVisitors.value,
+                notification_email: inputNotificationEmail?.value || ''
+            }
+
+            saveGeneralSettings(`${baseUrl}saveWebGeneral`, data)
 
         } else if (e.target.id == 'saveOfferRate') {
 
@@ -99,17 +376,10 @@ document.addEventListener('click', async (e) => {
             saveOfferRate(`${baseUrl}saveOfferRate`, data)
 
         } else if (e.target.id == 'buttonCreateField') {
-
-            const editFieldsForm = document.getElementById('editFields')
-
-            enterFieldsForm.classList.remove('d-none')
-            editFieldsForm.classList.add('d-none')
-            selectEditField.classList.add('d-none')
-
-        } else if (e.target.id == 'buttonEditField') {
-
-            selectEditField.classList.remove('d-none')
-            enterFieldsForm.classList.add('d-none')
+            currentFieldId = null
+            fieldName.value = ''
+            disableFieldInput.checked = false
+            fieldModal?.show()
 
         } else if (e.target.id == 'eliminarReservaModal') {
             idBooking = e.target.dataset.id
@@ -128,13 +398,13 @@ document.addEventListener('click', async (e) => {
 
             editBookingModal.show()
         } else if (e.target.id == 'buttonCreateValue') {
-            enterValues.classList.remove('d-none')
-        } else if (e.target.id == 'editValue') {
-            enterValues.classList.remove('d-none')
-            serviceName.value = e.target.dataset.name
-            serviceValue.value = e.target.dataset.name.toLowerCase().replace(/\s+/g, '_')
-            serviceAmount.value = e.target.dataset.amount
-            idValue.value = e.target.dataset.id
+            serviceName.value = ''
+            serviceValue.value = ''
+            serviceAmount.value = ''
+            serviceDiscountPercentage.value = '0'
+            idValue.value = ''
+            updateServiceFinalAmount()
+            valueModal?.show()
         }
     }
 })
@@ -265,6 +535,30 @@ async function saveRate(url, data) {
     }
 }
 
+async function saveGeneralSettings(url, data) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+
+        const responseData = await response.json()
+
+        if (response.ok) {
+            alert(responseData.message || 'Configuración guardada con éxito')
+        } else {
+            alert(responseData.message || 'No se pudo guardar la configuración')
+        }
+
+    } catch (error) {
+        console.error('Error:', error)
+        throw error
+    }
+}
+
 async function saveOfferRate(url, data) {
     try {
         const response = await fetch(url, {
@@ -327,6 +621,74 @@ async function getEditField(id) {
     } catch (error) {
         console.error('Error:', error);
         throw error;
+    }
+}
+
+async function saveRate(url, data) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            showAdminNotice('Porcentaje de reserva actualizado')
+        } else {
+            showAdminNotice('No se pudo actualizar el porcentaje de reserva', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        showAdminNotice('No se pudo actualizar el porcentaje de reserva', 'error');
+    }
+}
+
+async function saveGeneralSettings(url, data) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+
+        const responseData = await response.json()
+
+        if (response.ok) {
+            showAdminNotice(responseData.message || 'Configuracion guardada correctamente')
+        } else {
+            showAdminNotice(responseData.message || 'No se pudo guardar la configuracion', 'error')
+        }
+
+    } catch (error) {
+        console.error('Error:', error)
+        showAdminNotice('No se pudo guardar la configuracion', 'error')
+    }
+}
+
+async function saveOfferRate(url, data) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            showAdminNotice('Oferta guardada correctamente')
+        } else {
+            showAdminNotice('No se pudo guardar la oferta', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        showAdminNotice('No se pudo guardar la oferta', 'error');
     }
 }
 
@@ -413,4 +775,3 @@ function fillDiv(field) {
 
 //     editFieldDiv.innerHTML = div
 // }
-

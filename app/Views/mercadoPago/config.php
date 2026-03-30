@@ -65,6 +65,9 @@ $mpKeys = $mpKeysModel->first();
 <?php echo $this->endSection() ?>
 
 <?php echo $this->section('scripts') ?>
+<script>
+    window.appBaseUrl = <?= json_encode(rtrim(site_url('/'), '/') . '/') ?>;
+</script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js") ?>"></script>
 
 <?php echo $this->endSection() ?>

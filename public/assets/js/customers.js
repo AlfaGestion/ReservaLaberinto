@@ -6,7 +6,87 @@
 //     }
 // })
 
+const customerFrameModalElement = document.getElementById('customerFrameModal')
+const customerFrame = document.getElementById('customerFrame')
+const customerFrameModal = customerFrameModalElement ? new bootstrap.Modal(customerFrameModalElement) : null
+const customersDiv = document.getElementById('customersDiv')
+
+function renderCustomerRow(customer) {
+    const row = document.createElement('tr')
+    row.id = `customer-row-${customer.id}`
+
+    const phoneCell = customer?.complete_phone ?
+        `<td><a href="https://wa.me/+54${customer.complete_phone}" target="_blank">${customer.complete_phone}</a></td>` :
+        `<td>No indicado</td>`
+
+    const emailCell = customer?.email ?
+        `<td><a href="mailto:${customer.email}" target="_blank">${customer.email}</a></td>` :
+        `<td>No indicado</td>`
+
+    row.innerHTML = `
+        <td>${customer?.name ?? 'No indicado'}</td>
+        <td>${customer?.type_institution ?? 'No indicado'}</td>
+        <td>${customer?.dni ?? 'No indicado'}</td>
+        ${phoneCell}
+        <td>${customer?.city ?? 'No indicado'}</td>
+        ${emailCell}
+        <td>${customer?.quantity ?? 0}</td>
+        <td>${customer?.offer ?? 0}%</td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm mb-1 customer-frame-trigger" data-customer-frame-url="${baseUrl}customers/editWindow/${customer?.id}?embed=1"><i class="fa-solid fa-pen-to-square"></i></button>
+            <a href="${baseUrl}customers/deleteCustomer/${customer?.id}" class="btn btn-danger btn-sm mb-1" data-id="${customer?.id}"><i class="fa-solid fa-trash"></i></a>
+        </td>
+    `
+
+    return row
+}
+
+function upsertCustomerRow(customer, action = 'updated') {
+    if (!customersDiv || !customer) {
+        return
+    }
+
+    const newRow = renderCustomerRow(customer)
+    const existingRow = document.getElementById(`customer-row-${customer.id}`)
+
+    if (existingRow) {
+        existingRow.replaceWith(newRow)
+        return
+    }
+
+    if (action === 'created') {
+        customersDiv.prepend(newRow)
+    } else {
+        customersDiv.appendChild(newRow)
+    }
+}
+
+function openCustomerFrame(url) {
+    if (!customerFrameModal || !customerFrame) {
+        return
+    }
+
+    customerFrame.src = url
+    customerFrameModal.show()
+}
+
+function closeCustomerFrame() {
+    if (!customerFrameModal || !customerFrame) {
+        return
+    }
+
+    customerFrameModal.hide()
+    customerFrame.src = 'about:blank'
+}
+
 document.addEventListener('click', async (e) => {
+    const triggerButton = e.target.closest('.customer-frame-trigger')
+    if (triggerButton) {
+        e.preventDefault()
+        openCustomerFrame(triggerButton.dataset.customerFrameUrl)
+        return
+    }
+
     if (e.target) {
         if (e.target.id == 'searchCustomerButton') {
             // checkCustomersWithOffer.checked = false
@@ -24,6 +104,25 @@ document.addEventListener('click', async (e) => {
         } else if (e.target.id == 'setOfferFalse') {
             setOfferFalse(false)
         }
+    }
+})
+
+if (customerFrameModalElement) {
+    customerFrameModalElement.addEventListener('hidden.bs.modal', () => {
+        if (customerFrame) {
+            customerFrame.src = 'about:blank'
+        }
+    })
+}
+
+window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) {
+        return
+    }
+
+    if (event.data?.type === 'customer-form-saved') {
+        closeCustomerFrame()
+        upsertCustomerRow(event.data.customer, event.data.action)
     }
 })
 
@@ -110,37 +209,30 @@ async function searchCustomer(url) {
 }
 
 async function fillCustomersTable(data) {
-    const customersDiv = document.getElementById('customersDiv')
     let tr = ''
     let actions = ''
 
     if (Array.isArray(data)) {
-        const phoneCell = customer?.complete_phone ?
-            `<td><a href="https://wa.me/+54${customer.complete_phone}" target="_blank">${customer.complete_phone}</a></td>` :
-            `<td>No indicado</td>`;
-
-        const emailCell = customer?.email ?
-            `<td><a href="mailto:${customer.email}" target="_blank">${customer.email}</a></td>` :
-            `<td>No indicado</td>`;
-
         data.forEach(customer => {
-            let offer = ''
-            customer?.offer == 1 ? offer = 'Si' : offer = 'No'
+            const phoneCell = customer?.complete_phone ?
+                `<td><a href="https://wa.me/+54${customer.complete_phone}" target="_blank">${customer.complete_phone}</a></td>` :
+                `<td>No indicado</td>`
+
+            const emailCell = customer?.email ?
+                `<td><a href="mailto:${customer.email}" target="_blank">${customer.email}</a></td>` :
+                `<td>No indicado</td>`
 
             actions = `
-            <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
-                <button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    Acciones
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a type="button" href="${baseUrl}customers/editWindow/${customer?.id})" class="btn btn-primary dropdown-item" id="" data-id="${customer?.id}">Editar cliente</a></li>
-                    <li><a type="button" href="${baseUrl}customers/deleteCustomer/${customer?.id}})" class="btn btn-primary dropdown-item" id="" data-id="${customer?.id}">Eliminar cliente</a></li>
-                </ul>
-            </div>
+            <button type="button" class="btn btn-primary btn-sm mb-1 customer-frame-trigger" data-customer-frame-url="${baseUrl}customers/editWindow/${customer?.id}?embed=1">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <a href="${baseUrl}customers/deleteCustomer/${customer?.id}" class="btn btn-danger btn-sm mb-1" data-id="${customer?.id}">
+                <i class="fa-solid fa-trash"></i>
+            </a>
             `
 
             tr += `
-            <tr>
+            <tr id="customer-row-${customer?.id}">
                 <td>${customer?.name}</td>
                 <td>${customer?.type_institution}</td>
                 <td>${customer?.dni}</td>
@@ -148,6 +240,7 @@ async function fillCustomersTable(data) {
                 <td>${customer?.city}</td>
                 ${emailCell}
                 <td>${customer?.quantity}</td>
+                <td>${customer?.offer ?? 0}%</td>
                 <td>${actions}</td>
             </tr>
             `
@@ -159,25 +252,19 @@ async function fillCustomersTable(data) {
 
         const emailCell = data?.email ?
             `<td><a href="mailto:${data.email}" target="_blank">${data.email}</a></td>` :
-            `<td>No indicado</td>`;
-
-        let offer = '';
-        data?.offer == 1 ? offer = 'Si' : offer = 'No';
+            `<td>No indicado</td>`
 
         actions = `
-            <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
-                <button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    Acciones
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a type="button" href="${baseUrl}customers/editWindow/${data?.id})" class="btn btn-primary dropdown-item" id="" data-id="${data?.id}">Editar cliente</a></li>
-                    <li><a type="button" href="${baseUrl}customers/deleteCustomer/${data?.id}})" class="btn btn-primary dropdown-item" id="" data-id="${data?.id}">Eliminar cliente</a></li>
-                </ul>
-            </div>
+            <button type="button" class="btn btn-primary btn-sm mb-1 customer-frame-trigger" data-customer-frame-url="${baseUrl}customers/editWindow/${data?.id}?embed=1">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <a href="${baseUrl}customers/deleteCustomer/${data?.id}" class="btn btn-danger btn-sm mb-1" data-id="${data?.id}">
+                <i class="fa-solid fa-trash"></i>
+            </a>
             `
 
         tr += `
-            <tr>
+            <tr id="customer-row-${data?.id}">
                 <td>${data?.name}</td>
                 <td>${data?.type_institution}</td>
                 <td>${data?.dni}</td>
@@ -185,6 +272,7 @@ async function fillCustomersTable(data) {
                 <td>${data?.city}</td>
                 ${emailCell}
                 <td>${data?.quantity}</td>
+                <td>${data?.offer ?? 0}%</td>
                 <td>${actions}</td>
             </tr>
             `

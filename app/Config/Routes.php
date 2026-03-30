@@ -35,9 +35,12 @@ $routes->get('getDataMp', 'Home::getDataMp');
 $routes->get('deleteRejected', 'Home::deleteRejected');
 
 $routes->post('setPreference', 'MercadoPago::setPreference');
+$routes->post('cancelPendingMpReservation', 'MercadoPago::cancelPendingMpReservation');
 $routes->post('savePreferenceIds', 'MercadoPago::savePreferenceIds');
 $routes->get('payment/success', 'MercadoPago::success');
 $routes->get('payment/failure', 'MercadoPago::failure');
+$routes->get('pagoAprobado/(:num)', 'MercadoPago::successView/$1');
+$routes->get('pagoRechazado', 'MercadoPago::failureView');
 
 $routes->group('auth', function ($routes) {
     $routes->post('register', 'Auth::dbRegister');
@@ -61,14 +64,21 @@ $routes->get('getRate', 'Rate::getRate');
 
 $routes->get('getOffersRate', 'Offers::getOffersRate');
 
+$routes->get('getTime', 'Time::getTime');
 $routes->get('getNocturnalTime', 'Time::getNocturnalTime');
 
 $routes->get('customers/register', 'Customers::register');
 $routes->post('customers/register', 'Customers::dbRegister');
 $routes->get('getCustomer/(:any)', 'Customers::getCustomer/$1');
 $routes->get('validateCustomer/(:any)/(:any)', 'Customers::validateCustomer/$1/$2');
+$routes->post('validateCustomer', 'Customers::validateCustomerLookup');
+$routes->get('MisReservas', 'Bookings::viewBookings');
+$routes->get('MisReservas/(:segment)', 'Bookings::viewBookings/$1');
+$routes->get('misreservas', 'Bookings::viewBookings');
+$routes->get('misreservas/(:segment)', 'Bookings::viewBookings/$1');
 $routes->get('customers/booking', 'Bookings::viewBookings');
 $routes->get('customers/showCustomerBooking/(:any)', 'Bookings::showCustomerBooking/$1');
+$routes->post('customers/showCustomerBookings', 'Bookings::showCustomerBookings');
 
 $routes->get('getUser/(:any)', 'Users::getUser/$1');
 $routes->post('editUser', 'Users::editUser');
@@ -86,16 +96,17 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
 
     $routes->get('configMpView', 'Superadmin::configMpView');
     $routes->post('configMp', 'Superadmin::configMp');
+    $routes->post('saveWebGeneral', 'Superadmin::saveWebGeneral');
     $routes->get('abmAdmin', 'Superadmin::index');
     $routes->post('saveField', 'Superadmin::saveField');
     $routes->post('saveValue', 'Superadmin::saveValue');
     $routes->post('editField/(:any)', 'Superadmin::editField/$1');
+    $routes->post('disableField/(:any)', 'Superadmin::disableField/$1');
     $routes->post('getActiveBookings', 'Superadmin::getActiveBookings');
     $routes->post('getAnnulledBookings', 'Superadmin::getAnnulledBookings');
+    $routes->post('resendBookingEmail/(:num)', 'Superadmin::resendBookingEmail/$1');
 
     $routes->post('saveTime', 'Time::saveTime');
-    $routes->get('getTime', 'Time::getTime');
-
     $routes->post('confirmMP', 'Bookings::confirmMP');
 
     $routes->post('completePayment/(:any)', 'Bookings::completePayment/$1');

@@ -1,0 +1,217 @@
+RESERVA LABERINTO
+Documento informativo y tecnico
+
+Fecha: 30/03/2026
+Proyecto: ReservaLaberinto
+Ubicacion base: C:\app\ReservaLaberinto
+
+1. Descripcion general
+
+ReservaLaberinto es una aplicacion web para gestionar reservas del Laberinto Patagonia.
+Permite tomar reservas desde una pantalla publica y tambien administrarlas desde un panel interno.
+El sistema contempla validacion de cliente, calculo de importes, pagos con Mercado Pago, generacion de PDF y envio de emails.
+
+2. Funcionalidades principales
+
+- Reserva publica para clientes
+- Validacion de cliente por telefono y email
+- Registro de clientes nuevos
+- Visualizacion de disponibilidad por fecha y horario
+- Control de dias cerrados
+- Control de cantidad minima de visitantes
+- Calculo automatico del importe segun servicio, horario y tipo de institucion
+- Pago parcial o total con Mercado Pago
+- Confirmacion de reserva
+- Descarga de comprobante PDF
+- Consulta publica de reservas por codigo o por telefono + email
+- Panel de administracion
+- Gestion de clientes
+- Gestion de valores
+- Gestion de servicios del laberinto
+- Configuracion general y web
+- Reenvio manual de emails desde el admin
+
+3. Flujo publico resumido
+
+1. El cliente acepta los terminos y condiciones.
+2. Ingresa telefono y email para validar su identidad.
+3. Si existe, el sistema toma sus datos.
+4. Si no existe, puede registrarse o continuar segun el flujo habilitado.
+5. Selecciona fecha, horario, servicio y cantidad de personas.
+6. El sistema calcula el monto.
+7. Se muestra un resumen de la reserva.
+8. Se muestra el aviso importante previo al pago.
+9. Se abre el modal de pago con Mercado Pago.
+10. Se genera una reserva provisional y un bloqueo temporal del horario.
+11. Si el pago se aprueba, se confirma la reserva.
+12. Si el pago falla o se cancela, se libera el horario.
+
+4. Panel de administracion
+
+El panel admin permite operar reservas y configuraciones sin salir del sistema.
+
+Pestanas principales:
+- Reservas
+- General
+- Reportes de cobro
+- Valores
+- Laberinto
+- Horarios
+- Clientes
+
+Funciones destacadas:
+- Buscar reservas activas y anuladas
+- Crear y editar clientes dentro de modal
+- Crear y editar valores desde modal
+- Configurar porcentaje de reserva
+- Configurar Mercado Pago
+- Configurar email de notificaciones
+- Reenviar email de reserva
+
+5. Base de datos
+
+Base local utilizada:
+- Reserva_Laberinto
+
+Tablas importantes:
+- bookings
+- booking_slots
+- customers
+- fields
+- payments
+- mercado_pago
+- rate
+- service_values
+- time
+- uploads
+- users
+
+Uso de algunas tablas:
+- bookings: guarda la reserva principal
+- booking_slots: evita doble reserva simultanea del mismo horario
+- customers: datos del cliente
+- payments: pagos registrados
+- mercado_pago: datos devueltos por Mercado Pago
+- rate: porcentaje de sena y minimo de visitantes
+- service_values: valores por tipo de institucion y descuento
+- time: horarios y dias cerrados
+- uploads: logo y configuraciones visuales
+
+6. Integracion con Mercado Pago
+
+El sistema usa Mercado Pago para pagos parciales o totales.
+
+Comportamiento actual:
+- Se generan preferencias de pago parcial y total
+- Se crea una reserva provisional antes del checkout
+- Se crea un bloqueo temporal del horario en booking_slots
+- Si el pago se aprueba, la reserva queda confirmada
+- Si el pago falla o se cancela, la reserva provisional puede anularse y el slot se libera
+
+Rutas importantes:
+- setPreference
+- payment/success
+- payment/failure
+- pagoAprobado/{id}
+- pagoRechazado
+
+7. Emails
+
+El sistema envia emails en dos direcciones:
+- email interno de notificacion de reserva
+- email al cliente con confirmacion y acceso a sus reservas
+
+Configuracion actual:
+- SMTP con cuentas Gmail
+- cuenta principal
+- cuenta secundaria como fallback
+
+Comportamiento:
+- si falla la principal, intenta con la secundaria
+- el cliente recibe link para ver su reserva puntual y el historial
+- el admin puede reenviar el email desde el panel
+
+8. Consulta de reservas por parte del cliente
+
+La pantalla "Ver mi reserva" permite:
+- buscar una reserva puntual por codigo
+- ver todas las reservas del cliente por telefono + email
+
+Comportamiento actual:
+- si entra desde el mail, se abre primero la reserva puntual
+- debajo se muestra el resto de reservas del cliente
+- primero aparecen las futuras
+- el historial pasado queda en una seccion separada desplegable
+
+9. PDF
+
+El sistema genera PDF de la reserva.
+
+Consideraciones tecnicas:
+- el PDF usa una vista HTML renderizada por libreria PDF
+- el logo se intenta cargar desde archivos locales
+- si el servidor no tiene ciertas extensiones de PHP, el logo puede requerir ajustes de formato
+
+10. Archivos tecnicos clave
+
+Controladores:
+- app\Controllers\Bookings.php
+- app\Controllers\Customers.php
+- app\Controllers\MercadoPago.php
+- app\Controllers\Superadmin.php
+
+Frontend:
+- public\assets\js\formReserva.js
+- public\assets\js\showCustomerBooking.js
+- public\assets\js\searchBookings.js
+- public\assets\js\abmSuperadmin.js
+
+Vistas:
+- app\Views\index.php
+- app\Views\customers\booking.php
+- app\Views\mercadoPago\success.php
+- app\Views\superadmin\*.php
+
+Configuracion:
+- app\Config\Routes.php
+- app\Config\Email.php
+- .env
+
+11. Puntos tecnicos relevantes
+
+- El sistema corre sobre CodeIgniter 4
+- Se usa Laragon en entorno local
+- La URL publica puede exponerse por ngrok
+- Hay diferencias entre entorno local y publico que afectan baseURL y assets
+- Los mensajes visuales del frontend fueron modernizados para evitar alert() del navegador
+- El calendario publico usa flatpickr para deshabilitar fechas pasadas y dias cerrados
+
+12. Riesgos y observaciones
+
+- Si Gmail alcanza limite diario, los emails pueden fallar aunque la reserva se guarde
+- Si PHP no tiene ciertas extensiones graficas, algunos logos pueden no verse en PDF
+- Conviene mantener consistencia de datos en customers para evitar duplicados
+- Conviene monitorear booking_slots para evitar locks pendientes viejos
+
+13. Recomendaciones
+
+- Mantener una cuenta SMTP principal y una secundaria
+- Revisar periodicamente logs de email y Mercado Pago
+- Hacer backup antes de cambios estructurales en base de datos
+- Si el proyecto pasa a produccion estable, conviene usar SMTP de dominio propio o proveedor transaccional
+- Documentar credenciales y configuraciones fuera del codigo fuente
+
+14. Estado general
+
+El sistema se encuentra operativo para:
+- reservas publicas
+- administracion interna
+- pagos con Mercado Pago
+- envio de emails
+- consulta de reservas
+
+Quedan sujetos a control operativo:
+- limites de envio SMTP
+- calidad de datos historicos
+- ajustes visuales menores que puedan pedirse mas adelante
+

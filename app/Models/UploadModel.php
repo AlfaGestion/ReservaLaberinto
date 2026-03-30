@@ -13,7 +13,7 @@ class UploadModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['name', 'main_color', 'secondary_color'];
+    protected $allowedFields    = ['name', 'main_color', 'secondary_color', 'notification_email'];
 
     // Dates
     protected $useTimestamps = false;

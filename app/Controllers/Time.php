@@ -154,11 +154,19 @@ class Time extends BaseController
     public function getNocturnalTime()
     {
         $timeModel = new TimeModel();
-        $openingTime = $timeModel->getOpeningTime();
-        $times = $timeModel->findAll()[0];
-        $index = array_search($times['nocturnal_time'], $openingTime);
+        $openingTime = array_values(array_filter(
+            $timeModel->getOpeningTime(),
+            fn ($value) => is_string($value) && preg_match('/^\d{2}:\d{2}$/', $value)
+        ));
+        $times = $timeModel->findAll()[0] ?? null;
+        $configuredNocturnalTime = $times['nocturnal_time'] ?? null;
 
-        $nocturnalTime = array_slice($openingTime, $index);
+        if (!$configuredNocturnalTime) {
+            return $this->response->setJSON($this->setResponse(null, null, [], 'Respuesta exitosa'));
+        }
+
+        $index = array_search($configuredNocturnalTime, $openingTime, true);
+        $nocturnalTime = $index === false ? [] : array_slice($openingTime, (int) $index);
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $nocturnalTime, 'Respuesta exitosa'));

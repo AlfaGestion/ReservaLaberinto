@@ -13,8 +13,10 @@
 
     <link rel="icon" href="<?= base_url(PUBLIC_FOLDER . "assets/images/favicon.ico") ?>" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css") ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
 </head>
@@ -104,7 +106,7 @@ $userData = $modelUploads->first();
 
                             <ul class="nav">
                                 <li class="nav-item">
-                                    <a href="<?= base_url('customers/booking') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-calendar-days me-1"></i>Ver mi reserva</a>
+                                    <a href="<?= base_url('MisReservas') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-calendar-days me-1"></i>Ver mi reserva</a>
                                 </li>
                                 <?php if (session()->logueado) : ?>
                                     <li class="nav-item">
@@ -118,7 +120,7 @@ $userData = $modelUploads->first();
                                         <a href="<?= base_url('auth/login') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-user me-1"></i>Ingreso Admin</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="<?= base_url('customers/register') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
+                                        <a href="/customers/register" class="nav-link px-2 text-white"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
                                     </li>
                                 <?php endif; ?>
                             </ul>
@@ -127,15 +129,15 @@ $userData = $modelUploads->first();
                     </footer>
                 </div>
 
-
-                <?php echo $this->renderSection('scripts') ?>
-
-                <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js") ?>"></script>
                 <script>
+                    window.appBaseUrl = <?= json_encode(rtrim(site_url('/'), '/') . '/') ?>;
                     let sessionUserId = <?= json_encode(session()->id_user) ?>;
                     let sessionUserLogued = <?= json_encode(session()->logueado) ?>;
                     let sessionUserSuperadmin = <?= json_encode(session()->superadmin) ?>;
                 </script>
+                <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js") ?>"></script>
+
+                <?php echo $this->renderSection('scripts') ?>
         </body>
 
 </html>

@@ -1,4 +1,6 @@
 const code = document.getElementById('code');
+const phoneSearch = document.getElementById('phoneSearch');
+const emailSearch = document.getElementById('emailSearch');
 const modalSpinner = new bootstrap.Modal(document.getElementById('modalSpinner'));
 const bookingCardContainer = document.getElementById('bookingCardContainer');
 const editBookingModal = new bootstrap.Modal('#editarReservaModal')
@@ -21,12 +23,45 @@ let minVisitantes = 0
 let openingTime = []
 let currentBooking = {}
 
+document.addEventListener('DOMContentLoaded', () => {
+    const prefillElement = document.getElementById('bookingPrefill');
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeParam = prefillElement?.dataset?.code || urlParams.get('code') || '';
+    const phoneParam = prefillElement?.dataset?.phone || urlParams.get('phone') || '';
+    const emailParam = prefillElement?.dataset?.email || urlParams.get('email') || '';
+
+    if (phoneSearch && emailSearch) {
+        phoneSearch.value = phoneParam;
+        emailSearch.value = emailParam;
+    }
+
+    if (codeParam) {
+        code.value = codeParam;
+
+        if (phoneParam && emailParam) {
+            searchBookingWithHistory(codeParam, phoneParam, emailParam);
+        } else {
+            searchBooking(codeParam);
+        }
+        return;
+    }
+
+    if (phoneParam && emailParam) {
+        searchCustomerBookings(phoneParam, emailParam);
+    }
+});
+
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'searchBooking') {
         bookingCardContainer.innerHTML = '';
         bookingCardContainer.classList.add('d-none');
 
         searchBooking(code.value);
+    } else if (e.target && e.target.id === 'searchCustomerBookings') {
+        bookingCardContainer.innerHTML = '';
+        bookingCardContainer.classList.add('d-none');
+
+        searchCustomerBookings(phoneSearch.value, emailSearch.value);
     } else if (e.target && e.target.id === 'editarReservaModal') {
         editBookingModal.show()
 
@@ -420,6 +455,78 @@ async function searchBooking(codeValue) {
     }
 }
 
+async function searchCustomerBookings(phoneValue, emailValue) {
+    if (!phoneValue || !emailValue) {
+        alert('Debe ingresar telefono y email para ver todas las reservas.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${baseUrl}customers/showCustomerBookings`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                phone: phoneValue,
+                email: emailValue
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la solicitud: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+
+        if (responseData.data && responseData.data.length > 0) {
+            renderBookingsList(responseData.data);
+        } else {
+            bookingCardContainer.classList.add('d-none');
+            alert('No se encontraron reservas para ese cliente.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Ocurrio un error al intentar obtener las reservas.');
+    }
+}
+
+async function searchBookingWithHistory(codeValue, phoneValue, emailValue) {
+    try {
+        const [bookingResponse, historyResponse] = await Promise.all([
+            fetch(`${baseUrl}customers/showCustomerBooking/${codeValue}`),
+            fetch(`${baseUrl}customers/showCustomerBookings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: phoneValue,
+                    email: emailValue
+                })
+            })
+        ]);
+
+        if (!bookingResponse.ok) {
+            throw new Error(`Error en la reserva: ${bookingResponse.status}`);
+        }
+
+        const bookingData = await bookingResponse.json();
+        const historyData = historyResponse.ok ? await historyResponse.json() : { data: [] };
+
+        if (bookingData.data && bookingData.data !== '') {
+            currentBooking = bookingData.data;
+            renderBookingWithHistory(bookingData.data, historyData.data || []);
+        } else {
+            bookingCardContainer.classList.add('d-none');
+            alert('No se encontro la reserva solicitada.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Ocurrio un error al intentar obtener la reserva y el historial.');
+    }
+}
+
 
 function renderBookingCard(booking) {
 
@@ -478,4 +585,185 @@ function renderBookingCard(booking) {
     `;
 
     bookingCardContainer.innerHTML = cardHTML;
+}
+
+function renderBookingWithHistory(selectedBooking, bookings) {
+    bookingCardContainer.classList.remove('d-none');
+
+    const bookingDate = formatBookingDate(selectedBooking.date);
+    const serviceName = selectedBooking.service_name || 'Reserva';
+    const description = selectedBooking.description || 'Sin descripcion';
+
+    const otherBookings = (bookings || []).filter((booking) => booking.id !== selectedBooking.id);
+    const historyHtml = buildHistorySections(otherBookings);
+
+    bookingCardContainer.innerHTML = `
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-success text-white p-3">
+                <h5 class="mb-0">Reserva #${selectedBooking.code}</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6 border-end">
+                        <p class="mb-2"><strong>Fecha:</strong> ${bookingDate}</p>
+                        <p class="mb-2"><strong>Horario:</strong> ${selectedBooking.time_from} - ${selectedBooking.time_until}</p>
+                        <p class="mb-2"><strong>Servicio:</strong> ${serviceName}</p>
+                        <p class="mb-0"><strong>Visitantes:</strong> <span class="badge bg-info text-dark">${selectedBooking.visitors}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Nombre:</strong> ${selectedBooking.name}</p>
+                        <p class="mb-2"><strong>Telefono:</strong> ${selectedBooking.phone}</p>
+                        <p class="mb-0"><strong>Descripcion:</strong> ${description}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-light d-flex flex-wrap justify-content-between align-items-center p-3">
+                <div class="mb-2 mb-md-0">
+                    <p class="mb-1"><strong>Total:</strong> <span class="text-dark fw-bold">$${selectedBooking.total}</span></p>
+                    <p class="mb-1"><strong>Pagado:</strong> $${selectedBooking.payment} (${selectedBooking.payment_method})</p>
+                    <p class="mb-0 text-danger fw-bold"><strong>Saldo:</strong> $${selectedBooking.diference}</p>
+                </div>
+                <div class="d-flex flex-row justify-content-center align-items-end gap-2">
+                    <a class="btn btn-danger" target="_blank" href="${baseUrl}bookingPdf/${selectedBooking.id}">Descargar PDF</a>
+                </div>
+            </div>
+        </div>
+        ${historyHtml}
+    `;
+}
+
+function renderBookingsList(bookings) {
+    bookingCardContainer.classList.remove('d-none');
+    bookingCardContainer.innerHTML = buildHistorySections(bookings);
+}
+
+function formatBookingDate(dateValue) {
+    if (!dateValue) {
+        return '';
+    }
+
+    if (dateValue.includes('-')) {
+        const [year, month, day] = dateValue.split('-');
+        if (year && month && day) {
+            return `${day}/${month}/${year}`;
+        }
+    }
+
+    return dateValue;
+}
+
+function getBookingStartTimestamp(booking) {
+    const dateValue = booking?.date || '';
+    const timeValue = booking?.time_from || '00:00';
+
+    if (!dateValue) {
+        return Number.MAX_SAFE_INTEGER;
+    }
+
+    return new Date(`${dateValue}T${timeValue}:00`).getTime();
+}
+
+function getBookingEndTimestamp(booking) {
+    const dateValue = booking?.date || '';
+    const timeValue = booking?.time_until || booking?.time_from || '00:00';
+
+    if (!dateValue) {
+        return 0;
+    }
+
+    return new Date(`${dateValue}T${timeValue}:00`).getTime();
+}
+
+function isUpcomingBooking(booking) {
+    return getBookingEndTimestamp(booking) >= Date.now();
+}
+
+function buildBookingAccordionItems(bookings, prefix) {
+    return bookings.map((booking, index) => {
+        const bookingDate = formatBookingDate(booking.date);
+        const description = booking.description || 'Sin descripcion';
+        const serviceName = booking.service_name || 'Reserva';
+        const collapseId = `${prefix}-booking-${booking.id}-${index}`;
+        const headingId = `${collapseId}-heading`;
+        const paymentBadge = booking.total_payment == 1
+            ? '<span class="badge bg-success">Pago completo</span>'
+            : '<span class="badge bg-warning text-dark">Pago parcial</span>';
+
+        return `
+            <div class="accordion-item mb-2 border rounded-3 overflow-hidden">
+                <h2 class="accordion-header" id="${headingId}">
+                    <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                        Reserva #${booking.code} - ${bookingDate} - ${booking.time_from} a ${booking.time_until}
+                    </button>
+                </h2>
+                <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}">
+                    <div class="accordion-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <div>
+                                <p class="mb-1"><strong>Servicio:</strong> ${serviceName}</p>
+                                <p class="mb-1"><strong>Visitantes:</strong> ${booking.visitors}</p>
+                                <p class="mb-0"><strong>Descripcion:</strong> ${description}</p>
+                            </div>
+                            <div>${paymentBadge}</div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Nombre:</strong> ${booking.name}</p>
+                                <p class="mb-1"><strong>Telefono:</strong> ${booking.phone}</p>
+                                <p class="mb-0"><strong>Metodo de pago:</strong> ${booking.payment_method}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Total:</strong> $${booking.total}</p>
+                                <p class="mb-1"><strong>Pagado:</strong> $${booking.payment}</p>
+                                <p class="mb-0"><strong>Saldo:</strong> $${booking.diference}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex flex-wrap gap-2">
+                            <a class="btn btn-danger btn-sm" target="_blank" href="${baseUrl}bookingPdf/${booking.id}">Descargar PDF</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function buildHistorySections(bookings) {
+    const sortedBookings = [...bookings].sort((a, b) => getBookingStartTimestamp(a) - getBookingStartTimestamp(b));
+    const upcomingBookings = sortedBookings.filter(isUpcomingBooking);
+    const pastBookings = sortedBookings.filter((booking) => !isUpcomingBooking(booking));
+
+    let html = '';
+
+    if (upcomingBookings.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h5 class="mb-3">Proximas reservas</h5>
+                <div class="accordion" id="upcomingBookingsAccordion">
+                    ${buildBookingAccordionItems(upcomingBookings, 'upcoming')}
+                </div>
+            </div>
+        `;
+    }
+
+    if (pastBookings.length > 0) {
+        html += `
+            <div class="mt-4">
+                <details class="card shadow-sm border-0">
+                    <summary class="card-header bg-light fw-semibold" style="cursor: pointer;">Ver historial de reservas (${pastBookings.length})</summary>
+                    <div class="card-body">
+                        <div class="accordion" id="pastBookingsAccordion">
+                            ${buildBookingAccordionItems(pastBookings, 'past')}
+                        </div>
+                    </div>
+                </details>
+            </div>
+        `;
+    }
+
+    if (html === '') {
+        return `<div class="alert alert-secondary mb-0">No se encontraron reservas para este cliente.</div>`;
+    }
+
+    return html;
 }

@@ -7,13 +7,13 @@ use CodeIgniter\Model;
 class ValuesModel extends Model
 {
     protected $DBGroup          = 'default';
-    protected $table            = 'values';
+    protected $table            = 'service_values';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['name','value','amount','extra_amount','disabled'];
+    protected $allowedFields    = ['name','value','amount','discount_percentage','extra_amount','disabled'];
 
     // Dates
     protected $useTimestamps = false;

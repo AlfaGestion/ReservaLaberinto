@@ -97,6 +97,9 @@ $userData = $modelUploads->first();
             </div>
         </div>
     </div>
+    <script>
+        window.appBaseUrl = <?= json_encode(rtrim(site_url('/'), '/') . '/') ?>;
+    </script>
     <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js") ?>"></script>
     <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/users.js") ?>"></script>
 

@@ -22,12 +22,8 @@ use Psr\Log\LoggerInterface;
 abstract class BaseController extends Controller
 {
     protected $session;
+    protected string $reservationAccessSecret = 'reserva_laberinto_booking_access_v1';
 
-    function __construct()
-    {
-        $this->session = \Config\Services::session();
-        $this->session->start();
-    }
     /**
      * Instance of the main Request object.
      *
@@ -59,7 +55,57 @@ abstract class BaseController extends Controller
         parent::initController($request, $response, $logger);
 
         // Preload any models, libraries, etc, here.
+        $this->session = \Config\Services::session();
+    }
 
-        // E.g.: $this->session = \Config\Services::session();
+    protected function buildReservationAccessToken(array $data): string
+    {
+        $code = trim((string) ($data['code'] ?? ''));
+
+        return $code;
+    }
+
+    protected function parseReservationAccessToken(?string $token): array
+    {
+        $token = trim((string) $token);
+        if ($token === '') {
+            return [];
+        }
+
+        if (str_contains($token, '.')) {
+            [$encodedPayload, $signature] = explode('.', $token, 2);
+            $expectedSignature = hash_hmac('sha256', $encodedPayload, $this->reservationAccessSecret);
+
+            if (!hash_equals($expectedSignature, $signature)) {
+                return [];
+            }
+
+            $decoded = base64_decode(strtr($encodedPayload, '-_', '+/'));
+            if ($decoded === false) {
+                return [];
+            }
+
+            $payload = json_decode($decoded, true);
+            return is_array($payload) ? $payload : [];
+        }
+
+        if (preg_match('/^[A-Z0-9]{6,20}$/', $token) === 1) {
+            return ['code' => $token];
+        }
+
+        $lastDashPosition = strrpos($token, '-');
+        if ($lastDashPosition === false) {
+            return [];
+        }
+
+        $code = substr($token, 0, $lastDashPosition);
+        $signature = substr($token, $lastDashPosition + 1);
+        $expectedSignature = substr(hash_hmac('sha256', $code, $this->reservationAccessSecret), 0, 16);
+
+        if ($code === '' || !hash_equals($expectedSignature, $signature)) {
+            return [];
+        }
+
+        return ['code' => $code];
     }
 }
