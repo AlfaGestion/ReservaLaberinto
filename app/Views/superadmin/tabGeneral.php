@@ -21,28 +21,49 @@ $uploadData = $uploadModel->first();
         <div class="admin-toolbar">
             <div class="admin-toolbar__actions">
                 <?php if (session()->superadmin) : ?>
-                    <a type="button" href="<?= base_url('auth/register') ?>" class="btn btn-success"><i class="fa-solid fa-user-plus me-1"></i>Crear usuario</a>
+                    <button type="button" class="btn btn-success" id="buttonCreateUser"><i class="fa-solid fa-user-plus me-1"></i>Crear usuario</button>
                 <?php endif; ?>
             </div>
         </div>
 
         <?php if (session()->superadmin) : ?>
-            <div class="table-responsive-sm" id="tableCustomers">
+            <div class="table-responsive-sm" id="tableUsers">
                 <table class="table align-middle table-striped-columns mt-2">
                     <thead>
                         <tr>
                             <th scope="col">Usuario</th>
                             <th scope="col">Nombre</th>
                             <th scope="col">Superadmin</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="usersTableBody">
                         <?php foreach ($users as $user) : ?>
                             <?php if ($user['user'] !== 'testuser') : ?>
-                                <tr>
+                                <tr id="user-row-<?= $user['id'] ?>">
                                     <td><?= $user['user'] ?></td>
                                     <td><?= $user['name'] ?></td>
                                     <td><?= $user['superadmin'] == 1 ? 'Si' : 'No' ?></td>
+                                    <td><?= !empty($user['active']) ? 'Activo' : 'Inactivo' ?></td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary btn-sm mb-1 user-edit-trigger"
+                                            data-id="<?= $user['id'] ?>"
+                                            data-user="<?= esc($user['user']) ?>"
+                                            data-name="<?= esc($user['name']) ?>"
+                                            data-superadmin="<?= $user['superadmin'] == 1 ? 1 : 0 ?>"
+                                            data-active="<?= !empty($user['active']) ? 1 : 0 ?>">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-danger btn-sm mb-1 user-delete-trigger"
+                                            data-id="<?= $user['id'] ?>">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             <?php endif; ?>
                         <?php endforeach; ?>
@@ -150,3 +171,55 @@ $uploadData = $uploadModel->first();
         </div>
     </div>
 </div>
+
+<?php if (session()->superadmin) : ?>
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="userModalLabel">Usuario</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userIdField">
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" style="min-width: 120px;">Usuario</span>
+                            <input type="text" class="form-control" id="userUsername" placeholder="Ingresar usuario">
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" style="min-width: 120px;">Nombre</span>
+                            <input type="text" class="form-control" id="userDisplayName" placeholder="Ingresar nombre">
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" style="min-width: 120px;">Contrasena</span>
+                            <input type="password" class="form-control" id="userPassword" placeholder="Ingresar contrasena">
+                        </div>
+
+                        <div class="input-group mb-3" id="userRepeatPasswordGroup">
+                            <span class="input-group-text" style="min-width: 120px;">Repetir</span>
+                            <input type="password" class="form-control" id="userRepeatPassword" placeholder="Repetir contrasena">
+                        </div>
+
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="userSuperadmin">
+                            <label class="form-check-label" for="userSuperadmin">Superadmin</label>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="userActive" checked>
+                            <label class="form-check-label" for="userActive">Activo</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveUserButton">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>

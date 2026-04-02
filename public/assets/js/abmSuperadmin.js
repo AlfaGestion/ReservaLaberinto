@@ -48,6 +48,13 @@ const valuesTableBody = document.getElementById('valuesTableBody')
 let idBooking
 let currentFieldId = null
 
+function formatAdminMoney(value) {
+    return new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(value)
+}
+
 function showAdminNotice(message, type = 'success', title = '') {
     const container = document.getElementById('adminNoticeContainer')
 
@@ -100,7 +107,7 @@ function updateServiceFinalAmount() {
     }
 
     const finalAmount = amount - ((amount * (Number.isNaN(discount) ? 0 : discount)) / 100)
-    serviceFinalAmount.value = finalAmount.toFixed(2)
+    serviceFinalAmount.value = formatAdminMoney(finalAmount)
 }
 
 function renderFieldRow(item) {
@@ -159,9 +166,9 @@ function renderValueRow(item) {
     row.id = `value-row-${item.id}`
     row.innerHTML = `
         <td>${item?.name ?? 'No indicado'}</td>
+        <td>${formatAdminMoney(amount)}</td>
         <td>${item?.discount_percentage ?? 0}%</td>
-        <td>${item?.amount ?? 'No indicado'}</td>
-        <td>${finalAmount.toFixed(2)}</td>
+        <td>${formatAdminMoney(finalAmount)}</td>
         <td>
             <button
                 type="button"

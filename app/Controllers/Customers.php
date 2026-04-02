@@ -52,6 +52,7 @@ class Customers extends BaseController
             'types' => $types,
             'prefillPhone' => $this->request->getGet('phone') ?? '',
             'prefillEmail' => $this->request->getGet('email') ?? '',
+            'returnValidate' => $this->request->getGet('returnValidate') === '1',
             'isEmbedded' => $isEmbedded,
         ]);
     }
@@ -75,13 +76,27 @@ class Customers extends BaseController
         $existingEmail = $modelCustomers->where('email', $email)->where('deleted', 0)->findAll();
 
         if ($phone == '' || $name == '' || $email == '' || $dni == '' || $city == '' || $type == '') {
-            $registerUrl = 'customers/register' . ($isEmbedded ? '?embed=1' : '');
-            return redirect()->to($registerUrl)->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
+            $query = http_build_query(array_filter([
+                'embed' => $isEmbedded ? 1 : null,
+                'phone' => $phone ?: null,
+                'email' => $email ?: null,
+            ]));
+
+            return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
+                ->withInput()
+                ->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
         }
 
         if ($existingPhone || $existingEmail) {
-            $registerUrl = 'customers/register' . ($isEmbedded ? '?embed=1' : '');
-            return redirect()->to($registerUrl)->with('msg', ['type' => 'danger', 'body' => 'Los datos coinciden con un usuario ya registrado']);
+            $query = http_build_query(array_filter([
+                'embed' => $isEmbedded ? 1 : null,
+                'phone' => $phone ?: null,
+                'email' => $email ?: null,
+            ]));
+
+            return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
+                ->withInput()
+                ->with('msg', ['type' => 'danger', 'body' => 'Los datos coinciden con un usuario ya registrado']);
         }
 
         $query = [
@@ -101,7 +116,15 @@ class Customers extends BaseController
         try {
             $newId = $modelCustomers->insert($query);
         } catch (\Exception $e) {
-            return "Error al insertar datos: " . $e->getMessage();
+            $query = http_build_query(array_filter([
+                'embed' => $isEmbedded ? 1 : null,
+                'phone' => $phone ?: null,
+                'email' => $email ?: null,
+            ]));
+
+            return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
+                ->withInput()
+                ->with('msg', ['type' => 'danger', 'body' => 'No se pudo guardar el alta. Intente nuevamente']);
         }
 
         if ($isEmbedded) {

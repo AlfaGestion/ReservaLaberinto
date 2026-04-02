@@ -120,7 +120,7 @@ $userData = $modelUploads->first();
                                         <a href="<?= base_url('auth/login') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-user me-1"></i>Ingreso Admin</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="/customers/register" class="nav-link px-2 text-white"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
+                                        <a href="<?= base_url('Registrarme') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
                                     </li>
                                 <?php endif; ?>
                             </ul>

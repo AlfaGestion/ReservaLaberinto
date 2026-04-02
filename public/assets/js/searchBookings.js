@@ -7,14 +7,25 @@ const spinnerCompletarPagos = new bootstrap.Modal('#spinnerCompletarPago')
 const cambiarEstadoMPModal = new bootstrap.Modal('#modalCambiarEstado')
 const totalReservasHoy = document.getElementById('totalReservasHoy')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
+const selectDateBooking = document.getElementById('selectDateBooking')
 
 let bookingData = {}
 let bookingId = ''
 
+function formatLocalDate(date) {
+    const year = date.getFullYear()
+    const month = `${date.getMonth() + 1}`.padStart(2, '0')
+    const day = `${date.getDate()}`.padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
 document.addEventListener('DOMContentLoaded', async (e) => {
-    const fechaActual = new Date().toISOString().split('T')[0]
-    inputDesdeBooking.value = fechaActual
-    inputHastaBooking.value = fechaActual
+    const today = formatLocalDate(new Date())
+    const weekStart = selectDateBooking?.dataset.weekStart || today
+    const latestBookingDate = selectDateBooking?.dataset.latestBookingDate || today
+
+    inputDesdeBooking.value = weekStart
+    inputHastaBooking.value = latestBookingDate
 
     bookingData = {
         fechaDesde: inputDesdeBooking.value,

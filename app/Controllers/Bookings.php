@@ -345,42 +345,109 @@ class Bookings extends BaseController
 
     public function getReports()
     {
-        $usersModel = new UsersModel();
         $paymentsModel = new PaymentsModel();
-        $customersModel = new CustomersModel();
+        $bookingsModel = new BookingsModel();
         $data = $this->request->getJSON();
-        $user = $data->user == '' ? 'all' : $data->user;
+        $user = (empty($data->user) || $data->user == '') ? 'all' : $data->user;
 
-        $query = $paymentsModel->select('*')
-            ->where('date >=', $data->fechaDesde)
-            ->where('date <=', $data->fechaHasta);
+        $query = $paymentsModel->select('
+            payments.date,
+            payments.amount,
+            payments.id_user,
+            payments.payment_method,
+            payments.id_mercado_pago,
+            users.name as nombre_usuario,
+            customers.name as nombre_cliente,
+            customers.phone as telefono_cliente,
+            bookings.id as booking_id,
+            bookings.name as booking_name,
+            bookings.phone as booking_phone,
+            bookings.payment as booking_payment,
+            bookings.total as booking_total,
+            bookings.total_payment as booking_total_payment
+        ')
+            ->join('users', 'users.id = payments.id_user', 'left')
+            ->join('customers', 'customers.id = payments.id_customer', 'left')
+            ->join('bookings', 'bookings.id = payments.id_booking', 'left')
+            ->where('payments.date >=', $data->fechaDesde)
+            ->where('payments.date <=', $data->fechaHasta);
 
         if ($user !== 'all') {
-            $query->where('id_user', $user);
+            $query->where('payments.id_user', $user);
         }
 
         $paymentsResult = $query->findAll();
+        $payments = array_map(function ($payment) {
+            $monto = (float)($payment['amount'] ?? 0);
+            $metodo = strtolower(str_replace(' ', '_', (string)($payment['payment_method'] ?? '')));
+            if ($monto <= 0 && $metodo === 'mercado_pago') {
+                $monto = ($payment['booking_total_payment'] ?? 0) ? ($payment['booking_total'] ?? 0) : ($payment['booking_payment'] ?? 0);
+            }
 
-        $payments = [];
-
-        foreach ($paymentsResult as $payment) {
-            log_message('info', 'Procesando pago: ' . json_encode($payment, JSON_PRETTY_PRINT));
-            $pago = [
+            return [
                 'fecha' => date("d/m/Y", strtotime($payment['date'])),
-                'pago' => $payment['amount'],
-                'usuario' => $usersModel->getUserName($payment['id_user']),
+                'pago' => $monto,
+                'usuario' => $payment['nombre_usuario'] ?? 'N/A',
                 'idUsuario' => $payment['id_user'],
-                'cliente' => !empty($payment['id_customer'])
-                    ? $customersModel->getCustomerName($payment['id_customer'])
-                    : '',
-                'telefonoCliente' => !empty($payment['id_customer'])
-                    ? $customersModel->getCustomerPhone($payment['id_customer'])
-                    : '',
+                'cliente' => $payment['nombre_cliente'] ?? $payment['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $payment['telefono_cliente'] ?? $payment['booking_phone'] ?? 'N/A',
                 'metodoPago' => $payment['payment_method'],
                 'idMercadoPago' => $payment['id_mercado_pago'],
+                'bookingId' => $payment['booking_id'],
+                'totalReserva' => $payment['booking_total'],
             ];
+        }, $paymentsResult);
 
-            array_push($payments, $pago);
+        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+            ->join('customers', 'customers.id = bookings.id_customer', 'left')
+            ->join('payments', 'payments.id_booking = bookings.id', 'left')
+            ->where('bookings.date >=', $data->fechaDesde)
+            ->where('bookings.date <=', $data->fechaHasta)
+            ->where('bookings.mp', 1)
+            ->whereIn('bookings.payment_method', ['Mercado Pago', 'mercado_pago'])
+            ->where('payments.id', null)
+            ->findAll();
+
+        foreach ($mpBookings as $booking) {
+            $monto = ($booking['total_payment'] ?? 0) ? $booking['total'] : $booking['payment'];
+            $payments[] = [
+                'fecha' => date("d/m/Y", strtotime($booking['date'])),
+                'pago' => $monto,
+                'usuario' => 'CLIENTE',
+                'idUsuario' => null,
+                'cliente' => $booking['customer_name'] ?? $booking['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $booking['customer_phone'] ?? $booking['booking_phone'] ?? 'N/A',
+                'metodoPago' => 'mercado_pago',
+                'idMercadoPago' => null,
+                'bookingId' => $booking['id'],
+                'totalReserva' => $booking['total'],
+            ];
+        }
+
+        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+            ->join('customers', 'customers.id = bookings.id_customer', 'left')
+            ->join('payments as pmp', "pmp.id_booking = bookings.id AND (pmp.payment_method = 'mercado_pago' OR pmp.payment_method = 'Mercado Pago')", 'left')
+            ->where('bookings.date >=', $data->fechaDesde)
+            ->where('bookings.date <=', $data->fechaHasta)
+            ->where('bookings.mp', 1)
+            ->where('bookings.reservation >', 0)
+            ->where('bookings.reservation < bookings.total')
+            ->where('pmp.id', null)
+            ->findAll();
+
+        foreach ($mpReservations as $booking) {
+            $payments[] = [
+                'fecha' => date("d/m/Y", strtotime($booking['date'])),
+                'pago' => $booking['reservation'],
+                'usuario' => 'CLIENTE',
+                'idUsuario' => null,
+                'cliente' => $booking['customer_name'] ?? $booking['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $booking['customer_phone'] ?? $booking['booking_phone'] ?? 'N/A',
+                'metodoPago' => 'mercado_pago',
+                'idMercadoPago' => null,
+                'bookingId' => $booking['id'],
+                'totalReserva' => $booking['total'],
+            ];
         }
 
         try {
@@ -761,39 +828,116 @@ class Bookings extends BaseController
 
     public function generateReportPdf($user, $fechaDesde, $fechaHasta)
     {
-        $usersModel = new UsersModel();
         $paymentsModel = new PaymentsModel();
-        $customersModel = new CustomersModel();
+        $bookingsModel = new BookingsModel();
         $pdfLibrary = new PrintBookings();
 
-        $query = $paymentsModel->select('*')
-            ->where('date >=', $fechaDesde)
-            ->where('date <=', $fechaHasta);
+        $query = $paymentsModel->select('
+            payments.date,
+            payments.amount,
+            payments.id_user,
+            payments.payment_method,
+            payments.id_mercado_pago,
+            users.name as nombre_usuario,
+            customers.name as nombre_cliente,
+            customers.phone as telefono_cliente,
+            bookings.id as booking_id,
+            bookings.name as booking_name,
+            bookings.phone as booking_phone,
+            bookings.payment as booking_payment,
+            bookings.total as booking_total,
+            bookings.total_payment as booking_total_payment
+        ')
+            ->join('users', 'users.id = payments.id_user', 'left')
+            ->join('customers', 'customers.id = payments.id_customer', 'left')
+            ->join('bookings', 'bookings.id = payments.id_booking', 'left')
+            ->where('payments.date >=', $fechaDesde)
+            ->where('payments.date <=', $fechaHasta);
 
         if ($user !== 'all') {
-            $query->where('id_user', $user);
+            $query->where('payments.id_user', $user);
         }
 
         $paymentsResult = $query->findAll();
+        $payments = array_map(function ($payment) {
+            $monto = (float)($payment['amount'] ?? 0);
+            $metodo = strtolower(str_replace(' ', '_', (string)($payment['payment_method'] ?? '')));
+            if ($monto <= 0 && $metodo === 'mercado_pago') {
+                $monto = ($payment['booking_total_payment'] ?? 0) ? ($payment['booking_total'] ?? 0) : ($payment['booking_payment'] ?? 0);
+            }
 
-        $payments = [];
-
-        foreach ($paymentsResult as $payment) {
-            $pago = [
+            return [
                 'fecha' => date("d/m/Y", strtotime($payment['date'])),
-                'pago' => $payment['amount'],
-                'usuario' => $usersModel->getUserName($payment['id_user']),
+                'pago' => $monto,
+                'usuario' => $payment['nombre_usuario'] ?? 'N/A',
                 'idUsuario' => $payment['id_user'],
-                'cliente' => $customersModel->getCustomerName($payment['id_customer']),
-                'telefonoCliente' => $customersModel->getCustomerPhone($payment['id_customer']),
+                'cliente' => $payment['nombre_cliente'] ?? $payment['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $payment['telefono_cliente'] ?? $payment['booking_phone'] ?? 'N/A',
                 'metodoPago' => $payment['payment_method'],
                 'idMercadoPago' => $payment['id_mercado_pago'],
+                'bookingId' => $payment['booking_id'],
+                'totalReserva' => $payment['booking_total'],
             ];
+        }, $paymentsResult);
 
-            array_push($payments, $pago);
+        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+            ->join('customers', 'customers.id = bookings.id_customer', 'left')
+            ->join('payments', 'payments.id_booking = bookings.id', 'left')
+            ->where('bookings.date >=', $fechaDesde)
+            ->where('bookings.date <=', $fechaHasta)
+            ->where('bookings.mp', 1)
+            ->whereIn('bookings.payment_method', ['Mercado Pago', 'mercado_pago'])
+            ->where('payments.id', null)
+            ->findAll();
+
+        foreach ($mpBookings as $booking) {
+            $monto = ($booking['total_payment'] ?? 0) ? $booking['total'] : $booking['payment'];
+            $payments[] = [
+                'fecha' => date("d/m/Y", strtotime($booking['date'])),
+                'pago' => $monto,
+                'usuario' => 'CLIENTE',
+                'idUsuario' => null,
+                'cliente' => $booking['customer_name'] ?? $booking['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $booking['customer_phone'] ?? $booking['booking_phone'] ?? 'N/A',
+                'metodoPago' => 'mercado_pago',
+                'idMercadoPago' => null,
+                'bookingId' => $booking['id'],
+                'totalReserva' => $booking['total'],
+            ];
         }
 
-        $pdfLibrary->printReports($payments);
+        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+            ->join('customers', 'customers.id = bookings.id_customer', 'left')
+            ->join('payments as pmp', "pmp.id_booking = bookings.id AND (pmp.payment_method = 'mercado_pago' OR pmp.payment_method = 'Mercado Pago')", 'left')
+            ->where('bookings.date >=', $fechaDesde)
+            ->where('bookings.date <=', $fechaHasta)
+            ->where('bookings.mp', 1)
+            ->where('bookings.reservation >', 0)
+            ->where('bookings.reservation < bookings.total')
+            ->where('pmp.id', null)
+            ->findAll();
+
+        foreach ($mpReservations as $booking) {
+            $payments[] = [
+                'fecha' => date("d/m/Y", strtotime($booking['date'])),
+                'pago' => $booking['reservation'],
+                'usuario' => 'CLIENTE',
+                'idUsuario' => null,
+                'cliente' => $booking['customer_name'] ?? $booking['booking_name'] ?? 'N/A',
+                'telefonoCliente' => $booking['customer_phone'] ?? $booking['booking_phone'] ?? 'N/A',
+                'metodoPago' => 'mercado_pago',
+                'idMercadoPago' => null,
+                'bookingId' => $booking['id'],
+                'totalReserva' => $booking['total'],
+            ];
+        }
+
+        $pdf = $pdfLibrary->renderReports($payments);
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $pdf['name'] . '"')
+            ->setBody($pdf['content']);
     }
 
     public function generatePaymentsReportPdf($fechaDesde, $fechaHasta)
@@ -827,7 +971,12 @@ class Bookings extends BaseController
             ];
         }
 
-        $pdfLibrary->printPaymentsReports($result);
+        $pdf = $pdfLibrary->renderPaymentsReports($result);
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $pdf['name'] . '"')
+            ->setBody($pdf['content']);
     }
 
     public function scheduleAvailability($idField)
@@ -842,7 +991,8 @@ class Bookings extends BaseController
         $startDay = $today->addDays(1);
 
         // ⬇️ CORRECCIÓN 1: Definir el final del rango como 6 días después del día de inicio (7 días en total).
-        $endOfRange = $startDay->addDays(6)->toDateString();
+        $availabilityDays = 30;
+        $endOfRange = $startDay->addDays($availabilityDays - 1)->toDateString();
 
         $currentWeek = [];
         $currentDay = $startDay; // El bucle comienza en mañana
@@ -874,7 +1024,7 @@ class Bookings extends BaseController
         $reservedBookings = $bookingsModel
             ->where('id_field', $idField)
             ->where('date >=', $startDay->toDateString())
-            ->where('date <=', $endOfRange) // Usamos el nuevo final del rango
+            ->where('date <=', $endOfRange)
             ->where('annulled', 0)
             ->findAll();
 

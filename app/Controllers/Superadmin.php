@@ -244,7 +244,30 @@ class Superadmin extends BaseController
 
         $logo = $uploadModel->first();
 
-        return view('superadmin/index', ['bookings' => $bookings, 'rate' => $rate, 'customers' => $customers, 'time' => $time, 'openingTime' => $openingTime, 'fields' => $fields, 'users' => $users, 'offerRate' => $offerRate, 'logo' => $logo, 'values' => $values]);
+        $latestBookingRow = $bookingsModel->selectMax('date', 'latest_date')->first();
+        $latestBookingDate = $latestBookingRow['latest_date'] ?? date('Y-m-d');
+        $today = date('Y-m-d');
+
+        if (empty($latestBookingDate) || $latestBookingDate < $today) {
+            $latestBookingDate = $today;
+        }
+
+        $weekStart = date('Y-m-d', strtotime('monday this week'));
+
+        return view('superadmin/index', [
+            'bookings' => $bookings,
+            'rate' => $rate,
+            'customers' => $customers,
+            'time' => $time,
+            'openingTime' => $openingTime,
+            'fields' => $fields,
+            'users' => $users,
+            'offerRate' => $offerRate,
+            'logo' => $logo,
+            'values' => $values,
+            'latestBookingDate' => $latestBookingDate,
+            'weekStart' => $weekStart,
+        ]);
     }
 
     public function getValue($type)

@@ -11,9 +11,9 @@
             <thead>
                 <tr>
                     <th scope="col">Nombre</th>
-                    <th scope="col">Dto %</th>
-                    <th scope="col">Valor</th>
                     <th scope="col">Importe</th>
+                    <th scope="col">Dto %</th>
+                    <th scope="col">Total</th>
                     <th scope="col">Acciones</th>
                 </tr>
             </thead>
@@ -26,9 +26,9 @@
                     ?>
                     <tr id="value-row-<?= $value['id'] ?>">
                         <td><?= isset($value['name']) ? $value['name'] : 'No indicado' ?></td>
+                        <td><?= isset($value['amount']) ? number_format((float) $value['amount'], 2, ',', '.') : 'No indicado' ?></td>
                         <td><?= isset($value['discount_percentage']) ? $value['discount_percentage'] : '0' ?>%</td>
-                        <td><?= isset($value['amount']) ? $value['amount'] : 'No indicado' ?></td>
-                        <td><?= number_format($finalAmount, 2, '.', '') ?></td>
+                        <td><?= number_format($finalAmount, 2, ',', '.') ?></td>
                         <td>
                             <button
                                 type="button"

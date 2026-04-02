@@ -1,4 +1,7 @@
-<div id="selectDateBooking" class="d-flex flex-column justify-content-center align-items-center">
+<div id="selectDateBooking"
+    class="d-flex flex-column justify-content-center align-items-center"
+    data-week-start="<?= esc($weekStart ?? date('Y-m-d')) ?>"
+    data-latest-booking-date="<?= esc($latestBookingDate ?? date('Y-m-d')) ?>">
 
     <div class="d-flex justify-content-center align-items-center flex-row mt-3">
         <strong>Total de reservas para hoy:</strong> <strong id="totalReservasHoy"></strong>

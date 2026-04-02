@@ -29,10 +29,23 @@ $mpKeys = $mpKeysModel->first();
                 </div>
 
                 <div class="modal-body p-0">
-                    <div class="terms-audio-actions d-flex justify-content-center mb-3">
-                        <button type="button" class="btn btn-outline-secondary" id="toggleTermsAudio">
-                            Escuchar terminos
+                    <div class="terms-audio-actions d-flex justify-content-center align-items-center flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-secondary terms-audio-icon-btn" id="termsPrevButton" aria-label="Leer punto anterior" title="Anterior">
+                            <i class="fa-solid fa-backward-step"></i>
                         </button>
+                        <button type="button" class="btn btn-outline-secondary terms-audio-icon-btn" id="toggleTermsAudio" aria-label="Reproducir o pausar lectura" title="Reproducir">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary terms-audio-icon-btn" id="termsNextButton" aria-label="Leer punto siguiente" title="Siguiente">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                        <select class="form-select" id="termsAudioRate" aria-label="Velocidad de lectura">
+                            <option value="1" selected>x1</option>
+                            <option value="1.2">x1.2</option>
+                            <option value="1.5">x1.5</option>
+                            <option value="2">x2</option>
+                        </select>
+                        <span class="terms-audio-hint">Click en un punto para leer desde ahi</span>
                     </div>
                     <div class="terms-container p-3 rounded" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
 
@@ -140,15 +153,20 @@ $mpKeys = $mpKeysModel->first();
                             <input class="form-check-input" type="checkbox" id="termsAccepted">
                             <label class="form-check-label fw-semibold" for="termsAccepted">Lei y acepto los terminos y condiciones de visita.</label>
                         </div>
+
+                        <div class="d-flex justify-content-center mt-3">
+                            <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="modal-header d-flex justify-content-center border-0 pb-2">
-                    <a href="<?= base_url('MisReservas') ?>" id="showBooking" class="modal-title fw-bold text-center btn btn-primary">Ver mi reserva</a>
-                </div>
-
-                <div class="d-flex justify-content-center mb-3 mt-3">
-                    <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
+                <div class="d-flex flex-column justify-content-center align-items-center mb-3 mt-3 gap-2">
+                    <a href="<?= base_url('MisReservas') ?>" id="showBooking" class="btn btn-outline-primary fw-bold text-center">
+                        <i class="fa-solid fa-calendar-check me-2"></i>Ver mi reserva
+                    </a>
+                    <a href="<?= base_url('Registrarme') ?>" id="showRegister" class="btn btn-outline-secondary fw-bold text-center">
+                        <i class="fa-solid fa-user-plus me-2"></i>Darse de alta
+                    </a>
                 </div>
 
             </div>
@@ -210,94 +228,130 @@ $mpKeys = $mpKeysModel->first();
                 </div>
             <?php endif; ?>
 
-            <div class="d-flex flex-column align-items-start justify-content-center">
-                <div class="form-floating mb-1 mt-3" style="width: 100%;">
-                    <input type="text" name="fecha" id="fecha" class="form-control" value="" aria-label="date" placeholder="Selecciona una fecha" autocomplete="off">
-                    <label for="fecha">Fecha</label>
+            <div class="booking-stage booking-stage--active" id="bookingStageAvailability">
+                <div class="booking-stage__header">
+                    <span class="booking-stage__step">Paso 1</span>
+                    <h3 class="booking-stage__title">Elegi fecha y disponibilidad</h3>
+                    <p class="booking-stage__subtitle">Primero selecciona la fecha, el horario y la cantidad para ver la disponibilidad real.</p>
                 </div>
 
-                <div style="width: 50%;" class="mb-3">
-                    <button type="button" class="btn btn-sm" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="showAvailability">Ver disponibilidad <i class="fa-solid fa-arrow-right"></i></button>
+                <div class="d-flex flex-column align-items-start justify-content-center">
+                    <div class="form-floating mb-1 mt-3" style="width: 100%;">
+                        <input type="text" name="fecha" id="fecha" class="form-control" value="" aria-label="date" placeholder="Selecciona una fecha" autocomplete="off">
+                        <label for="fecha">Fecha</label>
+                    </div>
                 </div>
-            </div>
 
-            <div class="horario d-flex flex-row">
-                <div class="form-floating" id="div-time-h" style="width: 100%;">
-                    <select class="form-select mb-3" name="horarioDesde" id="horarioDesde" aria-label="l">
-                        <option value="">Seleccionar</option>
+                <div class="booking-availability-inline mt-3" id="availabilityInlineWrapper">
+                    <div class="booking-availability-inline__header">
+                        <h4 class="booking-availability-inline__title">Disponibilidad</h4>
+                        <p class="booking-availability-inline__subtitle">Primero elegi una fecha disponible y despues selecciona el horario que mejor te sirva.</p>
+                    </div>
+                    <div class="booking-availability-inline__content" id="availabilityInlineResult"></div>
+                </div>
 
-                        <?php if (!empty($time)): ?>
-                            <?php
-                            $totalHours = count($time);
-                            foreach ($time as $key => $hour):
-                                if ($key !== $totalHours - 1):
-                            ?>
+                <div class="horario d-flex flex-row d-none">
+                    <div class="form-floating" id="div-time-h" style="width: 100%;">
+                        <select class="form-select mb-3" name="horarioDesde" id="horarioDesde" aria-label="l">
+                            <option value="">Seleccionar</option>
+
+                            <?php if (!empty($time)): ?>
+                                <?php
+                                $totalHours = count($time);
+                                foreach ($time as $key => $hour):
+                                    if ($key !== $totalHours - 1):
+                                ?>
+                                        <option value="<?= $hour ?>"><?= $hour ?></option>
+                                <?php
+                                    endif;
+                                endforeach;
+                                ?>
+                            <?php else: ?>
+                                <option value="">No hay horarios cargados</option>
+                            <?php endif; ?>
+
+                        </select>
+                        <label for="horarioDesde">Horario desde</label>
+                    </div>
+
+                    <div class="form-floating  ms-4 d-none" id="div-time" style="width: 49%;">
+                        <select class="form-select mb-3" name="horarioHasta" id="horarioHasta" aria-label="" disabled>
+                            <option value="">Seleccionar</option>
+                            <?php if ($time != null) : ?>
+
+                                <?php foreach ($time as $hour) : ?>
                                     <option value="<?= $hour ?>"><?= $hour ?></option>
-                            <?php
-                                endif;
-                            endforeach;
-                            ?>
-                        <?php else: ?>
-                            <option value="">No hay horarios cargados</option>
-                        <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
 
-                    </select>
-                    <label for="horarioDesde">Horario desde</label>
+                        </select>
+                        <label for="horarioHasta">Horario hasta</label>
+                    </div>
                 </div>
 
-                <div class="form-floating  ms-4 d-none" id="div-time" style="width: 49%;">
-                    <select class="form-select mb-3" name="horarioHasta" id="horarioHasta" aria-label="" disabled>
-                        <option value="">Seleccionar</option>
-                        <?php if ($time != null) : ?>
-
-                            <?php foreach ($time as $hour) : ?>
-                                <option value="<?= $hour ?>"><?= $hour ?></option>
+                <div id="divSelectCancha" class="d-flex flex-row">
+                    <div class="form-floating" style="width: 50%;" id="selectServicio">
+                        <select class="form-select mb-3 d-none" name="cancha" id="cancha" aria-label="Default floating label" disabled>
+                            <?php foreach ($fields as $field) : ?>
+                                <option selected value="<?= $field['id'] ?>"><?= $field['name'] ?></option>
                             <?php endforeach; ?>
-                        <?php endif; ?>
+                        </select>
+                        <label for="cancha">Seleccionar servicio</label>
+                    </div>
 
-                    </select>
-                    <label for="horarioHasta">Horario hasta</label>
+                    <div class="form-floating flex-nowrap mb-3 ms-4 d-none" style="width: 50%;" id="div-qtyvisitors">
+                        <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
+                        <label for="inputqtyvisitors">Cantidad de personas</label>
+                    </div>
+                </div>
+
+                <div class="booking-stage__actions">
+                    <button type="button" class="btn booking-stage__button booking-stage__button--secondary d-none" id="continueBookingStep">
+                        Siguiente <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </button>
                 </div>
             </div>
 
-            <div id="divSelectCancha" class="d-flex flex-row">
-                <div class="form-floating" style="width: 50%;" id="selectServicio">
-                    <select class="form-select mb-3 d-none" name="cancha" id="cancha" aria-label="Default floating label" disabled>
-                        <?php foreach ($fields as $field) : ?>
-                            <option selected value="<?= $field['id'] ?>"><?= $field['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <label for="cancha">Seleccionar servicio</label>
+            <div class="booking-stage d-none" id="bookingStageDetails">
+                <div class="booking-stage__header">
+                    <span class="booking-stage__step">Paso 2</span>
+                    <h3 class="booking-stage__title">Revisa el resumen y confirma</h3>
+                    <p class="booking-stage__subtitle">Con la disponibilidad ya definida, completa los datos del cliente y confirma la reserva.</p>
                 </div>
 
-                <div class="form-floating flex-nowrap mb-3 ms-4 d-none" style="width: 50%;" id="div-qtyvisitors">
-                    <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
-                    <label for="inputqtyvisitors">Cantidad de personas</label>
+                <div class="form-floating flex-nowrap mb-3 d-none" id="div-monto">
+                    <input type="text" class="form-control" name="inputMonto" id="inputMonto" value="0" aria-label="name" disabled>
+                    <label for="inputMonto">Monto</label>
+                </div>
+
+                <div class="form-floating flex-nowrap mb-3">
+                    <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingresa el telefono" aria-label="telefono" required>
+                    <label for="telefono">Telefono</label>
+                </div>
+
+                <div class="form-floating flex-nowrap mb-3">
+                    <input type="text" class="form-control" name="nombre" id="nombre" placeholder="Ingrese el nombre" aria-label="name" required>
+                    <label for="nombre">Nombre</label>
+                </div>
+
+                <button type="button" class="btn btn-link px-0 mb-2 text-decoration-none" id="showTermsLink">
+                    Ver terminos y condiciones
+                </button>
+
+                <div class="booking-stage__actions booking-stage__actions--final">
+                    <button type="button" class="btn booking-stage__button booking-stage__button--ghost" id="backBookingStep">
+                        <i class="fa-solid fa-arrow-left me-2"></i>Volver
+                    </button>
+
+                    <?php if (session()->logueado) : ?>
+                        <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarAdminReserva">Confirmar reserva</button>
+                    <?php else : ?>
+                        <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarReserva">Confirmar reserva</button>
+                    <?php endif; ?>
+
+                    <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
                 </div>
             </div>
-
-            <div class="form-floating flex-nowrap mb-3 d-none" id="div-monto">
-                <input type="text" class="form-control" name="inputMonto" id="inputMonto" value="0" aria-label="name" disabled>
-                <label for="inputMonto">Monto</label>
-            </div>
-
-            <div class="form-floating flex-nowrap mb-3">
-                <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingresa el telefono" aria-label="telefono" required>
-                <label for="telefono">Telefono</label>
-            </div>
-
-            <div class="form-floating flex-nowrap mb-3">
-                <input type="text" class="form-control" name="nombre" id="nombre" placeholder="Ingrese el nombre" aria-label="name" required>
-                <label for="nombre">Nombre</label>
-            </div>
-
-            <?php if (session()->logueado) : ?>
-                <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarAdminReserva">Confirmar reserva</button>
-            <?php else : ?>
-                <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarReserva">Confirmar reserva</button>
-            <?php endif; ?>
-
-            <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
 
         </form>
     </div>

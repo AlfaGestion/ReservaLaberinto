@@ -310,6 +310,40 @@
             margin-bottom: 0 !important;
         }
 
+        #selectDateBooking,
+        #selectDateReport {
+            background:
+                linear-gradient(180deg, rgba(248, 251, 248, 0.98) 0%, rgba(239, 246, 240, 0.98) 100%);
+            border: 1px solid rgba(13, 106, 58, 0.12);
+            border-radius: 22px;
+            padding: 22px 20px;
+            margin-bottom: 18px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        #selectDateBooking {
+            background:
+                radial-gradient(circle at top right, rgba(233, 133, 33, 0.12), transparent 28%),
+                linear-gradient(180deg, rgba(248, 251, 248, 0.98) 0%, rgba(239, 246, 240, 0.98) 100%);
+        }
+
+        #selectDateReport {
+            background:
+                radial-gradient(circle at top left, rgba(13, 106, 58, 0.1), transparent 30%),
+                linear-gradient(180deg, rgba(249, 250, 246, 0.98) 0%, rgba(241, 245, 238, 0.98) 100%);
+        }
+
+        #selectDateBooking > .d-flex:first-child,
+        #selectDateReport > .form-check,
+        #selectDateReport .form-check-label {
+            color: #355040;
+        }
+
+        #selectDateBooking strong,
+        #selectDateReport .form-check-label {
+            font-weight: 700;
+        }
+
         @media (max-width: 768px) {
             .admin-shell {
                 width: calc(100% - 20px);

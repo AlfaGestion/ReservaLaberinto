@@ -1,3 +1,11 @@
+<?php
+$backQuery = array_filter([
+    'phone' => $prefillPhone ?? null,
+    'email' => $prefillEmail ?? null,
+    'returnValidate' => !empty($returnValidate) ? 1 : null,
+]);
+$backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : '');
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -216,7 +224,7 @@ $userData = $modelUploads->first();
             </div>
 
             <div class="register-card__body">
-                <form action="" method="POST">
+                <form action="<?= site_url('Registrarme') ?>" method="POST">
                     <?php if (!empty($isEmbedded)) : ?>
                         <input type="hidden" name="embed" value="1">
                     <?php endif; ?>
@@ -231,17 +239,17 @@ $userData = $modelUploads->first();
                     <div class="register-grid">
                         <div class="register-field register-field--full">
                             <label class="register-label" for="name">Nombre de la institucion</label>
-                            <input type="text" id="name" name="name" class="form-control register-input" placeholder="Ej. Escuela Rural Marcos Paz">
+                            <input type="text" id="name" name="name" class="form-control register-input" placeholder="Ej. Escuela Rural Marcos Paz" value="<?= esc(old('name')) ?>">
                         </div>
 
                         <div class="register-field">
                             <label class="register-label" for="dni">CUIT/CUIL</label>
-                            <input type="text" id="dni" name="dni" class="form-control register-input" placeholder="Ingresa el CUIT o CUIL">
+                            <input type="text" id="dni" name="dni" class="form-control register-input" placeholder="Ingresa el CUIT o CUIL" value="<?= esc(old('dni')) ?>">
                         </div>
 
                         <div class="register-field">
                             <label class="register-label" for="phone">Telefono</label>
-                            <input type="text" id="phone" name="phone" class="form-control register-input" placeholder="Ingresa un telefono de contacto" value="<?= esc($prefillPhone ?? '') ?>">
+                            <input type="text" id="phone" name="phone" class="form-control register-input" placeholder="Ingresa un telefono de contacto" value="<?= esc(old('phone', $prefillPhone ?? '')) ?>">
                         </div>
 
                         <div class="register-field">
@@ -249,25 +257,25 @@ $userData = $modelUploads->first();
                             <select class="form-select register-select" id="typeInstitution" name="type_institution" aria-label="Tipo de institucion">
                                 <option value="">Seleccionar</option>
                                 <?php foreach ($types as $type) : ?>
-                                    <option value="<?= $type['value'] ?>"><?= $type['name'] ?></option>
+                                    <option value="<?= $type['value'] ?>" <?= old('type_institution') === $type['value'] ? 'selected' : '' ?>><?= $type['name'] ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="register-field">
                             <label class="register-label" for="city">Localidad</label>
-                            <input type="text" id="city" name="city" class="form-control register-input" placeholder="Ingresa la localidad">
+                            <input type="text" id="city" name="city" class="form-control register-input" placeholder="Ingresa la localidad" value="<?= esc(old('city')) ?>">
                         </div>
 
                         <div class="register-field register-field--full">
                             <label class="register-label" for="email">Email</label>
-                            <input type="text" id="email" name="email" class="form-control register-input" placeholder="nombre@institucion.com" value="<?= esc($prefillEmail ?? '') ?>">
+                            <input type="text" id="email" name="email" class="form-control register-input" placeholder="nombre@institucion.com" value="<?= esc(old('email', $prefillEmail ?? '')) ?>">
                         </div>
                     </div>
 
                     <div class="register-actions">
                         <?php if (empty($isEmbedded)) : ?>
-                            <a href="/" class="register-back-link">
+                            <a href="<?= esc($backHref) ?>" class="register-back-link">
                                 <i class="fa-solid fa-arrow-left"></i>
                                 <span>Volver</span>
                             </a>

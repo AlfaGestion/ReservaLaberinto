@@ -25,6 +25,10 @@ const inputqtyvisitors = document.getElementById('inputqtyvisitors')
 const selectServicio = document.getElementById('selectServicio')
 const botonesContainer = document.getElementById('botones-container')
 const showBooking = document.getElementById('showBooking')
+const bookingStageAvailability = document.getElementById('bookingStageAvailability')
+const bookingStageDetails = document.getElementById('bookingStageDetails')
+const continueBookingStep = document.getElementById('continueBookingStep')
+const backBookingStep = document.getElementById('backBookingStep')
 
 const btnMpParcial = document.getElementById('btn-parcial')
 const btnMpTotal = document.getElementById('btn-total')
@@ -32,7 +36,12 @@ const btnMpTotal = document.getElementById('btn-total')
 const modalAvailability = new bootstrap.Modal('#modalAvailability')
 const availabilityResult = document.getElementById('availabilityResult')
 const showAvailability = document.getElementById('showAvailability')
+const availabilityInlineResult = document.getElementById('availabilityInlineResult')
+const showTermsLink = document.getElementById('showTermsLink')
 const toggleTermsAudio = document.getElementById('toggleTermsAudio')
+const termsPrevButton = document.getElementById('termsPrevButton')
+const termsNextButton = document.getElementById('termsNextButton')
+const termsAudioRate = document.getElementById('termsAudioRate')
 const welcomeModalEl = document.getElementById('welcomeModal')
 const publicNoticeModalElement = document.getElementById('publicNoticeModal')
 const publicNoticeModal = publicNoticeModalElement ? new bootstrap.Modal(publicNoticeModalElement) : null
@@ -85,11 +94,282 @@ let openingTime = []
 let bookingDatePicker = null
 let currentTermsUtterance = null
 let isTermsSpeechPaused = false
+let currentTermsSegments = []
+let currentTermsSegmentIndex = -1
+let currentHighlightedTerm = null
+let currentTermsElement = null
+let currentTermsPlaybackId = 0
+let currentTermsRate = 1
 let publicNoticeAcceptAction = null
 let publicBookingPrepared = false
 let pendingMpCleanupTimer = null
 let pendingMpContext = null
 let skipCancelOnHide = false
+let selectedAvailabilityDate = ''
+let availabilityPageStart = 0
+const availabilityPageSize = 5
+const termsSessionKey = 'bookingTermsAccepted'
+const customerValidatedSessionKey = 'bookingCustomerValidated'
+
+function isAvailabilityStepComplete() {
+    return Boolean(
+        fechaInput?.value &&
+        horarioDesde?.value &&
+        horarioHasta?.value &&
+        selectCancha?.value &&
+        Number(inputqtyvisitors?.value || 0) > 0
+    )
+}
+
+function updateBookingStageAvailability() {
+    if (!continueBookingStep) {
+        return
+    }
+
+    continueBookingStep.classList.toggle('d-none', !isAvailabilityStepComplete())
+}
+
+function showBookingDetailsStep() {
+    if (!bookingStageAvailability || !bookingStageDetails) {
+        return
+    }
+
+    bookingStageAvailability.classList.add('d-none')
+    bookingStageDetails.classList.remove('d-none')
+    bookingStageDetails.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function showBookingAvailabilityStep() {
+    if (!bookingStageAvailability || !bookingStageDetails) {
+        return
+    }
+
+    bookingStageDetails.classList.add('d-none')
+    bookingStageAvailability.classList.remove('d-none')
+    bookingStageAvailability.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function setSelectedAvailabilityDate(date) {
+    selectedAvailabilityDate = date || ''
+
+    if (bookingDatePicker && selectedAvailabilityDate) {
+        bookingDatePicker.setDate(selectedAvailabilityDate, true, 'd/m/Y')
+    } else if (fechaInput && selectedAvailabilityDate) {
+        fechaInput.value = selectedAvailabilityDate
+    }
+}
+
+function syncAvailabilityPage(dates, selectedDate) {
+    if (!Array.isArray(dates) || !dates.length) {
+        availabilityPageStart = 0
+        return
+    }
+
+    const normalizedSelectedDate = normalizeAvailabilityDate(selectedDate || '')
+    const selectedIndex = dates.findIndex((day) => normalizeAvailabilityDate(day.date) === normalizedSelectedDate)
+
+    if (selectedIndex >= 0) {
+        const currentPageEnd = availabilityPageStart + availabilityPageSize
+
+        if (selectedIndex < availabilityPageStart || selectedIndex >= currentPageEnd) {
+            availabilityPageStart = Math.floor(selectedIndex / availabilityPageSize) * availabilityPageSize
+        }
+        return
+    }
+
+    if (availabilityPageStart >= dates.length) {
+        availabilityPageStart = Math.max(0, dates.length - availabilityPageSize)
+    }
+}
+
+function normalizeAvailabilityDate(value) {
+    const parsedDate = parseInputDate(value)
+    return parsedDate ? formatDateForDisplay(parsedDate) : (value || '')
+}
+
+function getRenderableAvailabilityDates() {
+    const availabilityData = availables?.availability || []
+    const visibleDates = availabilityData.filter((day) => {
+        const slots = Array.isArray(day.available_slots) ? day.available_slots : []
+
+        if (!day?.date || slots.length === 0) {
+            return false
+        }
+
+        if (slots.length === 1 && typeof slots[0] === 'string' && slots[0].startsWith('Cerrado los ')) {
+            return false
+        }
+
+        return slots.some((slot) => typeof slot === 'string' && slot.includes(' a '))
+    })
+
+    const selectedDateValue = normalizeAvailabilityDate(selectedAvailabilityDate || fechaInput?.value || '')
+    const datesToRender = [...visibleDates]
+
+    if (selectedDateValue && !datesToRender.some((day) => normalizeAvailabilityDate(day.date) === selectedDateValue)) {
+        datesToRender.unshift({
+            date: selectedDateValue,
+            available_slots: []
+        })
+    }
+
+    return datesToRender
+}
+
+function renderAvailabilityList(container) {
+    if (!container) {
+        return
+    }
+
+    container.innerHTML = ''
+
+    const visibleDates = getRenderableAvailabilityDates()
+
+    if (!visibleDates.length) {
+        container.innerHTML = '<p class="text-center text-muted mb-0">No hay servicios disponibles en los horarios seleccionados.</p>'
+        return
+    }
+    const currentDate = normalizeAvailabilityDate(selectedAvailabilityDate || fechaInput?.value || '')
+    const initialDate = currentDate || visibleDates[0]?.date || ''
+    const activeDay = visibleDates.find((day) => normalizeAvailabilityDate(day.date) === normalizeAvailabilityDate(initialDate)) || null
+
+    if (!currentDate && activeDay?.date) {
+        selectedAvailabilityDate = activeDay.date
+        if (bookingDatePicker) {
+            bookingDatePicker.setDate(activeDay.date, true, 'd/m/Y')
+        } else if (fechaInput) {
+            fechaInput.value = activeDay.date
+        }
+    }
+
+    const selectedDateValue = normalizeAvailabilityDate(selectedAvailabilityDate || fechaInput?.value || '')
+    const datesToRender = [...visibleDates]
+    syncAvailabilityPage(datesToRender, selectedDateValue)
+
+    const pagedDates = datesToRender.slice(availabilityPageStart, availabilityPageStart + availabilityPageSize)
+    const datesMarkup = pagedDates.map((day) => {
+        const normalizedDayDate = normalizeAvailabilityDate(day.date)
+        const isActive = normalizedDayDate === selectedDateValue
+
+        return `
+            <button
+                type="button"
+                class="booking-date-pill${isActive ? ' booking-date-pill--active' : ''}"
+                data-availability-date="${normalizedDayDate}"
+            >
+                ${day.date}
+            </button>
+        `
+    }).join('')
+
+    const navigationMarkup = datesToRender.length > availabilityPageSize
+        ? `
+            <div class="booking-availability-picker__nav">
+                <button type="button" class="booking-date-nav" id="availabilityPrevDates" aria-label="Ver fechas anteriores">&lt;</button>
+                <button type="button" class="booking-date-nav" id="availabilityNextDates" aria-label="Ver mas fechas">&gt;</button>
+            </div>
+        `
+        : ''
+
+    let slotsMarkup = '<p class="text-muted mb-0">Selecciona una fecha para ver horarios.</p>'
+
+    if (activeDay) {
+        const isClosed = activeDay.available_slots.length === 1 && activeDay.available_slots[0].startsWith('Cerrado los ')
+
+        if (isClosed) {
+            slotsMarkup = `<div class="booking-slot-card booking-slot-card--closed">${activeDay.available_slots[0]}</div>`
+        } else {
+            slotsMarkup = activeDay.available_slots.map((slot) => {
+                const [start, end] = slot.split(' a ')
+
+                return `
+                    <div class="booking-slot-card">
+                        <span class="booking-slot-card__time">${slot}</span>
+                        <button 
+                            type="button"
+                            class="btn btn-outline-success btn-sm booking-slot-card__button"
+                            data-date="${activeDay.date}"
+                            data-slot-start="${start}"
+                            data-slot-end="${end}"
+                            id="selectSlotButton"
+                        >
+                            Elegir
+                        </button>
+                    </div>
+                `
+            }).join('')
+        }
+    } else if (selectedDateValue) {
+        slotsMarkup = '<p class="text-muted mb-0">No hay horarios publicados para esa fecha. Podes elegir otra fecha o escribir una diferente.</p>'
+    }
+
+    container.innerHTML = `
+        <div class="booking-availability-picker">
+            <div class="booking-availability-picker__dates-wrap">
+                <div class="booking-availability-picker__dates">${datesMarkup}</div>
+                ${navigationMarkup}
+            </div>
+            <div class="booking-availability-picker__slots">${slotsMarkup}</div>
+        </div>
+    `
+}
+
+function hasAcceptedTermsInSession() {
+    try {
+        return sessionStorage.getItem(termsSessionKey) === '1'
+    } catch (error) {
+        return false
+    }
+}
+
+function setAcceptedTermsInSession(accepted = true) {
+    try {
+        if (accepted) {
+            sessionStorage.setItem(termsSessionKey, '1')
+            return
+        }
+
+        sessionStorage.removeItem(termsSessionKey)
+    } catch (error) {
+        // ignore storage errors
+    }
+}
+
+function hasValidatedCustomerInSession() {
+    try {
+        return sessionStorage.getItem(customerValidatedSessionKey) === '1'
+    } catch (error) {
+        return false
+    }
+}
+
+function setValidatedCustomerInSession(validated = true) {
+    try {
+        if (validated) {
+            sessionStorage.setItem(customerValidatedSessionKey, '1')
+            return
+        }
+
+        sessionStorage.removeItem(customerValidatedSessionKey)
+    } catch (error) {
+        // ignore storage errors
+    }
+}
+
+function updateTermsNextStep() {
+    if (!confirmRulesButton) {
+        return
+    }
+
+    if (hasValidatedCustomerInSession()) {
+        confirmRulesButton.removeAttribute('data-bs-toggle')
+        confirmRulesButton.removeAttribute('data-bs-target')
+        return
+    }
+
+    confirmRulesButton.setAttribute('data-bs-toggle', 'modal')
+    confirmRulesButton.setAttribute('data-bs-target', '#verifyVisitorsModal')
+}
 
 function resetMercadoPagoButtons() {
     const checkoutParcial = document.getElementById('checkout-btn-parcial')
@@ -234,6 +514,8 @@ function applyMinimumVisitorsDefault(force = false) {
     if (force || inputqtyvisitors.value === '' || inputqtyvisitors.value === '0') {
         inputqtyvisitors.value = String(minimumVisitors)
     }
+
+    updateBookingStageAvailability()
 }
 
 function validateVisitorsCount() {
@@ -263,6 +545,8 @@ function applyValidatedCustomer(customer) {
     }
 
     currentCustomer = customer
+    setValidatedCustomerInSession(true)
+    setAcceptedTermsInSession(true)
     localStorage.setItem('customer', JSON.stringify(customer))
     telefono.value = customer.phone || ''
     nombre.value = customer.name || ''
@@ -279,6 +563,7 @@ function applyValidatedCustomer(customer) {
         `
     }
 
+    updateTermsNextStep()
     refreshBookingAmount()
 }
 
@@ -299,7 +584,7 @@ async function handleValidateCustomerClick() {
 
     try {
         const customer = await validateCustomer(phone, email)
-        const registerUrl = `/customers/register?phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}`
+        const registerUrl = `${baseUrl}Registrarme?phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}&returnValidate=1`
 
         if (customer) {
             applyValidatedCustomer(customer)
@@ -372,6 +657,17 @@ async function hydrateRegisteredCustomerFromUrl() {
         if (customer) {
             applyValidatedCustomer(customer)
             showPublicNotice('Registro confirmado. Ya tomamos tus datos para continuar con la reserva.', 'success', 'Listo')
+
+            if (welcomeModalEl) {
+                const welcomeModal = bootstrap.Modal.getOrCreateInstance(welcomeModalEl)
+                welcomeModal.hide()
+            }
+
+            const verifyVisitorsModalEl = document.getElementById('verifyVisitorsModal')
+            if (verifyVisitorsModalEl) {
+                const verifyVisitorsModal = bootstrap.Modal.getOrCreateInstance(verifyVisitorsModalEl)
+                verifyVisitorsModal.hide()
+            }
         }
     } catch (error) {
         console.error('Error:', error)
@@ -432,6 +728,7 @@ function initBookingDatePicker(defaultDate) {
 
         bookingDatePicker = flatpickr(fechaInput, {
             dateFormat: 'd/m/Y',
+            allowInput: true,
             disableMobile: true,
             minDate: today,
             defaultDate,
@@ -450,25 +747,151 @@ function initBookingDatePicker(defaultDate) {
     fechaInput.value = formatDateForDisplay(defaultDate);
 }
 
-function getTermsTextForSpeech() {
+function setActiveTermsSection(section) {
+    if (currentHighlightedTerm) {
+        currentHighlightedTerm.classList.remove('terms-reading-active')
+    }
+
+    currentHighlightedTerm = section || null
+
+    if (currentHighlightedTerm) {
+        currentHighlightedTerm.classList.add('terms-reading-active')
+        currentHighlightedTerm.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        })
+    }
+}
+
+function hydrateValidationReturnFromUrl() {
+    const params = new URLSearchParams(window.location.search)
+    const returnValidate = params.get('returnValidate')
+    const phone = params.get('phone') || ''
+    const email = params.get('email') || ''
+
+    if (returnValidate !== '1' || phone === '' || email === '') {
+        return
+    }
+
+    const inputTelefono = document.getElementById('inputTelefono')
+    const verifyVisitorsModalEl = document.getElementById('verifyVisitorsModal')
+
+    if (inputTelefono) {
+        inputTelefono.value = phone
+    }
+
+    if (inputEmail) {
+        inputEmail.value = email
+    }
+
+    if (welcomeModalEl) {
+        const welcomeModal = bootstrap.Modal.getOrCreateInstance(welcomeModalEl)
+        welcomeModal.hide()
+    }
+
+    if (verifyVisitorsModalEl) {
+        const verifyVisitorsModal = bootstrap.Modal.getOrCreateInstance(verifyVisitorsModalEl)
+        verifyVisitorsModal.show()
+    }
+
+    params.delete('returnValidate')
+    const queryString = params.toString()
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`
+    window.history.replaceState({}, '', nextUrl)
+}
+
+function getTermsSegmentsForSpeech() {
     const termsContainer = document.querySelector('.terms-container');
     if (!termsContainer) {
-        return '';
+        return [];
     }
 
     const acceptedLabel = termsContainer.querySelector('label[for="termsAccepted"]');
     const buttonText = toggleTermsAudio?.textContent?.trim() ?? '';
-    let text = termsContainer.innerText || '';
+    const segments = []
+
+    const introBlock = termsContainer.querySelector('.mb-3')
+    if (introBlock) {
+        let introText = introBlock.innerText || ''
+
+        if (buttonText) {
+            introText = introText.replace(buttonText, '')
+        }
+
+        introText = introText.replace(/\s+/g, ' ').trim()
+
+        if (introText) {
+            segments.push({ text: introText, element: introBlock })
+        }
+    }
+
+    termsSections.forEach((section) => {
+        let text = section.innerText || ''
+        text = text.replace(/\s+/g, ' ').trim()
+
+        if (text) {
+            segments.push({ text, element: section })
+        }
+    })
+
+    const finalTextNode = Array.from(termsContainer.querySelectorAll('p'))
+        .find((paragraph) => paragraph.classList.contains('fw-bold'))
+
+    if (finalTextNode) {
+        const finalText = (finalTextNode.innerText || '').replace(/\s+/g, ' ').trim()
+        if (finalText) {
+            segments.push({ text: finalText, element: finalTextNode })
+        }
+    }
 
     if (acceptedLabel) {
-        text = text.replace(acceptedLabel.innerText, '');
+        const acceptanceText = (acceptedLabel.innerText || '').replace(/\s+/g, ' ').trim()
+        if (acceptanceText) {
+            segments.push({ text: acceptanceText, element: acceptedLabel.closest('.terms-acceptance') || acceptedLabel })
+        }
     }
 
-    if (buttonText) {
-        text = text.replace(buttonText, '');
+    return segments
+}
+
+function speakCurrentTermsSegment() {
+    if (!currentTermsSegments.length || currentTermsSegmentIndex < 0 || currentTermsSegmentIndex >= currentTermsSegments.length) {
+        stopTermsSpeech()
+        return
     }
 
-    return text.replace(/\s+/g, ' ').trim();
+    const segment = currentTermsSegments[currentTermsSegmentIndex]
+    const playbackId = currentTermsPlaybackId
+    currentTermsElement = segment.element || null
+    setActiveTermsSection(segment.element || null)
+
+    currentTermsUtterance = new SpeechSynthesisUtterance(segment.text)
+    currentTermsUtterance.lang = 'es-AR'
+    currentTermsUtterance.rate = currentTermsRate
+    currentTermsUtterance.pitch = 1
+    currentTermsUtterance.onend = () => {
+        if (playbackId !== currentTermsPlaybackId) {
+            return
+        }
+
+        currentTermsSegmentIndex += 1
+
+        if (currentTermsSegmentIndex < currentTermsSegments.length) {
+            speakCurrentTermsSegment()
+            return
+        }
+
+        stopTermsSpeech()
+    }
+    currentTermsUtterance.onerror = () => {
+        if (playbackId !== currentTermsPlaybackId) {
+            return
+        }
+
+        stopTermsSpeech()
+    }
+
+    window.speechSynthesis.speak(currentTermsUtterance)
 }
 
 function updateTermsAudioButton(label) {
@@ -476,7 +899,65 @@ function updateTermsAudioButton(label) {
         return;
     }
 
-    toggleTermsAudio.textContent = label;
+    let iconClass = 'fa-play'
+    let title = 'Reproducir'
+
+    if (label === 'Pausar lectura') {
+        iconClass = 'fa-pause'
+        title = 'Pausar'
+    } else if (label === 'Continuar lectura') {
+        iconClass = 'fa-play'
+        title = 'Continuar'
+    } else if (label === 'Audio no disponible') {
+        iconClass = 'fa-volume-xmark'
+        title = 'Audio no disponible'
+    }
+
+    toggleTermsAudio.innerHTML = `<i class="fa-solid ${iconClass}"></i>`
+    toggleTermsAudio.title = title
+    toggleTermsAudio.setAttribute('aria-label', title)
+}
+
+function startTermsSpeechFromIndex(targetIndex) {
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+        updateTermsAudioButton('Audio no disponible')
+        if (toggleTermsAudio) {
+            toggleTermsAudio.disabled = true
+        }
+        return
+    }
+
+    const segments = getTermsSegmentsForSpeech()
+    if (!segments.length || targetIndex < 0 || targetIndex >= segments.length) {
+        return
+    }
+
+    currentTermsPlaybackId += 1
+    window.speechSynthesis.cancel()
+    currentTermsSegments = segments
+    currentTermsSegmentIndex = targetIndex
+    currentTermsElement = segments[targetIndex]?.element || null
+    isTermsSpeechPaused = false
+    updateTermsAudioButton('Pausar lectura')
+    speakCurrentTermsSegment()
+}
+
+function moveTermsSpeech(step) {
+    const segments = getTermsSegmentsForSpeech()
+    if (!segments.length) {
+        return
+    }
+
+    let targetIndex = currentTermsSegmentIndex
+
+    if (targetIndex < 0) {
+        targetIndex = 0
+    } else {
+        targetIndex += step
+    }
+
+    targetIndex = Math.max(0, Math.min(targetIndex, segments.length - 1))
+    startTermsSpeechFromIndex(targetIndex)
 }
 
 function stopTermsSpeech(resetButton = true) {
@@ -484,9 +965,14 @@ function stopTermsSpeech(resetButton = true) {
         return;
     }
 
+    currentTermsPlaybackId += 1
     window.speechSynthesis.cancel();
     currentTermsUtterance = null;
     isTermsSpeechPaused = false;
+    currentTermsSegments = []
+    currentTermsSegmentIndex = -1
+    currentTermsElement = null
+    setActiveTermsSection(null)
 
     if (resetButton) {
         updateTermsAudioButton('Escuchar terminos');
@@ -518,28 +1004,20 @@ function toggleTermsSpeech() {
         return;
     }
 
-    const termsText = getTermsTextForSpeech();
-    if (!termsText) {
+    currentTermsSegments = getTermsSegmentsForSpeech()
+
+    if (!currentTermsSegments.length) {
         return;
     }
-
-    currentTermsUtterance = new SpeechSynthesisUtterance(termsText);
-    currentTermsUtterance.lang = 'es-AR';
-    currentTermsUtterance.rate = 1;
-    currentTermsUtterance.pitch = 1;
-    currentTermsUtterance.onend = () => stopTermsSpeech();
-    currentTermsUtterance.onerror = () => stopTermsSpeech();
-
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(currentTermsUtterance);
-    isTermsSpeechPaused = false;
-    updateTermsAudioButton('Pausar lectura');
+    startTermsSpeechFromIndex(0)
 }
 
 // Fecha actual por defecto
 document.addEventListener('DOMContentLoaded', async (e) => {
     // Muestra el modal de bienvenida si el usuario no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ logueado.
-    if (!sessionUserLogued) {
+    const returningFromRegistration = new URLSearchParams(window.location.search).get('registered') === '1'
+
+    if (!sessionUserLogued && !hasAcceptedTermsInSession() && !returningFromRegistration) {
         const welcomeModalEl = document.getElementById('welcomeModal');
         if (welcomeModalEl) {
             const welcomeModal = new bootstrap.Modal(welcomeModalEl);
@@ -589,6 +1067,9 @@ document.addEventListener('DOMContentLoaded', async (e) => {
     deleteRejected();
     setupTermsModal();
     await hydrateRegisteredCustomerFromUrl()
+    hydrateValidationReturnFromUrl()
+    showBookingAvailabilityStep()
+    updateBookingStageAvailability()
 
     if (modalIngresarPagoElement) {
         modalIngresarPagoElement.addEventListener('hidden.bs.modal', async () => {
@@ -605,6 +1086,26 @@ document.addEventListener('DOMContentLoaded', async (e) => {
         toggleTermsAudio.addEventListener('click', toggleTermsSpeech);
     }
 
+    if (termsPrevButton) {
+        termsPrevButton.addEventListener('click', () => moveTermsSpeech(-1))
+    }
+
+    if (termsNextButton) {
+        termsNextButton.addEventListener('click', () => moveTermsSpeech(1))
+    }
+
+    if (termsAudioRate) {
+        termsAudioRate.addEventListener('change', () => {
+            const selectedRate = parseFloat(termsAudioRate.value || '1')
+            currentTermsRate = Number.isNaN(selectedRate) ? 1 : selectedRate
+
+            if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+                const restartIndex = currentTermsSegmentIndex >= 0 ? currentTermsSegmentIndex : 0
+                startTermsSpeechFromIndex(restartIndex)
+            }
+        })
+    }
+
     if (welcomeModalEl) {
         welcomeModalEl.addEventListener('hidden.bs.modal', () => stopTermsSpeech());
     }
@@ -618,6 +1119,7 @@ function setupTermsModal() {
     termsSections.forEach((section) => {
         section.classList.remove('d-none');
         section.classList.add('d-block');
+        section.classList.add('terms-section-clickable');
 
         const counter = section.querySelector('p');
         if (counter && counter.querySelector('strong')) {
@@ -628,6 +1130,47 @@ function setupTermsModal() {
         if (checkbox) {
             checkbox.classList.add('d-none');
         }
+
+        section.addEventListener('click', (event) => {
+            if (event.target.closest('a, button, input')) {
+                return
+            }
+
+            const segments = getTermsSegmentsForSpeech()
+            const clickedIndex = segments.findIndex((segment) => segment.element === section)
+
+            if (clickedIndex === -1) {
+                return
+            }
+
+            if ((window.speechSynthesis.speaking || window.speechSynthesis.paused) && currentTermsElement === section) {
+                return
+            }
+
+            setActiveTermsSection(section)
+
+            if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+                return
+            }
+
+            startTermsSpeechFromIndex(clickedIndex)
+        })
+
+        section.addEventListener('dblclick', (event) => {
+            if (event.target.closest('a, button, input')) {
+                return
+            }
+
+            const segments = getTermsSegmentsForSpeech()
+            const clickedIndex = segments.findIndex((segment) => segment.element === section)
+
+            if (clickedIndex === -1 || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+                return
+            }
+
+            setActiveTermsSection(section)
+            startTermsSpeechFromIndex(clickedIndex)
+        })
     });
 
     confirmRulesButton.classList.remove('d-none');
@@ -642,8 +1185,12 @@ function setupTermsModal() {
     if (existingTermsAccepted) {
         existingTermsAccepted.addEventListener('change', () => {
             confirmRulesButton.disabled = !existingTermsAccepted.checked;
+            setAcceptedTermsInSession(existingTermsAccepted.checked)
         });
+        const acceptedInSession = hasAcceptedTermsInSession()
+        existingTermsAccepted.checked = acceptedInSession || existingTermsAccepted.checked
         confirmRulesButton.disabled = !existingTermsAccepted.checked;
+        updateTermsNextStep()
         return;
     }
 
@@ -661,14 +1208,50 @@ function setupTermsModal() {
     const termsAccepted = document.getElementById('termsAccepted');
     termsAccepted?.addEventListener('change', () => {
         confirmRulesButton.disabled = !termsAccepted.checked;
+        setAcceptedTermsInSession(termsAccepted.checked)
     });
+    updateTermsNextStep()
 }
 
 document.addEventListener('change', (e) => {
     if (e.target?.id === 'termsAccepted' && confirmRulesButton) {
         confirmRulesButton.disabled = !e.target.checked;
+        setAcceptedTermsInSession(e.target.checked)
     }
 });
+
+confirmRulesButton?.addEventListener('click', (event) => {
+    if (!hasValidatedCustomerInSession()) {
+        return
+    }
+
+    event.preventDefault()
+    const welcomeModal = welcomeModalEl ? bootstrap.Modal.getOrCreateInstance(welcomeModalEl) : null
+    welcomeModal?.hide()
+})
+
+showTermsLink?.addEventListener('click', () => {
+    if (!welcomeModalEl) {
+        return
+    }
+
+    const welcomeModal = bootstrap.Modal.getOrCreateInstance(welcomeModalEl)
+    welcomeModal.show()
+})
+
+continueBookingStep?.addEventListener('click', async () => {
+    if (!isAvailabilityStepComplete()) {
+        showPublicNotice('Completa fecha, horarios, servicio y cantidad para continuar.', 'info', 'Falta informacion')
+        return
+    }
+
+    await refreshBookingAmount()
+    showBookingDetailsStep()
+})
+
+backBookingStep?.addEventListener('click', () => {
+    showBookingAvailabilityStep()
+})
 
 horarioDesde.addEventListener('change', async () => {
     divTime.classList.remove('d-none');
@@ -710,8 +1293,11 @@ horarioDesde.addEventListener('change', async () => {
 document.addEventListener('change', async (e) => {
     if (e.target) {
         if (e.target.id == 'fecha') {
+            selectedAvailabilityDate = normalizeAvailabilityDate(fechaInput.value || selectedAvailabilityDate)
+            renderAvailabilityList(availabilityInlineResult)
             const day = parseInputDate(fechaInput.value);
             if (!day) {
+                updateBookingStageAvailability()
                 return;
             }
             const dayKey = getClosedDayKey(day);
@@ -736,6 +1322,7 @@ document.addEventListener('change', async (e) => {
                 selectCancha.selectedIndex = 0;
                 horarioDesde.selectedIndex = 0;
                 horarioHasta.selectedIndex = 0;
+                updateBookingStageAvailability()
 
                 showPublicNotice('Ese dia el laberinto permanecera cerrado. Seleccione otra fecha.');
                 return;
@@ -745,6 +1332,7 @@ document.addEventListener('change', async (e) => {
             selectCancha.selectedIndex = 0;
             horarioDesde.selectedIndex = 0;
             horarioHasta.selectedIndex = 0;
+            updateBookingStageAvailability()
         } else if (e.target.id == 'horarioDesde') {
             divTime.classList.remove('d-none');
             divTimeH.style.width = '49%';
@@ -780,11 +1368,14 @@ document.addEventListener('change', async (e) => {
             // Mover esta lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nea para que se ejecute al final
             await getTimeFromBookings();
             await refreshBookingAmount();
+            updateBookingStageAvailability()
         } else if (e.target.id == 'cancha') {
             await refreshBookingAmount()
+            updateBookingStageAvailability()
 
         } else if (e.target.id == 'horarioHasta') {
             await refreshBookingAmount()
+            updateBookingStageAvailability()
 
         } else if (e.target.id == 'switchPagoTotal') {
             const checkoutParcial = document.getElementById('checkout-btn-parcial')
@@ -1015,17 +1606,38 @@ document.addEventListener('click', async (e) => {
             } else {
                 availabilityResult.innerHTML = '<p class="text-center text-gray-500">No hay servicios disponibles en los horarios seleccionados.</p>';
             }
+        } else if (e.target.dataset?.availabilityDate) {
+            setSelectedAvailabilityDate(e.target.dataset.availabilityDate)
+            renderAvailabilityList(availabilityInlineResult)
+        } else if (e.target.id === 'availabilityPrevDates') {
+            const renderableDates = getRenderableAvailabilityDates()
+            const lastPageStart = Math.floor((Math.max(0, renderableDates.length - 1)) / availabilityPageSize) * availabilityPageSize
+            availabilityPageStart = availabilityPageStart <= 0
+                ? lastPageStart
+                : Math.max(0, availabilityPageStart - availabilityPageSize)
+            const previousPageDate = renderableDates[availabilityPageStart]?.date || ''
+            if (previousPageDate) {
+                setSelectedAvailabilityDate(previousPageDate)
+            }
+            renderAvailabilityList(availabilityInlineResult)
+        } else if (e.target.id === 'availabilityNextDates') {
+            const renderableDates = getRenderableAvailabilityDates()
+            const lastPageStart = Math.floor((Math.max(0, renderableDates.length - 1)) / availabilityPageSize) * availabilityPageSize
+            availabilityPageStart = availabilityPageStart >= lastPageStart
+                ? 0
+                : Math.min(availabilityPageStart + availabilityPageSize, lastPageStart)
+            const nextPageDate = renderableDates[availabilityPageStart]?.date || ''
+            if (nextPageDate) {
+                setSelectedAvailabilityDate(nextPageDate)
+            }
+            renderAvailabilityList(availabilityInlineResult)
         } else if (e.target.id === 'selectSlotButton') {
             selectSlotButton = e.target;
             const selectedDate = selectSlotButton.getAttribute('data-date');
             const selectedSlotStart = selectSlotButton.getAttribute('data-slot-start');
             const selectedSlotEnd = selectSlotButton.getAttribute('data-slot-end');
 
-            if (bookingDatePicker) {
-                bookingDatePicker.setDate(selectedDate, true, 'd/m/Y');
-            } else {
-                fechaInput.value = selectedDate;
-            }
+            setSelectedAvailabilityDate(selectedDate)
             horarioDesde.value = selectedSlotStart;
             horarioHasta.value = selectedSlotEnd;
             // console.log(horarioDesde);
@@ -1033,6 +1645,7 @@ document.addEventListener('click', async (e) => {
 
             const event = new Event('change');
             horarioDesde.dispatchEvent(event);
+            updateBookingStageAvailability()
         }
 
     }
@@ -1130,6 +1743,7 @@ inputqtyvisitors.addEventListener('input', () => {
     }
 
     refreshBookingAmount()
+    updateBookingStageAvailability()
 });
 
 inputqtyvisitors.addEventListener('blur', () => {
@@ -1138,6 +1752,7 @@ inputqtyvisitors.addEventListener('blur', () => {
     }
 
     validateVisitorsCount()
+    updateBookingStageAvailability()
 })
 
 telefono.addEventListener('input', async () => {
@@ -1727,6 +2342,7 @@ async function getAvailability() {
 
         if (responseData.data != null && responseData.data != '') {
             availables = responseData.data
+            renderAvailabilityList(availabilityInlineResult)
             // console.log(availables)
         }
 

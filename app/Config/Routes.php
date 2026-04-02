@@ -67,6 +67,8 @@ $routes->get('getOffersRate', 'Offers::getOffersRate');
 $routes->get('getTime', 'Time::getTime');
 $routes->get('getNocturnalTime', 'Time::getNocturnalTime');
 
+$routes->get('Registrarme', 'Customers::register');
+$routes->post('Registrarme', 'Customers::dbRegister');
 $routes->get('customers/register', 'Customers::register');
 $routes->post('customers/register', 'Customers::dbRegister');
 $routes->get('getCustomer/(:any)', 'Customers::getCustomer/$1');
@@ -120,6 +122,8 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('saveRate', 'Rate::saveRate');
 
     $routes->post('saveOfferRate', 'Offers::saveOfferRate');
+    $routes->post('saveUser', 'Users::saveUser');
+    $routes->post('disableUser/(:num)', 'Users::disableUser/$1');
 
     $routes->group('customers', function ($routes) {
         $routes->get('deleteCustomer/(:any)', 'Customers::delete/$1');

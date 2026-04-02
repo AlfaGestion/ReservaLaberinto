@@ -5,7 +5,9 @@
     </div>
 <?php endif; ?>
 
-<div id="selectDateReport" class="d-flex flex-column justify-content-center align-items-center">
+<div id="selectDateReport"
+    class="d-flex flex-column justify-content-center align-items-center"
+    data-week-start="<?= esc($weekStart ?? date('Y-m-d')) ?>">
 
     <div class="form-check form-switch mt-3">
         <input class="form-check-input" type="checkbox" role="switch" id="checkPaymetsMp">
@@ -61,14 +63,16 @@
 
         </div>
         <div>
-            <!-- <button type="button" id="generateReport" data-bs-toggle="modal" data-bs-target="#generateReportModal" class="btn btn-warning btn-sm ms-2 d-none">Ver resumen</button> -->
+            <button type="button" id="generateReport" data-bs-toggle="modal" data-bs-target="#generateReportModal" class="btn btn-warning btn-sm ms-2 d-none">Ver resumen</button>
             <button type="button" id="downloadReport" class="btn btn-danger btn-sm ms-2 d-none">Descargar PDF</button>
             <button type="button" id="downloadPaymentsReport" class="btn btn-danger btn-sm ms-2 d-none">Descargar PDF</button>
         </div>
     </div>
 </div>
 
-<div class="table-responsive d-none" id="tableReports">
+<div class="d-none" id="tableReports">
+    <div id="reportsCount" class="mt-2 small text-muted"></div>
+    <div class="table-responsive">
     <table class="table align-middle table-striped-columns mt-2">
         <thead>
             <tr>
@@ -84,6 +88,8 @@
 
         </tbody>
     </table>
+    </div>
+    <div id="reportsSummary" class="paymentsMethodsResume mt-3"></div>
 </div>
 
 <div class="table-responsive d-none" id="tableReservations">
@@ -98,4 +104,5 @@
 
         </tbody>
     </table>
+    <div id="reservationsSummary" class="paymentsMethodsResume mt-3"></div>
 </div>
