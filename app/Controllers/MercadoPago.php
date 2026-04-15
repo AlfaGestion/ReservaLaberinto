@@ -118,7 +118,7 @@ class MercadoPago extends BaseController
         return $email;
     }
 
-    private function sendEmailWithFallback($to, string $subject, string $message): bool
+    private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
         $emailConfig = config('Email');
         $accounts = $emailConfig->accounts ?? [];
@@ -142,6 +142,7 @@ class MercadoPago extends BaseController
                 $email->setFrom($email->fromEmail, $email->fromName);
                 $email->setTo($to);
                 $email->setSubject($subject);
+                $email->setMailType($isHtml ? 'html' : 'text');
                 $email->setMessage($message);
 
                 if ($email->send()) {
@@ -170,20 +171,28 @@ class MercadoPago extends BaseController
             $subjectTimeFrom = trim((string) ($booking['time_from'] ?? ''));
             $subject = "Reserva - Laberinto: {$subjectName} - {$formattedDate} {$subjectTimeFrom}";
 
-            $message = "Se recibio una nueva reserva.\n\n";
-            $message .= 'Nombre: ' . ($booking['name'] ?? '') . "\n";
-            $message .= 'Telefono: ' . ($booking['phone'] ?? '') . "\n";
-            $message .= 'Fecha: ' . $formattedDate . "\n";
-            $message .= 'Horario desde: ' . ($booking['time_from'] ?? '') . "\n";
-            $message .= 'Horario hasta: ' . ($booking['time_until'] ?? '') . "\n";
-            $message .= 'Visitantes: ' . ($booking['visitors'] ?? '') . "\n";
-            $message .= 'Total: ' . ($booking['total'] ?? '') . "\n";
-            $message .= 'Codigo: ' . ($booking['code'] ?? '') . "\n";
-            $message .= 'Ver reserva: ' . site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+            $bookingUrl = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
                 'code' => (string) ($booking['code'] ?? ''),
-            ]))) . "\n";
+            ])));
+            $html = $this->renderEmailCard([
+                'eyebrow' => 'Nueva reserva',
+                'title' => $subjectName !== '' ? $subjectName . ' reservo una visita' : 'Se recibio una nueva reserva',
+                'intro' => 'La reserva fue confirmada por el flujo de pago y ya quedo registrada.',
+                'details' => [
+                    'Nombre' => (string) ($booking['name'] ?? ''),
+                    'Telefono' => (string) ($booking['phone'] ?? ''),
+                    'Fecha' => $formattedDate,
+                    'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                    'Visitantes' => (string) ($booking['visitors'] ?? ''),
+                    'Total' => '$' . (string) ($booking['total'] ?? ''),
+                    'Codigo' => (string) ($booking['code'] ?? ''),
+                ],
+                'messageHtml' => '<p>Se registro una nueva reserva desde Mercado Pago.</p>',
+                'primaryActionUrl' => $bookingUrl,
+                'primaryActionLabel' => 'Ver reserva',
+            ]);
 
-            $this->sendEmailWithFallback($notificationEmailList, $subject, $message);
+            $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
         }
 
         $customerEmail = $this->resolveCustomerEmail($booking);
@@ -195,24 +204,35 @@ class MercadoPago extends BaseController
         $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
         $subject = "Reserva confirmada - Laberinto: {$customerName}";
 
-        $message = "Hola {$customerName}, tu reserva fue registrada correctamente.\n\n";
-        $message .= 'Nombre: ' . $customerName . "\n";
-        $message .= 'Fecha: ' . $formattedDate . "\n";
-        $message .= 'Horario: ' . trim(($booking['time_from'] ?? '') . ' a ' . ($booking['time_until'] ?? '')) . "\n";
-        $message .= 'Cantidad: ' . ($booking['visitors'] ?? '') . "\n";
-        $message .= 'Total: ' . ($booking['total'] ?? '') . "\n";
-        $message .= 'Codigo: ' . ($booking['code'] ?? '') . "\n\n";
-        $message .= "Importante:\n";
-        $message .= "Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. ";
-        $message .= "En caso de inasistencia, no se realizaran devoluciones de dinero y la reprogramacion quedara sujeta a disponibilidad.\n\n";
         $bookingLink = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
             'code' => (string) ($booking['code'] ?? ''),
             'phone' => (string) ($booking['phone'] ?? ''),
             'email' => $customerEmail,
         ])));
-        $message .= "Ver tus reservas:\n" . $bookingLink . "\n";
+        $downloadPdfUrl = !empty($booking['id']) ? site_url('bookingPdf/' . $booking['id']) : '';
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Reserva confirmada',
+            'title' => 'Tu visita ya quedo confirmada',
+            'intro' => 'El pago se acredito correctamente y la reserva ya esta lista.',
+            'details' => [
+                'Nombre' => $customerName,
+                'Fecha' => $formattedDate,
+                'Horario' => trim(($booking['time_from'] ?? '') . ' a ' . ($booking['time_until'] ?? '')),
+                'Cantidad' => (string) ($booking['visitors'] ?? ''),
+                'Total' => '$' . (string) ($booking['total'] ?? ''),
+                'Pagado' => '$' . (string) ($booking['payment'] ?? '0'),
+                'Saldo pendiente' => '$' . (string) ($booking['diference'] ?? '0'),
+                'Codigo' => (string) ($booking['code'] ?? ''),
+            ],
+            'messageHtml' => '<p>Te dejamos accesos rapidos para revisar tu reserva y descargar el comprobante.</p>',
+            'primaryActionUrl' => $bookingLink,
+            'primaryActionLabel' => 'Ver reserva',
+            'secondaryActionUrl' => $downloadPdfUrl,
+            'secondaryActionLabel' => $downloadPdfUrl !== '' ? 'Descargar comprobante' : '',
+            'supportText' => 'Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. En caso de inasistencia, no se realizaran devoluciones y la reprogramacion queda sujeta a disponibilidad.',
+        ]);
 
-        $this->sendEmailWithFallback($customerEmail, $subject, $message);
+        $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
     }
 
     public function setPreference()

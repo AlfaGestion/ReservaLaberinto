@@ -9,6 +9,19 @@ $userData = $modelUploads->first();
 $mpKeysModel = new MercadoPagoKeysModel();
 $mpKeys = $mpKeysModel->first();
 
+$hasBookingRequestPrefill = !empty($prefill['request_id']);
+$prefillDateLabel = '';
+if (!empty($prefill['date'])) {
+    try {
+        $prefillDateLabel = (new DateTime($prefill['date']))->format('d/m/Y');
+    } catch (\Throwable $exception) {
+        $prefillDateLabel = $prefill['date'];
+    }
+}
+$prefillTimeLabel = trim((string) ($prefill['time_from'] ?? ''));
+if (!empty($prefill['time_until'])) {
+    $prefillTimeLabel = $prefillTimeLabel !== '' ? $prefillTimeLabel . ' a ' . $prefill['time_until'] : $prefill['time_until'];
+}
 
 ?>
 
@@ -18,7 +31,106 @@ $mpKeys = $mpKeysModel->first();
 
 <?php echo $this->section('content') ?>
 
+<style>
+    .booking-prefill-pending {
+        display: none;
+    }
+</style>
 <div class="container">
+    <div
+        id="bookingRequestPrefill"
+        class="d-none"
+        data-request-id="<?= esc($prefill['request_id'] ?? '') ?>"
+        data-request-token="<?= esc($prefillToken ?? '') ?>"
+        data-type="<?= esc($prefill['type'] ?? '') ?>"
+        data-date="<?= esc($prefill['date'] ?? '') ?>"
+        data-field-id="<?= esc($prefill['field_id'] ?? '') ?>"
+        data-field-name="<?= esc($prefill['field_name'] ?? '') ?>"
+        data-time-from="<?= esc($prefill['time_from'] ?? '') ?>"
+        data-time-until="<?= esc($prefill['time_until'] ?? '') ?>"
+        data-visitors="<?= esc($prefill['visitors'] ?? '') ?>"
+        data-minimum-visitors="<?= esc($prefill['minimum_visitors'] ?? '') ?>"
+        data-name="<?= esc($prefill['name'] ?? '') ?>"
+        data-phone="<?= esc($prefill['phone'] ?? '') ?>"
+        data-email="<?= esc($prefill['email'] ?? '') ?>"
+        data-dni="<?= esc($prefill['dni'] ?? '') ?>"
+        data-city="<?= esc($prefill['city'] ?? '') ?>"
+        data-type-institution="<?= esc($prefill['type_institution'] ?? '') ?>"></div>
+
+    <div id="bookingPrefillLoader" class="<?= $hasBookingRequestPrefill ? '' : 'd-none' ?>">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                    <div>
+                        <span class="badge rounded-pill mb-2" style="background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>; color: #fff;">Solicitud aprobada</span>
+                        <h3 class="h5 mb-2">Estamos preparando tu reserva</h3>
+                        <p class="text-muted mb-0">Ya cargamos los datos que elegiste. En un instante vas a ver el formulario listo para revisar y pagar.</p>
+                    </div>
+                    <div class="spinner-border flex-shrink-0" style="width: 3rem; height: 3rem; color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" role="status">
+                        <span class="visually-hidden">Cargando reserva...</span>
+                    </div>
+                </div>
+
+                <?php if ($hasBookingRequestPrefill) : ?>
+                    <div class="row g-3 mt-1">
+                        <?php if ($prefillDateLabel !== '') : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Fecha</small>
+                                    <strong><?= esc($prefillDateLabel) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($prefillTimeLabel !== '') : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Horario</small>
+                                    <strong><?= esc($prefillTimeLabel) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($prefill['field_name'])) : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Servicio</small>
+                                    <strong><?= esc($prefill['field_name']) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($prefill['visitors'])) : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Visitantes</small>
+                                    <strong><?= esc($prefill['visitors']) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($prefill['name'])) : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Titular</small>
+                                    <strong><?= esc($prefill['name']) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($prefill['phone'])) : ?>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 h-100 p-3">
+                                    <small class="text-muted d-block mb-1">Telefono</small>
+                                    <strong><?= esc($prefill['phone']) ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
     <!-- Modal de bienvenida -->
     <div class="modal fade" data-bs-backdrop="static" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -57,7 +169,7 @@ $mpKeys = $mpKeysModel->first();
 
                         <hr class="my-3">
 
-                        <div class="form-check d-block" id="check1Div">
+                        <div class="form-check d-block d-none" id="check1Div">
                             <p><strong>1/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check1">
                             <label class="form-check-label" for="check1">
@@ -66,7 +178,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check2Div">
+                        <div class="form-check d-block d-none" id="check2Div">
                             <p><strong>2/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check2">
                             <label class="form-check-label" for="check2">
@@ -75,7 +187,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check3Div">
+                        <div class="form-check d-block d-none" id="check3Div">
                             <p><strong>3/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check3">
                             <label class="form-check-label" for="check3">
@@ -84,7 +196,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check4Div">
+                        <div class="form-check d-block d-none" id="check4Div">
                             <p><strong>4/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check4">
                             <label class="form-check-label" for="check4">
@@ -93,7 +205,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check5Div">
+                        <div class="form-check d-block d-none" id="check5Div">
                             <p><strong>5/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check5">
                             <label class="form-check-label" for="check5">
@@ -102,7 +214,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check6Div">
+                        <div class="form-check d-block d-none" id="check6Div">
                             <p><strong>6/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check6">
                             <label class="form-check-label" for="check6">
@@ -111,7 +223,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check7Div">
+                        <div class="form-check d-block d-none" id="check7Div">
                             <p><strong>7/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check7">
                             <label class="form-check-label" for="check7">
@@ -120,7 +232,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check8Div">
+                        <div class="form-check d-block d-none" id="check8Div">
                             <p><strong>8/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check8">
                             <label class="form-check-label" for="check8">
@@ -129,7 +241,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
                         
-                        <div class="form-check d-block" id="check9Div">
+                        <div class="form-check d-block d-none" id="check9Div">
                             <p><strong>9/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check9">
                             <label class="form-check-label" for="check9">
@@ -138,7 +250,7 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <div class="form-check d-block" id="check10Div">
+                        <div class="form-check d-block d-none" id="check10Div">
                             <p><strong>10/10</strong></p>
                             <input class="form-check-input term-check" type="checkbox" id="check10">
                             <label class="form-check-label" for="check10">
@@ -147,16 +259,22 @@ $mpKeys = $mpKeysModel->first();
                             </label>
                         </div>
 
-                        <hr class="my-3">
-                        <p class="fw-bold text-center" style="font-size: 0.9rem;">Confirmar la reserva y efectuar el pago constituye aceptacion plena y definitiva de todos los puntos aqui establecidos.</p>
-                        <div class="terms-acceptance form-check mt-3">
-                            <input class="form-check-input" type="checkbox" id="termsAccepted">
-                            <label class="form-check-label fw-semibold" for="termsAccepted">Lei y acepto los terminos y condiciones de visita.</label>
+                        <div class="terms-stepper mt-3">
+                            <div class="terms-stepper__nav d-flex align-items-center justify-content-between gap-2">
+                                <button type="button" class="btn btn-outline-secondary" id="termsStepPrev">Anterior</button>
+                                <span class="terms-stepper__status" id="termsStepStatus">Punto 1 de 10</span>
+                                <button type="button" class="btn btn-success" id="termsStepNext">Siguiente</button>
+                            </div>
+                            <div class="terms-stepper__final d-none" id="termsFinalBlock">
+                                <p class="fw-bold text-center mb-3" id="termsFinalNotice" style="font-size: 0.9rem;">Confirmar la reserva y efectuar el pago constituye aceptacion plena y definitiva de todos los puntos aqui establecidos.</p>
+                                <div class="terms-acceptance form-check" id="termsAcceptanceWrapper">
+                                    <input class="form-check-input" type="checkbox" id="termsAccepted">
+                                    <label class="form-check-label fw-semibold" for="termsAccepted">Lei y acepto los terminos y condiciones de visita.</label>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="d-flex justify-content-center mt-3">
-                            <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
-                        </div>
+                        <button data-bs-target="#verifyVisitorsModal" data-bs-toggle="modal" disabled id="confirmRulesButton" type="button" class="btn d-none" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" data-bs-dismiss="modal">Siguiente</button>
                     </div>
                 </div>
 
@@ -218,7 +336,7 @@ $mpKeys = $mpKeysModel->first();
         <span style="color: #fff; font-weight: bold; background-color: red; padding: 10px 10px; border-radius: 30px">Hoy el Laberinto permanecera cerrado</span>
     </div>
 
-    <div id="formBooking" class="">
+    <div id="formBooking" class="<?= $hasBookingRequestPrefill ? 'booking-prefill-pending' : '' ?>">
         <form action="" id="bookingForm">
 
             <?php if (session('msg')) : ?>
@@ -248,6 +366,11 @@ $mpKeys = $mpKeysModel->first();
                         <p class="booking-availability-inline__subtitle">Primero elegi una fecha disponible y despues selecciona el horario que mejor te sirva.</p>
                     </div>
                     <div class="booking-availability-inline__content" id="availabilityInlineResult"></div>
+                </div>
+
+                <div class="alert alert-warning d-none mt-3" id="shortNoticeBookingAlert" role="alert">
+                    <strong>Reserva con menos de 48 hs.</strong>
+                    <span id="shortNoticeBookingMessage">Las reservas online requieren una anticipacion minima de 48 horas. Si queres consultar por una fecha cercana, completa la cantidad minima de visitantes y envia una solicitud.</span>
                 </div>
 
                 <div class="horario d-flex flex-row d-none">
@@ -302,6 +425,7 @@ $mpKeys = $mpKeysModel->first();
                     <div class="form-floating flex-nowrap mb-3 ms-4 d-none" style="width: 50%;" id="div-qtyvisitors">
                         <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
                         <label for="inputqtyvisitors">Cantidad de personas</label>
+                        <small class="booking-coordinator-notice d-none mt-2" id="groupCoordinatorNotice" role="status">1 persona queda como coordinador sin cargo por grupo.</small>
                     </div>
                 </div>
 

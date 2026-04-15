@@ -6,7 +6,10 @@
 const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
 const inputRate = document.getElementById('rate')
 const inputQtyVisitors = document.getElementById('visitors')
+const inputAllowGroupCoordinator = document.getElementById('allowGroupCoordinator')
 const inputNotificationEmail = document.getElementById('notificationEmail')
+const inputInvoiceEmailSubject = document.getElementById('invoiceEmailSubject')
+const inputInvoiceEmailMessage = document.getElementById('invoiceEmailMessage')
 const inputOfferRate = document.getElementById('offerRate')
 const descriptionOffer = document.getElementById('descriptionOffer')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
@@ -330,31 +333,7 @@ document.addEventListener('click', async (e) => {
 
     if (e.target) {
         if (e.target.id == 'botonCompletarPago') {
-
-            const idUser = document.getElementById('userId').dataset.id
-            // const botonPagar = document.getElementById('botonCompletarPago')
-            const bookingId = e.target.dataset.id
-            const booking = await getBooking(bookingId)
-
-            if (medioPagoSelect.value == '' || inputCompletarPagoReserva.value == '') {
-                return alert('Debe completar todos los campos')
-            }
-
-            if (inputCompletarPagoReserva.value > booking.diference) {
-                return alert('El monto a abonar no puede ser mayor al saldo')
-            }
-
-            console.log(booking)
-
-            let data = {
-                pago: inputCompletarPagoReserva.value,
-                idUser: idUser,
-                medioPago: medioPagoSelect.value,
-                idCustomer: booking.id_customer,
-            }
-
-            completePayment(`${baseUrl}completePayment/${bookingId}`, data)
-
+            return
         } else if (e.target.id == 'saveRate' || e.target.id == 'saveRateSettings') {
 
             let data = {
@@ -368,7 +347,10 @@ document.addEventListener('click', async (e) => {
 
             let data = {
                 qty_visitors: inputQtyVisitors.value,
-                notification_email: inputNotificationEmail?.value || ''
+                allow_group_coordinator: inputAllowGroupCoordinator?.checked ? 1 : 0,
+                notification_email: inputNotificationEmail?.value || '',
+                invoice_email_subject: inputInvoiceEmailSubject?.value || '',
+                invoice_email_message: inputInvoiceEmailMessage?.value || ''
             }
 
             saveGeneralSettings(`${baseUrl}saveWebGeneral`, data)
@@ -427,10 +409,10 @@ async function editBooking(data) {
         });
 
         if (response.ok) {
-            alert('Reserva eliminada con éxito')
+            alert('Reserva eliminada con ÃƒÆ’Ã‚Â©xito')
 
         } else {
-            alert('Algo salió mal. No se pudo eliminar la reserva.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo eliminar la reserva.');
         }
 
     } catch (error) {
@@ -451,13 +433,13 @@ async function cancelBooking(data) {
         });
 
         if (response.ok) {
-            alert('Reserva anulada con éxito')
+            alert('Reserva anulada con ÃƒÆ’Ã‚Â©xito')
 
             cancelBookingModal.hide()
             location.reload(true)
 
         } else {
-            alert('Algo salió mal. No se pudo eliminar la reserva.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo eliminar la reserva.');
         }
 
     } catch (error) {
@@ -509,7 +491,7 @@ async function completePayment(url, data) {
             }
 
         } else {
-            alert('Algo salió mal. No se pudo ingresar el pago.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el pago.');
         }
 
     } catch (error) {
@@ -529,11 +511,11 @@ async function saveRate(url, data) {
         });
 
         if (response.ok) {
-            alert('Valor ingresado con éxito')
+            alert('Valor ingresado con ÃƒÆ’Ã‚Â©xito')
             location.reload(true)
 
         } else {
-            alert('Algo salió mal. No se pudo ingresar el valor.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el valor.');
         }
 
     } catch (error) {
@@ -555,9 +537,9 @@ async function saveGeneralSettings(url, data) {
         const responseData = await response.json()
 
         if (response.ok) {
-            alert(responseData.message || 'Configuración guardada con éxito')
+            alert(responseData.message || 'ConfiguraciÃƒÆ’Ã‚Â³n guardada con ÃƒÆ’Ã‚Â©xito')
         } else {
-            alert(responseData.message || 'No se pudo guardar la configuración')
+            alert(responseData.message || 'No se pudo guardar la configuraciÃƒÆ’Ã‚Â³n')
         }
 
     } catch (error) {
@@ -577,11 +559,11 @@ async function saveOfferRate(url, data) {
         });
 
         if (response.ok) {
-            alert('Valor ingresado con éxito')
+            alert('Valor ingresado con ÃƒÆ’Ã‚Â©xito')
             location.reload(true)
 
         } else {
-            alert('Algo salió mal. No se pudo ingresar el valor.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el valor.');
         }
 
     } catch (error) {
@@ -602,7 +584,7 @@ async function getBooking(id) {
             return responseData.data
 
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
         }
 
     } catch (error) {
@@ -622,7 +604,7 @@ async function getEditField(id) {
             fillDiv(responseData.data)
 
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
         }
 
     } catch (error) {
@@ -710,7 +692,7 @@ async function saveOfferRate(url, data) {
 //             fillDivValues(responseData.data)
 
 //         } else {
-//             alert('Algo salió mal. No se pudo obtener la información.');
+//             alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
 //         }
 
 //     } catch (error) {
@@ -765,13 +747,13 @@ function fillDiv(field) {
 //                 </div>
 
 //                 <div class="input-group mb-3">
-//                     <span class="input-group-text">Valor sin iluminación</span>
-//                     <input type="text" class="form-control" value="${value.value}" name="valor" placeholder="Ingrese valor por hora sin iluminación" aria-label="Valor">
+//                     <span class="input-group-text">Valor sin iluminaciÃƒÆ’Ã‚Â³n</span>
+//                     <input type="text" class="form-control" value="${value.value}" name="valor" placeholder="Ingrese valor por hora sin iluminaciÃƒÆ’Ã‚Â³n" aria-label="Valor">
 //                 </div>
 
 //                 <div class="input-group mb-3">
-//                     <span class="input-group-text">Valor con iluminación</span>
-//                     <input type="text" class="form-control" value="${value.ilumination_value}" name="valorIluminacion" placeholder="Ingrese valor por hora con iluminación" aria-label="Valor">
+//                     <span class="input-group-text">Valor con iluminaciÃƒÆ’Ã‚Â³n</span>
+//                     <input type="text" class="form-control" value="${value.ilumination_value}" name="valorIluminacion" placeholder="Ingrese valor por hora con iluminaciÃƒÆ’Ã‚Â³n" aria-label="Valor">
 //                 </div>
 
 //                 <button type="submit" class="btn btn-success">Guardar</button>

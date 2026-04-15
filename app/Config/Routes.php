@@ -30,7 +30,12 @@ $routes->set404Override();
 // We get a performance increase by specifying the default
 // route since we don't have to scan directories.
 $routes->get('/', 'Home::index');
+$routes->get('confirmarReserva', 'Home::confirmReservation');
+$routes->get('confirmarReserva/(:segment)', 'Home::confirmReservation/$1');
+$routes->get('cancelarReserva', 'Home::cancelSpecialBookingRequest');
+$routes->get('cancelarReserva/(:segment)', 'Home::cancelSpecialBookingRequest/$1');
 $routes->post('formInfo', 'Home::infoReserva');
+$routes->post('requestSpecialBooking', 'Home::requestSpecialBooking');
 $routes->get('getDataMp', 'Home::getDataMp');
 $routes->get('deleteRejected', 'Home::deleteRejected');
 
@@ -106,12 +111,18 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('disableField/(:any)', 'Superadmin::disableField/$1');
     $routes->post('getActiveBookings', 'Superadmin::getActiveBookings');
     $routes->post('getAnnulledBookings', 'Superadmin::getAnnulledBookings');
+    $routes->get('getSpecialBookingRequests', 'Superadmin::getSpecialBookingRequests');
+    $routes->get('viewSpecialBookingRequest/(:num)', 'Superadmin::viewSpecialBookingRequest/$1');
+    $routes->post('replySpecialBookingRequest/(:num)', 'Superadmin::replySpecialBookingRequest/$1');
+    $routes->post('cancelSpecialBookingRequest/(:num)', 'Superadmin::cancelSpecialBookingRequest/$1');
+    $routes->post('deleteSpecialBookingRequest/(:num)', 'Superadmin::deleteSpecialBookingRequest/$1');
     $routes->post('resendBookingEmail/(:num)', 'Superadmin::resendBookingEmail/$1');
 
     $routes->post('saveTime', 'Time::saveTime');
     $routes->post('confirmMP', 'Bookings::confirmMP');
 
     $routes->post('completePayment/(:any)', 'Bookings::completePayment/$1');
+    $routes->post('sendBookingInvoiceEmail/(:num)', 'Bookings::sendBookingInvoiceEmail/$1');
     $routes->post('getReports', 'Bookings::getReports');
     $routes->post('getMpPayments', 'Bookings::getMpPayments');
     $routes->post('cancelBooking', 'Bookings::cancelBooking');

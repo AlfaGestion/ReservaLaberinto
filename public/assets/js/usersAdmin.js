@@ -10,6 +10,7 @@ const userRepeatPasswordGroup = document.getElementById('userRepeatPasswordGroup
 const userSuperadmin = document.getElementById('userSuperadmin')
 const userActive = document.getElementById('userActive')
 const saveUserButton = document.getElementById('saveUserButton')
+let userPasswordTouched = false
 
 function resetUserForm() {
     if (!userIdField) {
@@ -21,6 +22,9 @@ function resetUserForm() {
     userDisplayName.value = ''
     userPassword.value = ''
     userRepeatPassword.value = ''
+    userPasswordTouched = false
+    userPassword.placeholder = 'Ingresar contrasena'
+    userRepeatPassword.placeholder = 'Repetir contrasena'
     userSuperadmin.checked = false
     userActive.checked = true
     if (userRepeatPasswordGroup) {
@@ -59,6 +63,18 @@ function renderUserRow(item) {
     return row
 }
 
+userPassword?.addEventListener('input', () => {
+    if (userIdField?.value === '') {
+        return
+    }
+
+    userPasswordTouched = true
+
+    if (userRepeatPasswordGroup) {
+        userRepeatPasswordGroup.classList.remove('d-none')
+    }
+})
+
 function upsertUserRow(item, action = 'updated') {
     if (!usersTableBody || !item) {
         return
@@ -94,6 +110,9 @@ document.addEventListener('click', async (e) => {
         userDisplayName.value = editButton.dataset.name || ''
         userPassword.value = ''
         userRepeatPassword.value = ''
+        userPasswordTouched = false
+        userPassword.placeholder = 'Dejar en blanco para no cambiar'
+        userRepeatPassword.placeholder = 'Repetir nueva contrasena'
         userSuperadmin.checked = editButton.dataset.superadmin === '1'
         userActive.checked = editButton.dataset.active !== '0'
         if (userRepeatPasswordGroup) {
@@ -142,12 +161,13 @@ document.addEventListener('click', async (e) => {
     }
 
     const isEdit = userIdField.value !== ''
+    const shouldUpdatePassword = !isEdit || userPasswordTouched || userRepeatPassword.value !== ''
     const payload = {
         id: userIdField.value,
         user: userUsername.value.trim(),
         name: userDisplayName.value.trim(),
-        password: userPassword.value,
-        repeat_password: userRepeatPassword.value,
+        password: shouldUpdatePassword ? userPassword.value : '',
+        repeat_password: shouldUpdatePassword ? userRepeatPassword.value : '',
         superadmin: userSuperadmin.checked ? 1 : 0,
         active: userActive.checked ? 1 : 0,
     }
@@ -169,9 +189,16 @@ document.addEventListener('click', async (e) => {
         }
     }
 
-    if (isEdit && payload.password !== '' && payload.password !== payload.repeat_password) {
-        showAdminNotice('Las contrasenas no coinciden', 'error')
-        return
+    if (isEdit && shouldUpdatePassword && (payload.password !== '' || payload.repeat_password !== '')) {
+        if (!payload.password || !payload.repeat_password) {
+            showAdminNotice('Debe completar y repetir la nueva contrasena', 'error')
+            return
+        }
+
+        if (payload.password !== payload.repeat_password) {
+            showAdminNotice('Las contrasenas no coinciden', 'error')
+            return
+        }
     }
 
     saveButton.disabled = true

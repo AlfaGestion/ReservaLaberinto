@@ -29,6 +29,7 @@ $userData = $modelUploads->first();
         <nav>
             <div class="nav nav-tabs admin-tabs" id="nav-tab" role="tablist">
                     <button class="nav-link active" id="nav-bookings-tab" data-bs-toggle="tab" data-bs-target="#nav-bookings" type="button" role="tab" aria-controls="nav-bookings" aria-selected="false"><i class="fa-regular fa-calendar-days"></i> Reservas</button>
+                    <button class="nav-link" id="nav-special-requests-tab" data-bs-toggle="tab" data-bs-target="#nav-special-requests" type="button" role="tab" aria-controls="nav-special-requests" aria-selected="false"><i class="fa-regular fa-bell"></i> Solicitudes reservas</button>
                     <button class="nav-link" id="nav-general-tab" data-bs-toggle="tab" data-bs-target="#nav-general" type="button" role="tab" aria-controls="nav-general" aria-selected="false"><i class="fa-solid fa-gear"></i> General</button>
                     <button class="nav-link" id="nav-reports-tab" data-bs-toggle="tab" data-bs-target="#nav-reports" type="button" role="tab" aria-controls="nav-reports" aria-selected="true"><i class="fa-solid fa-file-lines"></i> Reportes de cobro</button>
                     <button class="nav-link d-none" id="nav-fields-tab" data-bs-toggle="tab" data-bs-target="#nav-fields" type="button" role="tab" aria-controls="nav-fields" aria-selected="false"><i class="fa-brands fa-magento"></i> Servicios</button>
@@ -47,6 +48,10 @@ $userData = $modelUploads->first();
 
                 <div class="tab-pane fade show active admin-pane" id="nav-bookings" role="tabpanel" aria-labelledby="nav-bookings-tab" tabindex="0">
                     <?= view('superadmin/tabBookings', ['bookings' => $bookings, 'latestBookingDate' => $latestBookingDate, 'weekStart' => $weekStart]) ?>
+                </div>
+
+                <div class="tab-pane fade admin-pane" id="nav-special-requests" role="tabpanel" aria-labelledby="nav-special-requests-tab" tabindex="0">
+                    <?= view('superadmin/tabSpecialRequests') ?>
                 </div>
 
                 <div class="tab-pane fade admin-pane" id="nav-general" role="tabpanel" aria-labelledby="nav-general-tab" tabindex="0">

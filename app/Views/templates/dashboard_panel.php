@@ -244,6 +244,20 @@
             padding: 0.9rem 1rem;
         }
 
+        .admin-booking-row {
+            transition: background-color 0.2s ease;
+        }
+
+        .admin-pane .table tbody tr.admin-booking-row--paid > * {
+            background: #e7f5ea !important;
+            color: #235135;
+            border-color: #cfe4d5;
+        }
+
+        .admin-pane .table tbody tr.admin-booking-row--paid:hover > * {
+            background: #dcefe1 !important;
+        }
+
         .admin-pane .btn {
             border-radius: 14px;
             font-weight: 700;

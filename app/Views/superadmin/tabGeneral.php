@@ -149,23 +149,56 @@ $uploadData = $uploadModel->first();
             <div class="tab-pane fade" id="config-general-pane" role="tabpanel" aria-labelledby="config-general-tab" tabindex="0">
                 <div class="admin-section-card">
                     <h5 class="mb-2">General</h5>
-                    <p class="text-muted mb-3">Configura la cantidad minima de visitantes para habilitar una reserva y los emails donde se enviaran las reservas recibidas.</p>
+                    <p class="text-muted mb-4">Ordena la configuracion general del sitio, las notificaciones internas y el contenido base para el envio de facturas.</p>
 
-                    <div class="input-group mb-3" style="max-width: 320px;">
-                        <?php if (is_array($rate) && isset($rate['qty_visitors'])) : ?>
-                            <input type="text" class="form-control" placeholder="Min visitantes" name="visitors" id="visitors" aria-label="visitors" value="<?= esc($rate['qty_visitors']) ?>">
-                        <?php else : ?>
-                            <input type="text" class="form-control" placeholder="Min visitantes" name="visitors" id="visitors" aria-label="visitors">
-                        <?php endif; ?>
+                    <div class="border rounded-4 p-4 bg-light mb-4">
+                        <h6 class="mb-2">Reservas y notificaciones internas</h6>
+                        <p class="text-muted mb-3">Define la cantidad minima de visitantes para habilitar una reserva y a que emails internos se avisara cada nueva reserva.</p>
+
+                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 mb-3">
+                            <div style="width: 100%; max-width: 240px;">
+                                <div class="input-group">
+                                    <?php if (is_array($rate) && isset($rate['qty_visitors'])) : ?>
+                                        <input type="text" class="form-control" placeholder="Min visitantes" name="visitors" id="visitors" aria-label="visitors" value="<?= esc($rate['qty_visitors']) ?>">
+                                    <?php else : ?>
+                                        <input type="text" class="form-control" placeholder="Min visitantes" name="visitors" id="visitors" aria-label="visitors">
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="border rounded-3 bg-white px-3 py-2 d-flex align-items-center gap-2 mb-0 flex-grow-1">
+                                <div class="form-check form-switch m-0 ps-0 d-flex align-items-center gap-2">
+                                    <input class="form-check-input mt-0 ms-0 me-2" type="checkbox" role="switch" id="allowGroupCoordinator" <?= is_array($rate) && !empty($rate['allow_group_coordinator']) ? 'checked' : '' ?>>
+                                    <label class="form-check-label fw-semibold mb-0" for="allowGroupCoordinator">Habilitar 1 coordinador por grupo</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-2" style="max-width: 520px;">
+                            <input type="text" class="form-control" id="notificationEmail" placeholder="email1@dominio.com; email2@dominio.com" value="<?= esc($uploadData['notification_email'] ?? '') ?>">
+                            <label for="notificationEmail">Emails para reservas recibidas</label>
+                        </div>
+                        <small class="text-muted d-block">Podes cargar uno o varios emails separados por ;</small>
                     </div>
 
-                    <div class="form-floating mb-2" style="max-width: 520px;">
-                        <input type="text" class="form-control" id="notificationEmail" placeholder="email1@dominio.com; email2@dominio.com" value="<?= esc($uploadData['notification_email'] ?? '') ?>">
-                        <label for="notificationEmail">Emails para reservas recibidas</label>
-                    </div>
-                    <small class="text-muted d-block mb-3">Podes cargar uno o varios emails separados por ;</small>
+                    <div class="border rounded-4 p-4">
+                        <h6 class="mb-2">Email de facturas</h6>
+                        <p class="text-muted mb-3">Configura el asunto y el mensaje base que se usaran al enviar facturas desde el panel administrativo.</p>
 
-                    <button type="button" class="btn btn-primary" id="saveGeneralSettings">Guardar</button>
+                        <div class="form-floating mb-3" style="max-width: 720px;">
+                            <input type="text" class="form-control" id="invoiceEmailSubject" placeholder="Asunto del email de factura" value="<?= esc($uploadData['invoice_email_subject'] ?? 'Factura de reserva - Laberinto: {nombre}') ?>">
+                            <label for="invoiceEmailSubject">Asunto por defecto para facturas</label>
+                        </div>
+
+                        <div class="form-floating mb-2" style="max-width: 720px;">
+                            <textarea class="form-control" id="invoiceEmailMessage" placeholder="Mensaje del email de factura" style="height: 180px;"><?= esc($uploadData['invoice_email_message'] ?? "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.") ?></textarea>
+                            <label for="invoiceEmailMessage">Mensaje por defecto para facturas</label>
+                        </div>
+                        <small class="text-muted d-block">Variables disponibles: {nombre}, {fecha}, {horario}, {codigo}, {pagado}, {email}, {telefono}</small>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary" id="saveGeneralSettings">Guardar</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,7 +214,7 @@ $uploadData = $uploadModel->first();
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="userForm">
+                    <form id="userForm" autocomplete="off">
                         <input type="hidden" id="userIdField">
 
                         <div class="input-group mb-3">
@@ -196,12 +229,12 @@ $uploadData = $uploadModel->first();
 
                         <div class="input-group mb-3">
                             <span class="input-group-text" style="min-width: 120px;">Contrasena</span>
-                            <input type="password" class="form-control" id="userPassword" placeholder="Ingresar contrasena">
+                            <input type="password" class="form-control" id="userPassword" placeholder="Ingresar contrasena" autocomplete="new-password">
                         </div>
 
                         <div class="input-group mb-3" id="userRepeatPasswordGroup">
                             <span class="input-group-text" style="min-width: 120px;">Repetir</span>
-                            <input type="password" class="form-control" id="userRepeatPassword" placeholder="Repetir contrasena">
+                            <input type="password" class="form-control" id="userRepeatPassword" placeholder="Repetir contrasena" autocomplete="new-password">
                         </div>
 
                         <div class="form-check form-switch mb-2">

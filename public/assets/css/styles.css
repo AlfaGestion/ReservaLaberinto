@@ -638,10 +638,37 @@ select {
 }
 
 .terms-acceptance {
-    margin: 16px 4px 0;
+    margin: 0;
     padding: 14px 16px;
     border-radius: 14px;
     background: #f6f8f6;
+}
+
+.terms-stepper {
+    margin: 18px 4px 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #eef4ef;
+}
+
+.terms-stepper__final {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(53, 80, 64, 0.12);
+}
+
+.terms-stepper .btn {
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 0 18px;
+    font-weight: 700;
+}
+
+.terms-stepper__status {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #355040;
+    text-align: center;
 }
 
 .terms-reading-active {
@@ -659,6 +686,44 @@ select {
 .terms-section-clickable:hover {
     transform: translateY(-1px);
     box-shadow: inset 0 0 0 1px rgba(13, 106, 58, 0.12);
+}
+
+.terms-section-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #dfe8e2;
+    box-shadow: 0 12px 24px rgba(21, 36, 24, 0.06);
+}
+
+.terms-section-card .term-check {
+    display: inline-block !important;
+    margin-bottom: 10px;
+}
+
+.terms-container .terms-section-card > p:first-child {
+    display: block !important;
+    margin-bottom: 8px;
+    color: #5f7468;
+}
+
+.booking-slot-card--selected {
+    border: 1px solid rgba(13, 106, 58, 0.26);
+    background: linear-gradient(180deg, #eef9f1 0%, #e4f3e8 100%);
+    box-shadow: 0 10px 24px rgba(13, 106, 58, 0.12);
+}
+
+.booking-slot-card__button--selected {
+    background-color: #0d6a3a;
+    border-color: #0d6a3a;
+    color: #fff;
+}
+
+.booking-slot-card__button--selected:hover,
+.booking-slot-card__button--selected:focus {
+    background-color: #0b5a31;
+    border-color: #0b5a31;
+    color: #fff;
 }
 
 .terms-acceptance .form-check-input {
@@ -724,4 +789,14 @@ select {
     .booking-availability-day__slots {
         grid-template-columns: 1fr;
     }
+}
+.booking-coordinator-notice {
+    display: block;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(15, 81, 50, 0.22);
+    border-radius: 12px;
+    background: #edf8f0;
+    color: #0f5132 !important;
+    font-weight: 700;
+    line-height: 1.35;
 }

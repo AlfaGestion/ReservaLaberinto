@@ -15,6 +15,7 @@ use App\Models\UsersModel;
 use App\Models\OffersModel;
 use App\Models\UploadModel;
 use App\Models\RateModel;
+use App\Models\SpecialBookingRequestsModel;
 use App\Models\ValuesModel;
 use CodeIgniter\I18n\Time;
 use Config\Services;
@@ -29,7 +30,7 @@ class Bookings extends BaseController
         return $email;
     }
 
-    private function sendEmailWithFallback($to, string $subject, string $message): bool
+    private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
         $emailConfig = config('Email');
         $accounts = $emailConfig->accounts ?? [];
@@ -53,6 +54,7 @@ class Bookings extends BaseController
                 $email->setFrom($email->fromEmail, $email->fromName);
                 $email->setTo($to);
                 $email->setSubject($subject);
+                $email->setMailType($isHtml ? 'html' : 'text');
                 $email->setMessage($message);
 
                 if ($email->send()) {
@@ -62,6 +64,97 @@ class Bookings extends BaseController
                 log_message('error', 'Fallo envio SMTP con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
             } catch (\Throwable $e) {
                 log_message('error', 'Fallo envio SMTP con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    private function sendEmailWithAttachmentFallback($to, string $subject, string $message, string $attachmentName, string $attachmentContent, string $mimeType = 'application/pdf', bool $isHtml = false): bool
+    {
+        $emailConfig = config('Email');
+        $accounts = $emailConfig->accounts ?? [];
+
+        if ($accounts === []) {
+            $accounts = [[
+                'fromEmail' => $emailConfig->fromEmail,
+                'fromName' => $emailConfig->fromName,
+                'SMTPUser' => $emailConfig->SMTPUser,
+                'SMTPPass' => $emailConfig->SMTPPass,
+            ]];
+        }
+
+        $tempPath = rtrim(WRITEPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . uniqid('booking_invoice_', true) . '_' . $attachmentName;
+        file_put_contents($tempPath, $attachmentContent);
+
+        try {
+            foreach ($accounts as $account) {
+                try {
+                    $email = $this->createEmailService();
+                    $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
+                    $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
+                    $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
+                    $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
+                    $email->setFrom($email->fromEmail, $email->fromName);
+                    $email->setTo($to);
+                    $email->setSubject($subject);
+                    $email->setMailType($isHtml ? 'html' : 'text');
+                    $email->setMessage($message);
+                    $email->attach($tempPath, 'attachment', $attachmentName, $mimeType);
+
+                    if ($email->send()) {
+                        return true;
+                    }
+
+                    log_message('error', 'Fallo envio SMTP con adjunto con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
+                } catch (\Throwable $e) {
+                    log_message('error', 'Fallo envio SMTP con adjunto con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
+                }
+            }
+        } finally {
+            if (is_file($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+
+        return false;
+    }
+
+    private function sendEmailWithAttachmentPathFallback($to, string $subject, string $message, string $attachmentPath, string $attachmentName, string $mimeType = 'application/pdf', bool $isHtml = false): bool
+    {
+        $emailConfig = config('Email');
+        $accounts = $emailConfig->accounts ?? [];
+
+        if ($accounts === []) {
+            $accounts = [[
+                'fromEmail' => $emailConfig->fromEmail,
+                'fromName' => $emailConfig->fromName,
+                'SMTPUser' => $emailConfig->SMTPUser,
+                'SMTPPass' => $emailConfig->SMTPPass,
+            ]];
+        }
+
+        foreach ($accounts as $account) {
+            try {
+                $email = $this->createEmailService();
+                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
+                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
+                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
+                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
+                $email->setFrom($email->fromEmail, $email->fromName);
+                $email->setTo($to);
+                $email->setSubject($subject);
+                $email->setMailType($isHtml ? 'html' : 'text');
+                $email->setMessage($message);
+                $email->attach($attachmentPath, 'attachment', $attachmentName, $mimeType);
+
+                if ($email->send()) {
+                    return true;
+                }
+
+                log_message('error', 'Fallo envio SMTP con adjunto local con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
+            } catch (\Throwable $e) {
+                log_message('error', 'Fallo envio SMTP con adjunto local con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
             }
         }
 
@@ -91,6 +184,27 @@ class Bookings extends BaseController
         $customersModel = new CustomersModel();
 
         $data = $this->request->getJSON();
+        $specialRequestId = !empty($data->specialRequestId) ? (int) $data->specialRequestId : 0;
+        $specialBookingRequestsModel = null;
+        $specialRequestItem = null;
+
+        if ($specialRequestId > 0) {
+            $specialBookingRequestsModel = new SpecialBookingRequestsModel();
+            $specialRequestItem = $specialBookingRequestsModel->find($specialRequestId);
+
+            if (!$specialRequestItem) {
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La solicitud especial ya no esta disponible.'));
+            }
+
+            $specialRequestStatus = (string) ($specialRequestItem['status'] ?? 'new');
+            if ($specialRequestStatus === 'cancelled') {
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La solicitud especial fue cancelada y ya no puede confirmarse.'));
+            }
+
+            if ($specialRequestStatus === 'confirmed') {
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La solicitud especial ya fue confirmada.'));
+            }
+        }
         // log_message('info', 'Procesando reserva: ' . json_encode($data, JSON_PRETTY_PRINT));
         $searchTerm = '%' . $data->telefono . '%';
 
@@ -118,8 +232,10 @@ class Bookings extends BaseController
         $existingCustomer = $customersModel->where('phone', 'like', $searchTerm)->first();
         // $existingCustomer = $customersModel->where('phone', $data->telefono)->first();
         $exist = true;
+        $idCustomer = null;
 
         if ($existingCustomer) {
+            $idCustomer = $existingCustomer['id'] ?? null;
             $exist = false;
 
             $queryCustomer = [
@@ -161,7 +277,7 @@ class Bookings extends BaseController
             'use_offer'             => $data->oferta,
             'booking_time'          => date("Y-m-d H:i:s"),
             'mp'                    => 0,
-            'annulled'              => 0, // Aseguramos que este nuevo registro no esté anulado
+            'annulled'              => 0, // Aseguramos que este nuevo registro no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© anulado
             'id_customer'           => $idCustomer,
         ];
 
@@ -169,6 +285,12 @@ class Bookings extends BaseController
         try {
             if (count($queryBooking) != 0) {
                 $bookingId = $bookingsModel->insert($queryBooking);
+                if ($specialBookingRequestsModel && $specialRequestId > 0) {
+                    $specialBookingRequestsModel->update($specialRequestId, [
+                        'status' => 'confirmed',
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
                 $this->sendBookingNotificationEmail($bookingsModel->find($bookingId), $data);
                 return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
             }
@@ -232,7 +354,7 @@ class Bookings extends BaseController
                     $indexFrom = array_search($booking['time_from'], $time);
                     $indexUntil = array_search($booking['time_until'], $time);
 
-                    // ✅ Cambio clave: UNTIL ahora es exclusivo
+                    // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Cambio clave: UNTIL ahora es exclusivo
                     for ($currentTime = $indexFrom; $currentTime < $indexUntil; $currentTime++) {
                         $timeBooking['time'][] = $time[$currentTime];
                     }
@@ -252,7 +374,7 @@ class Bookings extends BaseController
                 $indexFrom = array_search($booking['time_from'], $time);
                 $indexUntil = array_search($booking['time_until'], $time);
 
-                // ✅ Cambio clave: UNTIL ahora es exclusivo
+                // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Cambio clave: UNTIL ahora es exclusivo
                 for ($currentTime = $indexFrom; $currentTime < $indexUntil; $currentTime++) {
                     $reserva['time'][] = $time[$currentTime];
                 }
@@ -291,10 +413,10 @@ class Bookings extends BaseController
         $nuevoPago = floatval($data->pago);
         $nuevoAcumulado = $pagoAnterior + $nuevoPago;
 
-        // ✅ Validación para evitar pagos duplicados o montos excedidos
+        // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ ValidaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n para evitar pagos duplicados o montos excedidos
         if ($nuevoPago <= 0 || $nuevoAcumulado > $total) {
             return $this->response->setJSON(
-                $this->setResponse(400, true, null, 'El monto es inválido o excede el total de la reserva.')
+                $this->setResponse(400, true, null, 'El monto es invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido o excede el total de la reserva.')
             );
         }
 
@@ -320,7 +442,11 @@ class Bookings extends BaseController
         try {
             $bookingsModel->update($id, $queryBookings);
             $paymentsModel->insert($queryPayments);
-            return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, false, [
+                'bookingId' => (int) $id,
+                'totalPaymentCompleted' => (bool) $pagoTotal,
+                'remainingBalance' => $diferencia,
+            ], 'Respuesta exitosa'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -522,20 +648,29 @@ class Bookings extends BaseController
         $subjectSuffix = trim($formattedDate . ' ' . $subjectTimeFrom);
         $subject = "Reserva - Laberinto: {$subjectName} - {$subjectSuffix}";
 
-        $message = "Se recibio una nueva reserva.\n\n";
-        $message .= 'Nombre: ' . ($requestData->nombre ?? '') . "\n";
-        $message .= 'Telefono: ' . ($requestData->telefono ?? '') . "\n";
-        $message .= 'Fecha: ' . $formattedDate . "\n";
-        $message .= 'Horario desde: ' . ($requestData->horarioDesde ?? '') . "\n";
-        $message .= 'Horario hasta: ' . ($requestData->horarioHasta ?? '') . "\n";
-        $message .= 'Visitantes: ' . ($requestData->visitantes ?? '') . "\n";
-        $message .= 'Total: ' . ($requestData->total ?? '') . "\n";
-        $message .= 'Codigo: ' . ($booking['code'] ?? '') . "\n";
-        $message .= 'Ver reserva: ' . site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
-                'code' => (string) ($booking['code'] ?? ''),
-            ]))) . "\n";
+        $bookingUrl = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+            'code' => (string) ($booking['code'] ?? ''),
+        ])));
+        $messageHtml = '<p>Se registro una nueva reserva en el sistema.</p>';
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Nueva reserva',
+            'title' => $subjectName !== '' ? $subjectName . ' reservo una visita' : 'Se recibio una nueva reserva',
+            'intro' => 'Revise los datos de la visita y haga seguimiento desde el panel o el acceso de reservas.',
+            'details' => [
+                'Nombre' => (string) ($requestData->nombre ?? ''),
+                'Telefono' => (string) ($requestData->telefono ?? ''),
+                'Fecha' => $formattedDate,
+                'Horario' => trim(((string) ($requestData->horarioDesde ?? '')) . ' a ' . ((string) ($requestData->horarioHasta ?? ''))),
+                'Visitantes' => (string) ($requestData->visitantes ?? ''),
+                'Total' => '$' . (string) ($requestData->total ?? ''),
+                'Codigo' => (string) ($booking['code'] ?? ''),
+            ],
+            'messageHtml' => $messageHtml,
+            'primaryActionUrl' => $bookingUrl,
+            'primaryActionLabel' => 'Ver reserva',
+        ]);
 
-        $this->sendEmailWithFallback($notificationEmailList, $subject, $message);
+        $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
 
         $this->sendCustomerBookingConfirmationEmail($booking, $requestData);
     }
@@ -563,19 +698,31 @@ class Bookings extends BaseController
             ])));
             $subject = "Reserva confirmada - Laberinto: {$customerName}";
 
-            $message = "Hola {$customerName}, tu reserva fue registrada correctamente.\n\n";
-            $message .= 'Nombre: ' . $customerName . "\n";
-            $message .= 'Fecha: ' . $formattedDate . "\n";
-            $message .= 'Horario: ' . trim($timeFrom . ' a ' . $timeUntil) . "\n";
-            $message .= 'Cantidad: ' . $visitors . "\n";
-            $message .= 'Total: ' . $total . "\n";
-            $message .= 'Codigo: ' . $bookingCode . "\n\n";
-            $message .= "Importante:\n";
-            $message .= "Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. ";
-            $message .= "En caso de inasistencia, no se realizaran devoluciones de dinero y la reprogramacion quedara sujeta a disponibilidad.\n\n";
-            $message .= "Ver tus reservas:\n{$bookingLink}\n";
+            $downloadPdfUrl = !empty($booking['id']) ? site_url('bookingPdf/' . $booking['id']) : '';
+            $messageHtml = '<p>Tu reserva fue registrada correctamente. A continuacion tenes un resumen claro con los datos principales de la visita.</p>';
+            $html = $this->renderEmailCard([
+                'eyebrow' => 'Reserva confirmada',
+                'title' => 'Tu visita ya quedo confirmada',
+                'intro' => 'Guardamos los datos de tu reserva y te dejamos los accesos rapidos para revisarla cuando quieras.',
+                'details' => [
+                    'Nombre' => $customerName,
+                    'Fecha' => $formattedDate,
+                    'Horario' => trim($timeFrom . ' a ' . $timeUntil),
+                    'Cantidad' => $visitors,
+                    'Total' => '$' . $total,
+                    'Pagado' => '$' . trim((string) ($booking['payment'] ?? $requestData->monto ?? '0')),
+                    'Saldo pendiente' => '$' . trim((string) ($booking['diference'] ?? '0')),
+                    'Codigo' => $bookingCode,
+                ],
+                'messageHtml' => $messageHtml,
+                'primaryActionUrl' => $bookingLink,
+                'primaryActionLabel' => 'Ver reserva',
+                'secondaryActionUrl' => $downloadPdfUrl,
+                'secondaryActionLabel' => $downloadPdfUrl !== '' ? 'Descargar comprobante' : '',
+                'supportText' => 'Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. En caso de inasistencia, no se realizaran devoluciones y la reprogramacion queda sujeta a disponibilidad.',
+            ]);
 
-            $this->sendEmailWithFallback($customerEmail, $subject, $message);
+            $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
         } catch (\Throwable $e) {
             log_message('error', 'No se pudo enviar el email de confirmacion al cliente: ' . $e->getMessage());
         }
@@ -616,6 +763,57 @@ class Bookings extends BaseController
         }
 
         return '';
+    }
+
+    private function buildBookingPdfData(array $booking, ?array $mpPayment = null): array
+    {
+        $fieldsModel = new FieldsModel();
+        $field = $fieldsModel->getField($booking['id_field']) ?? [];
+        $mpPayment = $mpPayment ?? ['payment_id' => 'No corresponde', 'status' => ''];
+
+        return [
+            'nombre' => $booking['name'],
+            'telefono' => $booking['phone'],
+            'fecha' => $booking['date'],
+            'horario' => $booking['time_from'] . 'hs' . ' a ' . $booking['time_until'] . 'hs',
+            'servicio' => $field['name'] ?? 'Reserva',
+            'total_servicio' => '$' . $booking['total'],
+            'pagado' => '$' . $booking['payment'],
+            'saldo' => '$' . $booking['diference'],
+            'detalle' => $booking['description'] ?? '',
+            'id_mercado_pago' => $mpPayment['payment_id'] ?? 'No corresponde',
+            'estado_pago' => $mpPayment['status'] ?? '',
+        ];
+    }
+
+    private function getInvoiceEmailDefaults(): array
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first() ?? [];
+
+        return [
+            'subject' => trim((string) ($config['invoice_email_subject'] ?? '')) !== ''
+                ? trim((string) ($config['invoice_email_subject'] ?? ''))
+                : 'Factura de reserva - Laberinto: {nombre}',
+            'message' => trim((string) ($config['invoice_email_message'] ?? '')) !== ''
+                ? trim((string) ($config['invoice_email_message'] ?? ''))
+                : "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.",
+        ];
+    }
+
+    private function applyInvoiceEmailPlaceholders(string $template, array $booking, string $customerEmail): string
+    {
+        $replacements = [
+            '{nombre}' => trim((string) ($booking['name'] ?? 'Cliente')),
+            '{fecha}' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
+            '{horario}' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+            '{codigo}' => trim((string) ($booking['code'] ?? '')),
+            '{pagado}' => '$' . trim((string) ($booking['payment'] ?? '0')),
+            '{email}' => $customerEmail,
+            '{telefono}' => trim((string) ($booking['phone'] ?? '')),
+        ];
+
+        return strtr($template, $replacements);
     }
 
     private function formatBookingDate(string $rawDate): string
@@ -696,7 +894,7 @@ class Bookings extends BaseController
 
         $data = $this->request->getJSON();
 
-        // Validaciones mínimas
+        // Validaciones mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nimas
         if (!$data || empty($data->fecha) || empty($data->nombre) || empty($data->monto) || empty($data->total) || empty($data->cancha)) {
             return $this->response->setJSON($this->setResponse(400, true, null, 'Faltan datos obligatorios.'));
         }
@@ -704,7 +902,7 @@ class Bookings extends BaseController
         $pagoTotal = ($data->monto == $data->total) ? 1 : 0;
         $telefonoCompleto = $data->telefono;
 
-        // Intentar buscar cliente por teléfono
+        // Intentar buscar cliente por telÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©fono
         $existingCustomer = $customersModel->where('phone', $data->telefono)->first();
         $idCustomer = $data->idCustomer ?? null;
 
@@ -787,13 +985,155 @@ class Bookings extends BaseController
         }
     }
 
+    public function sendBookingInvoiceEmail($bookingId)
+    {
+        $bookingsModel = new BookingsModel();
+        $mercadoPagoModel = new MercadoPagoModel();
+        $pdfLibrary = new PrintBookings();
+        $requestData = $this->request->getJSON(true);
+        if (!is_array($requestData) || $requestData === []) {
+            $requestData = [
+                'email' => $this->request->getPost('email'),
+                'subject' => $this->request->getPost('subject'),
+                'message' => $this->request->getPost('message'),
+                'attachInvoice' => $this->request->getPost('attachInvoice'),
+            ];
+        }
+
+        $booking = $bookingsModel->getBooking($bookingId);
+        if (!$booking) {
+            return $this->response->setStatusCode(404)
+                ->setJSON($this->setResponse(404, true, null, 'Reserva no encontrada.'));
+        }
+
+        if ((int) ($booking['annulled'] ?? 0) === 1) {
+            return $this->response->setStatusCode(400)
+                ->setJSON($this->setResponse(400, true, null, 'No se puede enviar la factura de una reserva anulada.'));
+        }
+
+        if ((int) ($booking['total_payment'] ?? 0) !== 1) {
+            return $this->response->setStatusCode(400)
+                ->setJSON($this->setResponse(400, true, null, 'La reserva todavia no tiene el pago completo.'));
+        }
+
+        $customerEmail = trim((string) ($requestData['email'] ?? ''));
+        if ($customerEmail === '') {
+            $customerEmail = $this->resolveCustomerEmail($booking, (object) []);
+        }
+        if ($customerEmail === '') {
+            return $this->response->setStatusCode(400)
+                ->setJSON($this->setResponse(400, true, null, 'El cliente no tiene un email valido cargado.'));
+        }
+        if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+            return $this->response->setStatusCode(400)
+                ->setJSON($this->setResponse(400, true, null, 'El email ingresado no es valido.'));
+        }
+
+        $mpPayment = $mercadoPagoModel->where('id_booking', $bookingId)->first();
+        $defaults = $this->getInvoiceEmailDefaults();
+        $subjectTemplate = trim((string) ($requestData['subject'] ?? '')) !== '' ? trim((string) ($requestData['subject'] ?? '')) : $defaults['subject'];
+        $messageTemplate = trim((string) ($requestData['message'] ?? '')) !== '' ? trim((string) ($requestData['message'] ?? '')) : $defaults['message'];
+        $subject = $this->applyInvoiceEmailPlaceholders($subjectTemplate, $booking, $customerEmail);
+        $message = $this->applyInvoiceEmailPlaceholders($messageTemplate, $booking, $customerEmail);
+        $attachInvoice = array_key_exists('attachInvoice', $requestData) ? (bool) $requestData['attachInvoice'] : true;
+        $uploadedInvoiceFile = $this->request->getFile('invoicePdfFile');
+        $hasUploadedInvoiceFile = $uploadedInvoiceFile && $uploadedInvoiceFile->isValid() && !$uploadedInvoiceFile->hasMoved();
+
+        if ($hasUploadedInvoiceFile) {
+            $clientExtension = strtolower((string) $uploadedInvoiceFile->getClientExtension());
+            $mimeType = strtolower((string) $uploadedInvoiceFile->getMimeType());
+            if ($clientExtension !== 'pdf' || strpos($mimeType, 'pdf') === false) {
+                return $this->response->setStatusCode(400)
+                    ->setJSON($this->setResponse(400, true, null, 'El archivo adjunto debe ser un PDF valido.'));
+            }
+        }
+
+        if ($hasUploadedInvoiceFile) {
+            $html = $this->renderEmailCard([
+                'eyebrow' => 'Factura de reserva',
+                'title' => 'Tu comprobante esta listo',
+                'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
+                'primaryActionUrl' => site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+                    'code' => (string) ($booking['code'] ?? ''),
+                    'phone' => (string) ($booking['phone'] ?? ''),
+                    'email' => $customerEmail,
+                ]))),
+                'primaryActionLabel' => 'Ver reserva',
+            ]);
+            $sent = $this->sendEmailWithAttachmentPathFallback(
+                $customerEmail,
+                $subject,
+                $html,
+                $uploadedInvoiceFile->getTempName(),
+                $uploadedInvoiceFile->getClientName() ?: ('factura_reserva_' . $bookingId . '.pdf'),
+                $uploadedInvoiceFile->getMimeType() ?: 'application/pdf',
+                true
+            );
+        } elseif ($attachInvoice) {
+            $pdf = $pdfLibrary->renderBooking($this->buildBookingPdfData($booking, $mpPayment));
+            $html = $this->renderEmailCard([
+                'eyebrow' => 'Factura de reserva',
+                'title' => 'Tu comprobante esta listo',
+                'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
+                'primaryActionUrl' => site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
+                    'code' => (string) ($booking['code'] ?? ''),
+                    'phone' => (string) ($booking['phone'] ?? ''),
+                    'email' => $customerEmail,
+                ]))),
+                'primaryActionLabel' => 'Ver reserva',
+                'secondaryActionUrl' => site_url('bookingPdf/' . $bookingId),
+                'secondaryActionLabel' => 'Descargar comprobante',
+            ]);
+            $sent = $this->sendEmailWithAttachmentFallback($customerEmail, $subject, $html, $pdf['name'], $pdf['content'], 'application/pdf', true);
+        } else {
+            $html = $this->renderEmailCard([
+                'eyebrow' => 'Factura de reserva',
+                'title' => 'Tu comprobante esta listo',
+                'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
+                'primaryActionUrl' => site_url('bookingPdf/' . $bookingId),
+                'primaryActionLabel' => 'Descargar comprobante',
+            ]);
+            $sent = $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
+        }
+
+        if (!$sent) {
+            return $this->response->setStatusCode(400)
+                ->setJSON($this->setResponse(400, true, null, 'No se pudo enviar el email.'));
+        }
+
+        $invoiceEmailSentAt = date('Y-m-d H:i:s');
+        $invoiceEmailTracked = false;
+
+        try {
+            $invoiceEmailTracked = $bookingsModel->update($bookingId, [
+                'invoice_email_sent_at' => $invoiceEmailSentAt,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'La factura se envio, pero no se pudo registrar la fecha de envio de la reserva ' . $bookingId . ': ' . $e->getMessage());
+        }
+
+        $responseMessage = $invoiceEmailTracked
+            ? 'Factura enviada correctamente.'
+            : 'Factura enviada correctamente, pero no se pudo registrar la fecha de envio.';
+
+        return $this->response->setJSON($this->setResponse(null, false, [
+            'email' => $customerEmail,
+            'bookingId' => (int) $bookingId,
+            'invoiceEmailSentAt' => $invoiceEmailSentAt,
+            'invoiceEmailSentAtDisplay' => date('d/m/Y H:i', strtotime($invoiceEmailSentAt)),
+            'invoiceEmailTracked' => $invoiceEmailTracked,
+        ], $responseMessage));
+    }
+
 
     public function bookingPdf($bookingId)
     {
         $pdfLibrary = new PrintBookings();
         $bookingsModel = new BookingsModel();
         $mercadoPagoModel = new MercadoPagoModel();
-        $fieldsModel = new FieldsModel();
 
         $booking = $bookingsModel->getBooking($bookingId);
         if (!$booking) {
@@ -801,24 +1141,7 @@ class Bookings extends BaseController
         }
 
         $mpPayment = $mercadoPagoModel->where('id_booking', $bookingId)->first();
-        $mpPayment = $mpPayment ?? ['payment_id' => 'No corresponde', 'status' => ''];
-
-        //Generar PDF
-        $printData = [
-            'nombre' => $booking['name'],
-            'telefono' => $booking['phone'],
-            'fecha' => $booking['date'],
-            'horario' => $booking['time_from'] . 'hs' . ' a ' . $booking['time_until'] . 'hs',
-            'servicio' => $fieldsModel->getField($booking['id_field'])['name'],
-            'total_servicio' => '$' . $booking['total'],
-            'pagado' => '$' . $booking['payment'],
-            'saldo' => '$' . $booking['diference'],
-            'detalle' => $booking['description'] ?? '',
-            'id_mercado_pago' => $mpPayment['payment_id'],
-            'estado_pago' => $mpPayment['status'],
-        ];
-
-        $pdf = $pdfLibrary->renderBooking($printData);
+        $pdf = $pdfLibrary->renderBooking($this->buildBookingPdfData($booking, $mpPayment));
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
@@ -984,20 +1307,20 @@ class Bookings extends BaseController
         $bookingsModel = new BookingsModel();
         $timeModel = new TimeModel();
 
-        // 1. Obtener el punto de partida y el rango de 7 días.
+        // 1. Obtener el punto de partida y el rango de 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as.
         $today = Time::now('America/Argentina/Buenos_Aires');
 
-        // El punto de inicio de la disponibilidad es MAÑANA.
+        // El punto de inicio de la disponibilidad es MAÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ANA.
         $startDay = $today->addDays(1);
 
-        // ⬇️ CORRECCIÓN 1: Definir el final del rango como 6 días después del día de inicio (7 días en total).
+        // ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â CORRECCIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN 1: Definir el final del rango como 6 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as despuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©s del dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a de inicio (7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as en total).
         $availabilityDays = 30;
         $endOfRange = $startDay->addDays($availabilityDays - 1)->toDateString();
 
         $currentWeek = [];
-        $currentDay = $startDay; // El bucle comienza en mañana
+        $currentDay = $startDay; // El bucle comienza en maÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ana
 
-        // Iteramos exactamente por 7 días (Mañana hasta el final del rango).
+        // Iteramos exactamente por 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as (MaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ana hasta el final del rango).
         while ($currentDay->toDateString() <= $endOfRange) {
             $currentWeek[] = $currentDay->toDateString();
             $currentDay = $currentDay->addDays(1);
@@ -1020,7 +1343,7 @@ class Bookings extends BaseController
             }
         }
 
-        // 4. Obtener las reservas existentes para el nuevo rango de 7 días.
+        // 4. Obtener las reservas existentes para el nuevo rango de 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as.
         $reservedBookings = $bookingsModel
             ->where('id_field', $idField)
             ->where('date >=', $startDay->toDateString())
@@ -1056,17 +1379,17 @@ class Bookings extends BaseController
             'Sunday' => 'domingos',
             'Monday' => 'lunes',
             'Tuesday' => 'martes',
-            'Wednesday' => 'miércoles',
+            'Wednesday' => 'miÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©rcoles',
             'Thursday' => 'jueves',
             'Friday' => 'viernes',
-            'Saturday' => 'sábados'
+            'Saturday' => 'sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡bados'
         ];
 
         foreach ($currentWeek as $date) {
             $currentDay = Time::parse($date);
             $dayName = $currentDay->format('l');
 
-            // ⬇️ CORRECCIÓN 2: Lógica de días cerrados (Restaurada y Funcional)
+            // ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â CORRECCIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN 2: LÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³gica de dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as cerrados (Restaurada y Funcional)
             $dayKey = $dayMapping[$dayName] ?? null;
 
             if ($dayKey && ($openingHours[$dayKey] ?? null) == 1) {
@@ -1075,7 +1398,7 @@ class Bookings extends BaseController
                     'date' => $currentDay->format('d/m/Y'),
                     'available_slots' => ["Cerrado los {$dayNameInSpanish}"]
                 ];
-                continue; // Pasa al siguiente día del bucle si está cerrado.
+                continue; // Pasa al siguiente dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a del bucle si estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ cerrado.
             }
 
             $availableToday = [];
@@ -1093,7 +1416,7 @@ class Bookings extends BaseController
                     }
                 }
 
-                // Mantenemos solo el filtro de reserva (ya que todos los días son futuros)
+                // Mantenemos solo el filtro de reserva (ya que todos los dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as son futuros)
                 if (!$isReserved) {
                     $availableToday[] = $slot['from'] . ' a ' . $slot['until'];
                 }
@@ -1304,7 +1627,7 @@ class Bookings extends BaseController
         $caracteres_mezclados = str_shuffle($caracteres);
         // 2. Toma una subcadena de la longitud deseada
         $codigo_alfanumerico = substr($caracteres_mezclados, 0, 10);
-        // $codigo_alfanumerico podría ser algo como "aZ3qLp8oTf"
+        // $codigo_alfanumerico podrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a ser algo como "aZ3qLp8oTf"
         return $codigo_alfanumerico;
     }
 

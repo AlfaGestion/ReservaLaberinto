@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\UploadModel;
 use CodeIgniter\Controller;
 use CodeIgniter\HTTP\CLIRequest;
 use CodeIgniter\HTTP\IncomingRequest;
@@ -61,8 +62,20 @@ abstract class BaseController extends Controller
     protected function buildReservationAccessToken(array $data): string
     {
         $code = trim((string) ($data['code'] ?? ''));
+        $payload = array_filter($data, static fn($value) => $value !== null && $value !== '');
 
-        return $code;
+        if (count($payload) === 1 && isset($payload['code'])) {
+            return $code;
+        }
+
+        if ($payload === []) {
+            return '';
+        }
+
+        $encodedPayload = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+        $signature = hash_hmac('sha256', $encodedPayload, $this->reservationAccessSecret);
+
+        return $encodedPayload . '.' . $signature;
     }
 
     protected function parseReservationAccessToken(?string $token): array
@@ -72,7 +85,7 @@ abstract class BaseController extends Controller
             return [];
         }
 
-        if (str_contains($token, '.')) {
+        if (strpos($token, '.') !== false) {
             [$encodedPayload, $signature] = explode('.', $token, 2);
             $expectedSignature = hash_hmac('sha256', $encodedPayload, $this->reservationAccessSecret);
 
@@ -107,5 +120,68 @@ abstract class BaseController extends Controller
         }
 
         return ['code' => $code];
+    }
+
+    protected function getEmailBranding(): array
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first() ?? [];
+        $logoFile = trim((string) ($config['name'] ?? ''));
+        $candidatePaths = [];
+
+        if ($logoFile !== '') {
+            $candidatePaths[] = FCPATH . 'assets/images/uploads/' . $logoFile;
+        }
+
+        $candidatePaths[] = FCPATH . 'assets/images/logo_pdf.png';
+        $candidatePaths[] = FCPATH . 'assets/images/sinlogo2.png';
+
+        $logoDataUri = '';
+        foreach ($candidatePaths as $candidatePath) {
+            if (!is_file($candidatePath)) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($candidatePath, PATHINFO_EXTENSION));
+            if (!extension_loaded('gd') && !in_array($extension, ['jpg', 'jpeg'], true)) {
+                continue;
+            }
+
+            switch ($extension) {
+                case 'jpg':
+                case 'jpeg':
+                    $mimeType = 'image/jpeg';
+                    break;
+                case 'gif':
+                    $mimeType = 'image/gif';
+                    break;
+                case 'webp':
+                    $mimeType = 'image/webp';
+                    break;
+                default:
+                    $mimeType = 'image/png';
+                    break;
+            }
+
+            $binary = @file_get_contents($candidatePath);
+            if ($binary === false) {
+                continue;
+            }
+
+            $logoDataUri = 'data:' . $mimeType . ';base64,' . base64_encode($binary);
+            break;
+        }
+
+        return [
+            'brandName' => 'Laberinto Patagonia',
+            'accentColor' => $config['main_color'] ?? '#0d6a3a',
+            'secondaryColor' => $config['secondary_color'] ?? '#f39323',
+            'logoUrl' => $logoDataUri,
+        ];
+    }
+
+    protected function renderEmailCard(array $data): string
+    {
+        return view('emails/card_email', array_merge($this->getEmailBranding(), $data));
     }
 }

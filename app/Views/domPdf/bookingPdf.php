@@ -24,12 +24,21 @@ foreach ($candidatePaths as $candidatePath) {
         continue;
     }
 
-    $mimeType = match ($extension) {
-        'jpg', 'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
-        default => 'image/png',
-    };
+    switch ($extension) {
+        case 'jpg':
+        case 'jpeg':
+            $mimeType = 'image/jpeg';
+            break;
+        case 'gif':
+            $mimeType = 'image/gif';
+            break;
+        case 'webp':
+            $mimeType = 'image/webp';
+            break;
+        default:
+            $mimeType = 'image/png';
+            break;
+    }
     $binary = @file_get_contents($candidatePath);
     if ($binary === false) {
         continue;

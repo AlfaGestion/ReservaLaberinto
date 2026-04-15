@@ -13,7 +13,7 @@ class RateModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['value', 'qty_visitors'];
+    protected $allowedFields    = ['value', 'qty_visitors', 'allow_group_coordinator'];
 
     // Dates
     protected $useTimestamps = false;

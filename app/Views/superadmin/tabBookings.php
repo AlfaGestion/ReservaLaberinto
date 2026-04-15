@@ -1,7 +1,18 @@
+<?php
+
+use App\Models\UploadModel;
+
+$uploadModel = new UploadModel();
+$uploadData = $uploadModel->first();
+
+?>
+
 <div id="selectDateBooking"
     class="d-flex flex-column justify-content-center align-items-center"
     data-week-start="<?= esc($weekStart ?? date('Y-m-d')) ?>"
-    data-latest-booking-date="<?= esc($latestBookingDate ?? date('Y-m-d')) ?>">
+    data-latest-booking-date="<?= esc($latestBookingDate ?? date('Y-m-d')) ?>"
+    data-invoice-email-subject="<?= esc($uploadData['invoice_email_subject'] ?? 'Factura de reserva - Laberinto: {nombre}') ?>"
+    data-invoice-email-message="<?= esc($uploadData['invoice_email_message'] ?? "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.") ?>">
 
     <div class="d-flex justify-content-center align-items-center flex-row mt-3">
         <strong>Total de reservas para hoy:</strong> <strong id="totalReservasHoy"></strong>
@@ -23,6 +34,52 @@
     <div>
         <button type="button" id="searchBooking" class="btn btn-success">Buscar activas</button>
         <button type="button" id="searchAnnulledBooking" class="btn btn-danger">Buscar anuladas</button>
+    </div>
+</div>
+
+<div class="modal fade" id="sendInvoiceEmailModal" tabindex="-1" aria-labelledby="sendInvoiceEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="sendInvoiceEmailModalLabel">Enviar factura</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="invoiceEmailBookingId">
+
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="invoiceEmailTo" placeholder="cliente@dominio.com">
+                    <label for="invoiceEmailTo">Enviar a</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="invoiceEmailSubjectModal" placeholder="Asunto">
+                    <label for="invoiceEmailSubjectModal">Asunto</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <textarea class="form-control" id="invoiceEmailMessageModal" placeholder="Mensaje" style="height: 220px;"></textarea>
+                    <label for="invoiceEmailMessageModal">Mensaje</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" id="invoiceEmailAttachPdf" checked>
+                    <label class="form-check-label" for="invoiceEmailAttachPdf">
+                        Adjuntar comprobante PDF
+                    </label>
+                </div>
+
+                <div class="mt-3">
+                    <label for="invoiceEmailPdfFile" class="form-label">PDF manual</label>
+                    <input type="file" class="form-control" id="invoiceEmailPdfFile" accept="application/pdf,.pdf">
+                    <small class="text-muted d-block mt-2">Si selecciona un PDF desde su PC, se adjunta ese archivo. Si no, se usa el PDF generado por el sistema.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmSendBookingInvoiceEmail">Enviar factura</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -91,7 +148,7 @@
             <div class="modal-body">
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 <div class="d-flex justify-content-center align-items-center flex-column text-center">
-                    <h6>¿Está seguro que desea anular la reserva?</h6>
+                    <h6>&iquest;Est&aacute; seguro que desea anular la reserva?</h6>
                     <div class="d-flex justify-content-center align-items-center">
                         <button type="button" id="confirmCancelBooking" class="btn btn-success me-3">Confirmar</button>
                         <button type="button" id="cancelCancelBooking" class="btn btn-danger">Cancelar</button>
@@ -178,8 +235,8 @@
                 </div>
 
                 <div class="form-floating flex-nowrap mb-3 d-flex align-items-center justify-content-center flex-row">
-                    <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingrese el teléfono" aria-label="name">
-                    <label for="telefono">Teléfono</label>
+                    <input type="number" class="form-control" name="telefono" id="telefono" placeholder="Ingrese el tel&eacute;fono" aria-label="name">
+                    <label for="telefono">Tel&eacute;fono</label>
                 </div>
 
 
@@ -219,16 +276,17 @@
                 <th scope="col">Servicio</th>
                 <th scope="col">Horario</th>
                 <th scope="col">Nombre</th>
-                <th scope="col">Teléfono</th>
+                <th scope="col">Tel&eacute;fono</th>
                 <th scope="col">Visitantes</th>
                 <th scope="col">Pagado</th>
                 <th scope="col">Total</th>
                 <th scope="col">Saldo</th>
-                <th scope="col">Método de pago</th>
-                <th scope="col">Descripción</th>
+                <th scope="col">M&eacute;todo de pago</th>
+                <th scope="col">Descripci&oacute;n</th>
                 <th scope="col">Estado de MP</th>
                 <th scope="col">Estado</th>
-                <th scope="col">Código</th>
+                <th scope="col">C&oacute;digo</th>
+                <th scope="col">Factura cliente</th>
                 <th scope="col">Acciones</th>
             </tr>
         </thead>
