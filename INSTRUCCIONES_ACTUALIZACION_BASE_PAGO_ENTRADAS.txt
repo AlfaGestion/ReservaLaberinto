@@ -1,0 +1,69 @@
+ACTUALIZACION DE BASE - PAGO POR ENTRADAS + HISTORIAL
+======================================================
+
+Archivo SQL listo para ejecutar:
+
+    actualizacion_pago_por_entradas.sql
+
+Como ejecutarlo:
+
+1. Hacer backup de la base antes de tocar produccion.
+2. Abrir phpMyAdmin, HeidiSQL, DBeaver o el cliente MySQL que uses.
+3. Seleccionar la base correcta.
+4. Ejecutar el archivo:
+
+       actualizacion_pago_por_entradas.sql
+
+5. Verificar que se hayan agregado estas columnas/tablas.
+
+
+CAMBIOS QUE AGREGA
+------------------
+
+Tabla bookings:
+
+    partial_by_entries TINYINT(1) DEFAULT 0
+    paid_entries INT DEFAULT 0
+    IdPedido VARCHAR(40)
+
+Tabla payments:
+
+    paid_entries INT
+    unit_price DECIMAL(14,2)
+    payment_type VARCHAR(30)
+    created_by_admin TINYINT(1) DEFAULT 0
+    admin_user_id INT
+
+Tabla uploads:
+
+    enable_pay_by_entries TINYINT(1) DEFAULT 0
+    pay_by_entries_min_entries INT DEFAULT 0
+    pay_by_entries_min_days_before_booking INT DEFAULT 0
+
+Tabla nueva:
+
+    bookings_acction
+
+Campos:
+
+    ID
+    IdPedido
+    fechaHora
+    Accion
+    observacion
+    usuario
+
+
+NOTAS
+-----
+
+- El SQL es idempotente: si una columna ya existe, la saltea.
+- Tambien completa IdPedido para reservas existentes con formato RES-00000001.
+- Para reservas historicas pagadas totalmente, marca paid_entries = visitors.
+- La configuracion del .env actual apunta a MySQL:
+
+      database.default.DBDriver = MySQLi
+      database.default.hostname = localhost
+      database.default.database = Reserva_Laberinto
+      database.default.port = 3306
+

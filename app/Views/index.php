@@ -476,10 +476,6 @@ if (!empty($prefill['time_until'])) {
                     <?php else : ?>
                         <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarReserva">Confirmar reserva</button>
                     <?php endif; ?>
-                    
-                    <button type="button" class="btn booking-stage__button booking-stage__button--secondary d-none" id="btnParcial">
-                        <i class="fa-solid fa-ticket me-2"></i>Elegir cuántas entradas abonar ahora
-                    </button>
 
                     <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
                 </div>
@@ -579,10 +575,30 @@ if (!empty($prefill['time_until'])) {
                                 </div>
                                 <label for="inputPagoReserva" class="form-label">A abonar</label>
                                 <input type="text" class="form-control" id="inputPagoReserva" name="inputPagoReserva" placeholder="" disabled value="0" style="font-size: 1.5rem;">
-                                <div id="payByEntriesSection" class="border rounded-3 p-3 mt-3 d-none">
-                                    <label for="payByEntriesInput" class="form-label">Entradas a abonar ahora</label>
-                                    <input type="number" class="form-control" id="payByEntriesInput" min="1" step="1" value="1">
-                                    <small class="text-muted d-block mt-2" id="payByEntriesHelp"></small>
+                                <div id="payByEntriesToggleWrapper" class="border rounded-3 p-3 mt-3 d-none">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="payByEntriesToggle">
+                                        <label class="form-check-label fw-semibold" for="payByEntriesToggle">Abonar por cantidad de entradas</label>
+                                    </div>
+
+                                    <div id="payByEntriesSection" class="d-none">
+                                        <div class="form-floating mb-3">
+                                            <input type="number" class="form-control" id="payByEntriesInput" min="1" step="1" value="1" placeholder="Cantidad de entradas">
+                                            <label for="payByEntriesInput">Cantidad de entradas a abonar ahora</label>
+                                        </div>
+
+                                        <div class="small">
+                                            <div>Total de entradas reservadas: <strong id="payByEntriesTotal">0</strong></div>
+                                            <div>Total de la reserva: <strong id="payByEntriesBookingTotal">$0</strong></div>
+                                            <div>Precio por entrada hoy: <strong id="payByEntriesUnitPrice">$0</strong></div>
+                                            <div>Total a pagar ahora: <strong id="payByEntriesAmount">$0</strong></div>
+                                            <div>Entradas pendientes: <strong id="payByEntriesPending">0</strong></div>
+                                        </div>
+
+                                        <div class="alert alert-warning mt-3 mb-0">
+                                            <small id="payByEntriesHelp"></small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

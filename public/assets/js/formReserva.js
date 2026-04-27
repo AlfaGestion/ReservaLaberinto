@@ -14,10 +14,16 @@ const nombre = document.getElementById('nombre')
 const telefono = document.getElementById('telefono')
 const pagoReserva = document.getElementById('inputPagoReserva')
 const pagoTotal = document.getElementById('switchPagoTotal')
+const payByEntriesToggleWrapper = document.getElementById('payByEntriesToggleWrapper')
+const payByEntriesToggle = document.getElementById('payByEntriesToggle')
 const payByEntriesSection = document.getElementById('payByEntriesSection')
 const payByEntriesInput = document.getElementById('payByEntriesInput')
 const payByEntriesHelp = document.getElementById('payByEntriesHelp')
-const btnParcial = document.getElementById('btnParcial')
+const payByEntriesTotal = document.getElementById('payByEntriesTotal')
+const payByEntriesBookingTotal = document.getElementById('payByEntriesBookingTotal')
+const payByEntriesUnitPrice = document.getElementById('payByEntriesUnitPrice')
+const payByEntriesAmount = document.getElementById('payByEntriesAmount')
+const payByEntriesPending = document.getElementById('payByEntriesPending')
 const divTime = document.getElementById('div-time')
 const divTimeH = document.getElementById('div-time-h')
 const bookingTimeRow = horarioDesde?.closest('.horario')
@@ -886,8 +892,7 @@ function getSelectedEntriesToPay() {
 
     return Math.min(maxEntries, Math.max(1, selectedEntries || 1))
 }
-
-function updatePayByEntriesControls(rateValue = 0) {
+function updatePayByEntriesControls(rateValue = 0, forceShow = false) {
     if (!payByEntriesSection || !payByEntriesInput) {
         return
     }
@@ -895,22 +900,44 @@ function updatePayByEntriesControls(rateValue = 0) {
     const totalEntries = getTotalEntriesCount()
     const unitPrice = getPublicUnitPrice()
     const available = isPayByEntriesAvailable() && !pagoTotal?.checked
-    payByEntriesSection.classList.toggle('d-none', !available)
-    btnParcial?.classList.toggle('d-none', !available)
+
+    payByEntriesToggleWrapper?.classList.toggle('d-none', !available)
+
     if (!available) {
+        payByEntriesSection.classList.add('d-none')
+        if (payByEntriesToggle) payByEntriesToggle.checked = false
+        return
+    }
+
+    if (forceShow && payByEntriesToggle) {
+        payByEntriesToggle.checked = true
+    }
+
+    const showSection = !!payByEntriesToggle?.checked
+    payByEntriesSection.classList.toggle('d-none', !showSection)
+
+    if (!showSection) {
         return
     }
 
     const maxEntries = Math.max(1, totalEntries - 1)
     const defaultEntries = Math.min(maxEntries, Math.max(1, Math.ceil(totalEntries * Number(rateValue || 0) / 100)))
     const selectedEntries = payByEntriesInput.value ? getSelectedEntriesToPay() : defaultEntries
+    const pendingEntries = Math.max(0, totalEntries - selectedEntries)
+    const amount = selectedEntries * unitPrice
+
     payByEntriesInput.min = '1'
     payByEntriesInput.max = String(maxEntries)
     payByEntriesInput.value = String(selectedEntries)
 
+    if (payByEntriesTotal) payByEntriesTotal.textContent = String(totalEntries)
+    if (payByEntriesBookingTotal) payByEntriesBookingTotal.textContent = formatPublicMoney(Number(inputMonto?.value || 0))
+    if (payByEntriesUnitPrice) payByEntriesUnitPrice.textContent = formatPublicMoney(unitPrice)
+    if (payByEntriesAmount) payByEntriesAmount.textContent = formatPublicMoney(amount)
+    if (payByEntriesPending) payByEntriesPending.textContent = String(pendingEntries)
+
     if (payByEntriesHelp) {
-        const amount = selectedEntries * unitPrice
-        payByEntriesHelp.textContent = `${formatPublicMoney(unitPrice)} por entrada. Abonas ${selectedEntries} y quedan ${totalEntries - selectedEntries}. Total ahora: ${formatPublicMoney(amount)}.`
+        payByEntriesHelp.textContent = `Al momento de abonar las ${pendingEntries} entrada(s) pendientes, el sistema volvera a calcular el costo usando el valor vigente de ese dia.`
     }
 }
 
@@ -2157,6 +2184,11 @@ document.addEventListener('change', async (e) => {
             updatePayByEntriesControls(rate.value)
             buildPublicPaymentData(rate.value, pagoTotal.checked ? 'total' : 'parcial')
             await rebuildPublicMercadoPagoPreference(rate.value)
+        } else if (e.target.id == 'payByEntriesToggle') {
+            const rate = await getRate()
+            updatePayByEntriesControls(rate.value)
+            buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
+            await rebuildPublicMercadoPagoPreference(rate.value)
         } else if (e.target.id == 'payByEntriesInput') {
             const rate = await getRate()
             updatePayByEntriesControls(rate.value)
@@ -2166,12 +2198,22 @@ document.addEventListener('change', async (e) => {
     }
 })
 
+document.addEventListener('input', async (e) => {
+    if (e.target?.id !== 'payByEntriesInput') {
+        return
+    }
+
+    const rate = await getRate()
+    updatePayByEntriesControls(rate.value)
+    buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
+})
+
 
 document.addEventListener('click', async (e) => {
     if (e.target) {
         if (sessionUserLogued) {
             data = {
-                fecha: normalizeDateValue(fecha.value),
+                fecha: normalizeDateValue(fechaInput?.value || ''),
                 cancha: selectCancha.value,
                 horarioDesde: horarioDesde.value,
                 horarioHasta: horarioHasta.value,
@@ -2181,8 +2223,8 @@ document.addEventListener('click', async (e) => {
             }
         } else {
             data = {
-                fecha: normalizeDateValue(fecha.value),
-                cancha: cancha.value,
+                fecha: normalizeDateValue(fechaInput?.value || ''),
+                cancha: selectCancha?.value || '',
                 horarioDesde: horarioDesde.value,
                 horarioHasta: horarioHasta.value,
                 nombre: nombre.value,
@@ -2210,14 +2252,14 @@ document.addEventListener('click', async (e) => {
                     return
                 }
 
-                if (fecha.value == '' || nombre.value == '' || telefono.value == '') {
+                if ((fechaInput?.value || '') == '' || nombre.value == '' || telefono.value == '') {
                     showPublicNotice('Debe completar fecha, nombre y telefono para enviar la solicitud')
                     return
                 }
 
                 const specialRequestData = {
-                    fecha: normalizeDateValue(fecha.value),
-                    fechaDisplay: fecha.value,
+                    fecha: normalizeDateValue(fechaInput?.value || ''),
+                    fechaDisplay: fechaInput?.value || '',
                     cancha: selectCancha.value,
                     horarioDesde: horarioDesde.value,
                     horarioHasta: horarioHasta.value,
@@ -2245,7 +2287,7 @@ document.addEventListener('click', async (e) => {
                 return;
             }
 
-            if (fecha.value == '' || cancha.value == '' || horarioDesde.value == '' || horarioHasta.value == '' || nombre.value == '' || telefono.value == '') {
+            if ((fechaInput?.value || '') == '' || (selectCancha?.value || '') == '' || horarioDesde.value == '' || horarioHasta.value == '' || nombre.value == '' || telefono.value == '') {
                 showPublicNotice('Debe completar todos los datos')
                 return
             }
@@ -2273,7 +2315,7 @@ document.addEventListener('click', async (e) => {
                 pagoTotal.checked = false
             }
 
-            updatePayByEntriesControls(rate.value)
+            updatePayByEntriesControls(rate.value, true)
             buildPublicPaymentData(rate.value, 'parcial')
 
             modalConfirmarReserva.hide()
@@ -2704,7 +2746,7 @@ async function saveAdminBooking(data) {
 function buildPublicPaymentData(rateValue, paymentType = 'parcial') {
     const totalAmount = Number(inputMonto?.value || 0)
     const unitPrice = getPublicUnitPrice()
-    const payByEntriesApplies = paymentType !== 'total' && isPayByEntriesAvailable()
+    const payByEntriesApplies = paymentType !== 'total' && isPayByEntriesAvailable() && !!payByEntriesToggle?.checked
     const entriesToPay = payByEntriesApplies ? getSelectedEntriesToPay() : 0
     const partialAmount = payByEntriesApplies
         ? entriesToPay * unitPrice
