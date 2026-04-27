@@ -13,7 +13,7 @@ class BookingsModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['id_field', 'date', 'time_from', 'time_until', 'visitors', 'name', 'phone', 'code', 'total_payment', 'total', 'parcial', 'diference', 'description', 'reservation', 'payment', 'payment_method', 'id_customer', 'id_preference_parcial', 'id_preference_total', 'approved', 'use_offer', 'annulled', 'booking_time', 'invoice_email_sent_at', 'mp'];
+    protected $allowedFields    = ['id_field', 'date', 'time_from', 'time_until', 'visitors', 'name', 'phone', 'code', 'total_payment', 'total', 'parcial', 'diference', 'description', 'reservation', 'payment', 'payment_method', 'id_customer', 'id_preference_parcial', 'id_preference_total', 'approved', 'use_offer', 'annulled', 'booking_time', 'invoice_email_sent_at', 'mp', 'partial_by_entries', 'paid_entries', 'IdPedido'];
 
     // Dates
     protected $useTimestamps = false;

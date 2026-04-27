@@ -294,7 +294,44 @@ class MercadoPago extends BaseController
 
             $rate = (float) $rateRow['value'];
             $montoTotal = (float) $montoTotal;
-            $montoParcial = ($montoTotal * $rate) / 100;
+            $totalEntries = (int) ($bookingArr['visitantes'] ?? 0);
+
+            if ($totalEntries <= 0) {
+                if ($slotId) {
+                    $this->releaseBookingSlot($bookingSlotsModel, (int) $slotId);
+                    $slotId = null;
+                }
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La cantidad de entradas es invalida.'));
+            }
+
+            $unitPrice = $montoTotal / $totalEntries;
+            $requestedEntries = (int) ($bookingArr['entriesToPay'] ?? $bookingArr['entradasAbonar'] ?? 0);
+            $wantsPayByEntries = !empty($bookingArr['partialByEntries']) || $requestedEntries > 0;
+            $usePayByEntries = false;
+
+            if ($wantsPayByEntries && empty($bookingArr['pagoTotal'])) {
+                if (! $this->canPayByEntries($totalEntries, $bookingDate)) {
+                    if ($slotId) {
+                        $this->releaseBookingSlot($bookingSlotsModel, (int) $slotId);
+                        $slotId = null;
+                    }
+                    return $this->response->setJSON($this->setResponse(400, true, null, 'La reserva no cumple las condiciones para pago parcial por entradas.'));
+                }
+
+                if ($requestedEntries <= 0 || $requestedEntries >= $totalEntries) {
+                    if ($slotId) {
+                        $this->releaseBookingSlot($bookingSlotsModel, (int) $slotId);
+                        $slotId = null;
+                    }
+                    return $this->response->setJSON($this->setResponse(400, true, null, 'La cantidad de entradas a abonar es invalida.'));
+                }
+
+                $usePayByEntries = true;
+            }
+
+            $montoParcial = $usePayByEntries
+                ? $requestedEntries * $unitPrice
+                : ($montoTotal * $rate) / 100;
             $montoDiferencia = $montoTotal - $montoParcial;
 
             $mp = new MercadoPagoLibrary();
@@ -311,6 +348,7 @@ class MercadoPago extends BaseController
                 ->first();
 
             if (!$existingPendingBooking) {
+                $orderId = $this->generateBookingOrderId();
                 $bookingsModel->insert([
                     'date' => $bookingDate,
                     'id_field' => $bookingField,
@@ -334,17 +372,25 @@ class MercadoPago extends BaseController
                     'booking_time' => date('Y-m-d H:i:s'),
                     'mp' => 0,
                     'annulled' => 0,
+                    'partial_by_entries' => $usePayByEntries ? 1 : 0,
+                    'paid_entries' => 0,
+                    'IdPedido' => $orderId,
                 ]);
                 $bookingId = $bookingsModel->getInsertID();
                 $bookingSlotsModel->update($slotId, ['booking_id' => $bookingId]);
+                $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $totalEntries . ' entradas.', 'CLIENTE');
             } else {
                 $bookingId = $existingPendingBooking['id'];
+                $orderId = $this->ensureBookingOrderId($existingPendingBooking);
             }
 
             return $this->response->setJSON($this->setResponse(null, null, [
                 'preferenceIdTotal' => $preferenceIdTotal,
                 'preferenceIdParcial' => $preferenceIdParcial,
                 'bookingId' => $bookingId,
+                'payByEntries' => $usePayByEntries,
+                'entriesToPay' => $usePayByEntries ? $requestedEntries : null,
+                'unitPrice' => $unitPrice,
             ], 'Respuesta exitosa'));
         } catch (\Throwable $e) {
             if ($slotId) {
@@ -388,51 +434,6 @@ class MercadoPago extends BaseController
                 ->first();
 
             if ($existingBooking) {
-                $paid = $preferenceId === $existingBooking['id_preference_total']
-                    ? (float) $existingBooking['total']
-                    : (float) $existingBooking['parcial'];
-
-                $customer = $customersModel->groupStart()
-                    ->where('phone', $existingBooking['phone'])
-                    ->orWhere('complete_phone', $existingBooking['phone'])
-                    ->groupEnd()
-                    ->first();
-
-                if (!$customer) {
-                    $customersModel->insert([
-                        'name' => $existingBooking['name'],
-                        'phone' => $existingBooking['phone'],
-                        'complete_phone' => $existingBooking['phone'],
-                        'offer' => 0,
-                        'quantity' => 1,
-                    ]);
-                    $customerId = $customersModel->getInsertID();
-                } else {
-                    $customerId = $customer['id'];
-                    $customersModel->update($customerId, [
-                        'name' => $existingBooking['name'],
-                        'quantity' => ((int) ($customer['quantity'] ?? 0)) + 1,
-                    ]);
-                }
-
-                $bookingsModel->update($existingBooking['id'], [
-                    'mp' => 1,
-                    'approved' => 1,
-                    'payment' => $paid,
-                    'reservation' => $paid,
-                    'diference' => (float) $existingBooking['total'] - $paid,
-                    'total_payment' => $paid == (float) $existingBooking['total'],
-                    'id_customer' => $customerId,
-                ]);
-
-                $bookingSlotsModel->where('booking_id', $existingBooking['id'])
-                    ->where('active', 1)
-                    ->set(['status' => 'confirmed', 'expires_at' => null])
-                    ->update();
-
-                $data['id_booking'] = $existingBooking['id'];
-                $mercadoPagoModel->insert($data);
-
                 $alreadyStoredMpPayment = null;
                 if (!empty($data['payment_id'])) {
                     $alreadyStoredMpPayment = $paymentsModel
@@ -441,27 +442,127 @@ class MercadoPago extends BaseController
                         ->first();
                 }
 
-            if (!$alreadyStoredMpPayment) {
-                try {
-                    $paymentUserId = $this->resolvePaymentUserId();
-                    $paymentsModel->insert([
-                        'id_user' => $paymentUserId > 0 ? $paymentUserId : 1,
-                        'id_booking' => $existingBooking['id'],
+                if ($alreadyStoredMpPayment) {
+                    $booking = $bookingsModel->find($existingBooking['id']);
+                } else {
+                    $isTotalPreference = $preferenceId === $existingBooking['id_preference_total'];
+                    $isEntryPayment = (int) ($existingBooking['partial_by_entries'] ?? 0) === 1;
+                    $totalEntries = max(0, (int) ($existingBooking['visitors'] ?? 0));
+                    $currentPaidEntries = max(0, (int) ($existingBooking['paid_entries'] ?? 0));
+                    $unitPriceAtBooking = $totalEntries > 0 ? (float) $existingBooking['total'] / $totalEntries : 0.0;
+                    $paid = $isTotalPreference ? (float) $existingBooking['total'] : (float) $existingBooking['parcial'];
+                    $paidEntries = null;
+                    $paymentType = $isTotalPreference ? 'total' : 'partial_amount';
+                    $newPayment = $paid;
+                    $newDifference = max(0, (float) $existingBooking['total'] - $paid);
+                    $newPaidEntries = $currentPaidEntries;
+                    $totalPaymentCompleted = $paid == (float) $existingBooking['total'];
+
+                    if ($isEntryPayment) {
+                        if ($isTotalPreference) {
+                            $paidEntries = max(0, $totalEntries - $currentPaidEntries);
+                            $newPaidEntries = $totalEntries;
+                            $newPayment = (float) $existingBooking['total'];
+                            $newDifference = 0.0;
+                            $totalPaymentCompleted = true;
+                            $paymentType = 'total';
+                        } else {
+                            $pendingEntriesBeforePayment = max(0, $totalEntries - $currentPaidEntries);
+                            $paidEntries = $unitPriceAtBooking > 0 ? (int) round($paid / $unitPriceAtBooking) : 0;
+                            $paidEntries = min(max(1, $paidEntries), $pendingEntriesBeforePayment);
+                            $newPaidEntries = min($totalEntries, $currentPaidEntries + $paidEntries);
+                            $pendingEntries = max(0, $totalEntries - $newPaidEntries);
+                            $newPayment = (float) ($existingBooking['payment'] ?? 0) + $paid;
+                            $newDifference = $pendingEntries * $unitPriceAtBooking;
+                            $totalPaymentCompleted = $pendingEntries === 0;
+                            $paymentType = 'partial_entries';
+                        }
+                    } elseif ($isTotalPreference) {
+                        $newPaidEntries = $totalEntries;
+                    }
+
+                    $customer = $customersModel->groupStart()
+                        ->where('phone', $existingBooking['phone'])
+                        ->orWhere('complete_phone', $existingBooking['phone'])
+                        ->groupEnd()
+                        ->first();
+
+                    if (!$customer) {
+                        $customersModel->insert([
+                            'name' => $existingBooking['name'],
+                            'phone' => $existingBooking['phone'],
+                            'complete_phone' => $existingBooking['phone'],
+                            'offer' => 0,
+                            'quantity' => 1,
+                        ]);
+                        $customerId = $customersModel->getInsertID();
+                    } else {
+                        $customerId = $customer['id'];
+                        $customersModel->update($customerId, [
+                            'name' => $existingBooking['name'],
+                            'quantity' => ((int) ($customer['quantity'] ?? 0)) + 1,
+                        ]);
+                    }
+
+                    $bookingsModel->update($existingBooking['id'], [
+                        'mp' => 1,
+                        'approved' => 1,
+                        'payment' => $newPayment,
+                        'reservation' => $newPayment,
+                        'diference' => $newDifference,
+                        'total_payment' => $totalPaymentCompleted ? 1 : 0,
                         'id_customer' => $customerId,
-                        'id_mercado_pago' => $data['payment_id'] ?? null,
+                        'paid_entries' => $newPaidEntries,
+                    ]);
+
+                    $bookingSlotsModel->where('booking_id', $existingBooking['id'])
+                        ->where('active', 1)
+                        ->set(['status' => 'confirmed', 'expires_at' => null])
+                        ->update();
+
+                    $data['id_booking'] = $existingBooking['id'];
+                    $mercadoPagoModel->insert($data);
+
+                    try {
+                        $paymentUserId = $this->resolvePaymentUserId();
+                        $paymentsModel->insert([
+                            'id_user' => $paymentUserId > 0 ? $paymentUserId : 1,
+                            'id_booking' => $existingBooking['id'],
+                            'id_customer' => $customerId,
+                            'id_mercado_pago' => $data['payment_id'] ?? null,
                             'amount' => $paid,
                             'payment_method' => 'mercado_pago',
                             'date' => date('Y-m-d'),
                             'created_at' => date('Y-m-d H:i:s'),
+                            'paid_entries' => $paidEntries,
+                            'unit_price' => $unitPriceAtBooking > 0 ? $unitPriceAtBooking : null,
+                            'payment_type' => $paymentType,
+                            'created_by_admin' => 0,
+                            'admin_user_id' => null,
                         ]);
                     } catch (\Throwable $e) {
                         log_message('error', 'No se pudo registrar pago MP: ' . $e->getMessage());
                     }
-                }
 
-                $booking = $bookingsModel->find($existingBooking['id']);
-                $mercadoPago = $mercadoPagoModel->where('id_booking', $existingBooking['id'])->first();
-                $this->sendBookingEmails($booking);
+                    $orderId = $this->ensureBookingOrderId($existingBooking);
+                    if ($isEntryPayment && $paymentType === 'partial_entries') {
+                        $pendingEntries = max(0, $totalEntries - $newPaidEntries);
+                        $this->logBookingAction(
+                            $orderId,
+                            'P',
+                            'Pago parcial por entradas. Cantidad: ' . $paidEntries . ' entradas. Precio unitario: ' . $this->formatAuditMoney($unitPriceAtBooking) . '. Total: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago. Pendiente: ' . $pendingEntries . ' entradas.',
+                            'CLIENTE'
+                        );
+                    } elseif ($totalPaymentCompleted) {
+                        $this->logBookingAction($orderId, 'P', 'Pago total. Total abonado: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago.', 'CLIENTE');
+                    } else {
+                        $this->logBookingAction($orderId, 'P', 'Pago parcial. Total abonado: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago. Saldo pendiente: ' . $this->formatAuditMoney($newDifference) . '.', 'CLIENTE');
+                    }
+
+                    $booking = $bookingsModel->find($existingBooking['id']);
+                    $mercadoPago = $mercadoPagoModel->where('id_booking', $existingBooking['id'])->first();
+                    $this->sendBookingEmails($booking);
+                }
             }
         }
 
@@ -505,6 +606,7 @@ class MercadoPago extends BaseController
                     'annulled' => 1,
                 ]);
                 $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
+                $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Cancelacion de reserva.', 'CLIENTE');
                 $data['id_booking'] = $existingBooking['id'];
                 $mercadoPagoModel->insert($data);
             }
@@ -555,6 +657,7 @@ class MercadoPago extends BaseController
                 if ($booking && (int) ($booking['approved'] ?? 0) !== 1) {
                     $bookingsModel->update($bookingId, ['annulled' => 1]);
                     $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $bookingId]);
+                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago.', 'CLIENTE');
                 }
             } elseif ($preferenceIdParcial || $preferenceIdTotal) {
                 $query = $bookingsModel->groupStart();
@@ -574,6 +677,7 @@ class MercadoPago extends BaseController
 
                     $bookingsModel->update($booking['id'], ['annulled' => 1]);
                     $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $booking['id']]);
+                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago.', 'CLIENTE');
                 }
             }
 

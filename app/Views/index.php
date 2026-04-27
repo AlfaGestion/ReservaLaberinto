@@ -571,6 +571,11 @@ if (!empty($prefill['time_until'])) {
                                 </div>
                                 <label for="inputPagoReserva" class="form-label">A abonar</label>
                                 <input type="text" class="form-control" id="inputPagoReserva" name="inputPagoReserva" placeholder="" disabled value="0" style="font-size: 1.5rem;">
+                                <div id="payByEntriesSection" class="border rounded-3 p-3 mt-3 d-none">
+                                    <label for="payByEntriesInput" class="form-label">Entradas a abonar ahora</label>
+                                    <input type="number" class="form-control" id="payByEntriesInput" min="1" step="1" value="1">
+                                    <small class="text-muted d-block mt-2" id="payByEntriesHelp"></small>
+                                </div>
                             </div>
 
                             <div class="alert alert-warning alert-dismissible fade show" role="alert">

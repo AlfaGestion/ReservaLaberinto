@@ -623,6 +623,7 @@ class Superadmin extends BaseController
         $bookings = [];
 
         foreach ($getBookings as $booking) {
+            $entrySummary = $this->getBookingEntryPaymentSummary($booking);
             $reserva = [
                 'id' => $booking['id'],
                 'cancha' => $fieldsModel->getField($booking['id_field'])['name'],
@@ -643,6 +644,12 @@ class Superadmin extends BaseController
                 'factura_enviada_fecha' => !empty($booking['invoice_email_sent_at']) ? $this->formatBookingDateTime((string) $booking['invoice_email_sent_at']) : '',
                 'mp'        => $booking['mp'],
                 'code'        => $booking['code'],
+                'IdPedido' => $this->ensureBookingOrderId($booking),
+                'partial_by_entries' => (int) ($booking['partial_by_entries'] ?? 0),
+                'paid_entries' => $entrySummary['paid_entries'],
+                'pending_entries' => $entrySummary['pending_entries'],
+                'current_unit_price' => $entrySummary['unit_price'],
+                'pending_entries_amount' => $entrySummary['pending_amount'],
             ];
 
             array_push($bookings, $reserva);
@@ -670,6 +677,7 @@ class Superadmin extends BaseController
         $bookings = [];
 
         foreach ($getBookings as $booking) {
+            $entrySummary = $this->getBookingEntryPaymentSummary($booking);
             $reserva = [
                 'id' => $booking['id'],
                 'cancha' => $fieldsModel->getField($booking['id_field'])['name'],
@@ -680,12 +688,19 @@ class Superadmin extends BaseController
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
                 'total_reserva' => $booking['total'],
                 'diferencia' => $booking['diference'],
+                'visitantes' => $booking['visitors'],
                 'monto_reserva' => $booking['payment'],
                 'descripcion' => $booking['description'],
                 'metodo_pago' => $booking['payment_method'],
                 'anulada'     => $booking['annulled'],
                 'factura_enviada' => !empty($booking['invoice_email_sent_at']) ? 'Enviada' : 'Pendiente',
                 'factura_enviada_fecha' => !empty($booking['invoice_email_sent_at']) ? $this->formatBookingDateTime((string) $booking['invoice_email_sent_at']) : '',
+                'IdPedido' => $this->ensureBookingOrderId($booking),
+                'partial_by_entries' => (int) ($booking['partial_by_entries'] ?? 0),
+                'paid_entries' => $entrySummary['paid_entries'],
+                'pending_entries' => $entrySummary['pending_entries'],
+                'current_unit_price' => $entrySummary['unit_price'],
+                'pending_entries_amount' => $entrySummary['pending_amount'],
             ];
 
             array_push($bookings, $reserva);
@@ -1015,8 +1030,16 @@ class Superadmin extends BaseController
         $notificationEmail = trim($data->notification_email ?? '');
         $invoiceEmailSubject = trim($data->invoice_email_subject ?? '');
         $invoiceEmailMessage = trim($data->invoice_email_message ?? '');
+        $enablePayByEntries = !empty($data->enable_pay_by_entries) ? 1 : 0;
+        $payByEntriesMinEntries = (int) ($data->pay_by_entries_min_entries ?? 0);
+        $payByEntriesMinDays = (int) ($data->pay_by_entries_min_days_before_booking ?? 0);
         $qtyVisitors = ($qtyVisitors === null || $qtyVisitors === '') ? null : (int) $qtyVisitors;
         $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+
+        if ($payByEntriesMinEntries < 0 || $payByEntriesMinDays < 0) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON(['error' => true, 'message' => 'Los minimos de pago por entradas no pueden ser negativos']);
+        }
 
         foreach ($notificationEmailList as $email) {
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -1043,18 +1066,19 @@ class Superadmin extends BaseController
             }
 
             $existingUpload = $uploadModel->first();
+            $uploadPayload = [
+                'notification_email' => $notificationEmail,
+                'invoice_email_subject' => $invoiceEmailSubject,
+                'invoice_email_message' => $invoiceEmailMessage,
+                'enable_pay_by_entries' => $enablePayByEntries,
+                'pay_by_entries_min_entries' => $payByEntriesMinEntries,
+                'pay_by_entries_min_days_before_booking' => $payByEntriesMinDays,
+            ];
+
             if ($existingUpload) {
-                $uploadModel->update($existingUpload['id'], [
-                    'notification_email' => $notificationEmail,
-                    'invoice_email_subject' => $invoiceEmailSubject,
-                    'invoice_email_message' => $invoiceEmailMessage,
-                ]);
-            } elseif ($notificationEmail !== '' || $invoiceEmailSubject !== '' || $invoiceEmailMessage !== '') {
-                $uploadModel->insert([
-                    'notification_email' => $notificationEmail,
-                    'invoice_email_subject' => $invoiceEmailSubject,
-                    'invoice_email_message' => $invoiceEmailMessage,
-                ]);
+                $uploadModel->update($existingUpload['id'], $uploadPayload);
+            } else {
+                $uploadModel->insert($uploadPayload);
             }
 
             return $this->response->setJSON([

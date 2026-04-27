@@ -255,6 +255,18 @@ class Bookings extends BaseController
             $idCustomer = $customersModel->getInsertID();
         }
 
+        $visitors = (int) ($data->visitantes ?? 0);
+        $partialByEntries = !empty($data->partialByEntries) ? 1 : 0;
+        $paidEntries = !empty($data->pagoTotal) ? $visitors : 0;
+        if ($partialByEntries) {
+            $entriesToPay = (int) ($data->paidEntries ?? $data->entriesToPay ?? 0);
+            if (! $this->canPayByEntries($visitors, $data->fecha ?? null) || $entriesToPay <= 0 || $entriesToPay > $visitors) {
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La reserva no cumple las condiciones para pago por entradas.'));
+            }
+            $paidEntries = $entriesToPay;
+        }
+        $orderId = $this->generateBookingOrderId();
+
         $queryBooking = [
             'date'                  => $data->fecha,
             'id_field'              => $data->cancha,
@@ -279,12 +291,16 @@ class Bookings extends BaseController
             'mp'                    => 0,
             'annulled'              => 0, // Aseguramos que este nuevo registro no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© anulado
             'id_customer'           => $idCustomer,
+            'partial_by_entries'    => $partialByEntries,
+            'paid_entries'          => $paidEntries,
+            'IdPedido'              => $orderId,
         ];
 
 
         try {
             if (count($queryBooking) != 0) {
                 $bookingId = $bookingsModel->insert($queryBooking);
+                $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $visitors . ' entradas.');
                 if ($specialBookingRequestsModel && $specialRequestId > 0) {
                     $specialBookingRequestsModel->update($specialRequestId, [
                         'status' => 'confirmed',
@@ -408,6 +424,86 @@ class Bookings extends BaseController
         $data = $this->request->getJSON();
         $booking = $bookingsModel->getBooking($id);
 
+        if (!$booking) {
+            return $this->response->setJSON($this->setResponse(404, true, null, 'Reserva no encontrada.'));
+        }
+
+        $isPartialByEntries = (int) ($booking['partial_by_entries'] ?? 0) === 1;
+        $adminUserId = (int) ($data->idUser ?? session()->get('id_user') ?? 0);
+        $paymentMethod = (string) ($data->medioPago ?? '');
+
+        if ($isPartialByEntries) {
+            $summary = $this->getBookingEntryPaymentSummary($booking);
+            $entriesToPay = (int) ($data->paidEntries ?? $data->paid_entries ?? 0);
+
+            if ($entriesToPay <= 0 || $entriesToPay > $summary['pending_entries']) {
+                return $this->response->setJSON(
+                    $this->setResponse(400, true, null, 'La cantidad de entradas a abonar es invalida.')
+                );
+            }
+
+            $unitPrice = (float) $summary['unit_price'];
+            $postedAmount = floatval($data->pago ?? 0);
+            $nuevoPago = $unitPrice > 0 ? $entriesToPay * $unitPrice : $postedAmount;
+
+            if ($nuevoPago <= 0) {
+                return $this->response->setJSON(
+                    $this->setResponse(400, true, null, 'El monto es invalido.')
+                );
+            }
+
+            $pagoAnterior = floatval($booking['payment']);
+            $nuevoAcumulado = $pagoAnterior + $nuevoPago;
+            $paidEntries = min((int) ($booking['visitors'] ?? 0), (int) ($booking['paid_entries'] ?? 0) + $entriesToPay);
+            $pendingEntries = max(0, (int) ($booking['visitors'] ?? 0) - $paidEntries);
+            $diferencia = $pendingEntries * $unitPrice;
+            $pagoTotal = $pendingEntries === 0 ? 1 : 0;
+
+            $queryBookings = [
+                'total_payment' => $pagoTotal,
+                'payment' => $nuevoAcumulado,
+                'reservation' => $nuevoAcumulado,
+                'diference' => $diferencia,
+                'total' => $nuevoAcumulado + $diferencia,
+                'paid_entries' => $paidEntries,
+                'payment_method' => $paymentMethod,
+            ];
+
+            $queryPayments = [
+                'id_user' => $adminUserId,
+                'id_booking' => $id,
+                'id_customer' => $data->idCustomer ?? ($booking['id_customer'] ?? null),
+                'amount' => $nuevoPago,
+                'paid_entries' => $entriesToPay,
+                'unit_price' => $unitPrice,
+                'payment_type' => $pagoTotal ? 'total' : 'partial_entries',
+                'created_by_admin' => 1,
+                'admin_user_id' => $adminUserId,
+                'payment_method' => $paymentMethod,
+                'date' => Time::now()->toDateString(),
+                'created_at' => Time::now(),
+            ];
+
+            try {
+                $bookingsModel->update($id, $queryBookings);
+                $paymentsModel->insert($queryPayments);
+                $this->logBookingAction(
+                    $this->ensureBookingOrderId($booking),
+                    'P',
+                    'Pago parcial por entradas. Cantidad: ' . $entriesToPay . ' entradas. Precio unitario: ' . $this->formatAuditMoney($unitPrice) . '. Total: ' . $this->formatAuditMoney($nuevoPago) . '. Medio: ' . $paymentMethod . '. Pendiente: ' . $pendingEntries . ' entradas.'
+                );
+
+                return $this->response->setJSON($this->setResponse(null, false, [
+                    'bookingId' => (int) $id,
+                    'totalPaymentCompleted' => (bool) $pagoTotal,
+                    'remainingBalance' => $diferencia,
+                    'pendingEntries' => $pendingEntries,
+                ], 'Respuesta exitosa'));
+            } catch (\Exception $e) {
+                return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
+            }
+        }
+
         $total = floatval($booking['total']);
         $pagoAnterior = floatval($booking['payment']);
         $nuevoPago = floatval($data->pago);
@@ -430,11 +526,14 @@ class Bookings extends BaseController
         ];
 
         $queryPayments = [
-            'id_user' => $data->idUser,
+            'id_user' => $adminUserId,
             'id_booking' => $id,
-            'id_customer' => $data->idCustomer,
+            'id_customer' => $data->idCustomer ?? ($booking['id_customer'] ?? null),
             'amount' => $nuevoPago,
-            'payment_method' => $data->medioPago,
+            'payment_type' => $pagoTotal ? 'total' : 'partial_amount',
+            'created_by_admin' => 1,
+            'admin_user_id' => $adminUserId,
+            'payment_method' => $paymentMethod,
             'date' => Time::now()->toDateString(),
             'created_at' => Time::now(),
         ];
@@ -442,6 +541,11 @@ class Bookings extends BaseController
         try {
             $bookingsModel->update($id, $queryBookings);
             $paymentsModel->insert($queryPayments);
+            $this->logBookingAction(
+                $this->ensureBookingOrderId($booking),
+                'P',
+                ($pagoTotal ? 'Pago total. ' : 'Pago parcial. ') . 'Total abonado: ' . $this->formatAuditMoney($nuevoPago) . '. Medio: ' . $paymentMethod . '. Saldo pendiente: ' . $this->formatAuditMoney($diferencia) . '.'
+            );
             return $this->response->setJSON($this->setResponse(null, false, [
                 'bookingId' => (int) $id,
                 'totalPaymentCompleted' => (bool) $pagoTotal,
@@ -461,6 +565,15 @@ class Bookings extends BaseController
         $booking = $bookingsModel->getBooking($id);
 
         if ($booking) {
+            $entrySummary = $this->getBookingEntryPaymentSummary($booking);
+            $booking['IdPedido'] = $this->ensureBookingOrderId($booking);
+            $booking['partial_by_entries'] = (int) ($booking['partial_by_entries'] ?? 0);
+            $booking['paid_entries'] = $entrySummary['paid_entries'];
+            $booking['pending_entries'] = $entrySummary['pending_entries'];
+            $booking['current_unit_price'] = $entrySummary['unit_price'];
+            $booking['current_entries_amount_due'] = $entrySummary['pending_amount'];
+            $booking['pay_by_entries_enabled'] = $booking['partial_by_entries'] === 1;
+
             try {
                 return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Respuesta exitosa'));
             } catch (\Exception $e) {
@@ -590,12 +703,16 @@ class Bookings extends BaseController
         $data = $this->request->getJSON();
         $idBooking = $data->idBooking;
         $mpPayment = $mercadoPagoModel->where('id_booking', $idBooking)->first();
+        $booking = $bookingsModel->find($idBooking);
 
         try {
             if (isset($mpPayment)) {
                 $mercadoPagoModel->update($mpPayment['id'], ['annulled' => 1]);
             }
             $bookingsModel->update($idBooking, ['annulled' => 1]);
+            if ($booking) {
+                $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva.');
+            }
 
             return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
         } catch (\Exception $e) {
@@ -609,6 +726,17 @@ class Bookings extends BaseController
         $data = $this->request->getJSON();
 
         $idBooking = $data->bookingId;
+        $previousBooking = $bookingsModel->find($idBooking);
+
+        if (!$previousBooking) {
+            return $this->response->setJSON($this->setResponse(404, true, null, 'Reserva no encontrada.'));
+        }
+
+        $newVisitors = (int) ($data->visitantes ?? 0);
+        $paidEntries = (int) ($previousBooking['paid_entries'] ?? 0);
+        if ((int) ($previousBooking['partial_by_entries'] ?? 0) === 1 && $newVisitors < $paidEntries) {
+            return $this->response->setJSON($this->setResponse(400, true, null, 'La cantidad de entradas no puede ser menor a las entradas ya abonadas.'));
+        }
 
         $queryUpdate = [
             'id_field' => $data->cancha,
@@ -622,8 +750,25 @@ class Bookings extends BaseController
             'visitors' => $data->visitantes
         ];
 
+        if ((int) ($previousBooking['partial_by_entries'] ?? 0) === 1) {
+            $bookingForPrice = array_merge($previousBooking, [
+                'date' => $data->fecha,
+                'visitors' => $newVisitors,
+            ]);
+            $unitPrice = $this->resolveCurrentUnitPriceForBooking($bookingForPrice);
+            $pendingEntries = max(0, $newVisitors - $paidEntries);
+            $queryUpdate['diference'] = $pendingEntries * $unitPrice;
+            $queryUpdate['total'] = (float) ($previousBooking['payment'] ?? 0) + $queryUpdate['diference'];
+            $queryUpdate['total_payment'] = $pendingEntries === 0 ? 1 : 0;
+        }
+
         try {
             $bookingsModel->update($idBooking, $queryUpdate);
+            $previousVisitors = (int) ($previousBooking['visitors'] ?? 0);
+            $observation = $previousVisitors !== $newVisitors
+                ? 'Modificacion de reserva: cambio en cantidad de entradas. Antes: ' . $previousVisitors . '. Ahora: ' . $newVisitors . '.'
+                : 'Modificacion de reserva.';
+            $this->logBookingAction($this->ensureBookingOrderId($previousBooking), 'M', $observation);
 
             return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
         } catch (\Exception $e) {
@@ -876,9 +1021,13 @@ class Bookings extends BaseController
     {
         $bookingsModel = new BookingsModel();
         $data = $this->request->getJSON();
+        $booking = $bookingsModel->find($data->bookingId);
 
         try {
             $bookingsModel->update($data->bookingId, ['mp' => $data->confirm]);
+            if ($booking) {
+                $this->logBookingAction($this->ensureBookingOrderId($booking), 'M', !empty($data->confirm) ? 'Modificacion de reserva: pago Mercado Pago confirmado.' : 'Modificacion de reserva: pago Mercado Pago marcado como pendiente.');
+            }
 
             return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
         } catch (\Exception $e) {
@@ -901,10 +1050,28 @@ class Bookings extends BaseController
 
         $pagoTotal = ($data->monto == $data->total) ? 1 : 0;
         $telefonoCompleto = $data->telefono;
+        $visitors = (int) ($data->visitantes ?? 0);
+        $totalAmount = (float) ($data->total ?? 0);
+        $paidAmount = (float) ($data->monto ?? 0);
+        $unitPrice = $visitors > 0 ? $totalAmount / $visitors : 0.0;
+        $partialByEntries = !empty($data->partialByEntries) ? 1 : 0;
+        $paidEntries = $pagoTotal ? $visitors : 0;
+
+        if ($partialByEntries) {
+            $entriesToPay = (int) ($data->paidEntries ?? $data->entriesToPay ?? 0);
+            if (! $this->canPayByEntries($visitors, $data->fecha ?? null) || $entriesToPay <= 0 || $entriesToPay > $visitors) {
+                return $this->response->setJSON($this->setResponse(400, true, null, 'La reserva no cumple las condiciones para pago por entradas.'));
+            }
+
+            $paidEntries = $entriesToPay;
+            $paidAmount = $unitPrice > 0 ? $entriesToPay * $unitPrice : $paidAmount;
+            $pagoTotal = $paidEntries >= $visitors ? 1 : 0;
+        }
 
         // Intentar buscar cliente por telÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©fono
         $existingCustomer = $customersModel->where('phone', $data->telefono)->first();
         $idCustomer = $data->idCustomer ?? null;
+        $orderId = $this->generateBookingOrderId();
 
         // Armar reserva
         $queryBooking = [
@@ -914,35 +1081,28 @@ class Bookings extends BaseController
             'time_until'      => $data->horarioHasta,
             'name'            => $data->nombre,
             'phone'           => $telefonoCompleto,
-            'payment'         => $data->monto,
-            'total'           => $data->total,
-            'visitors'        => $data->visitantes,
+            'payment'         => $paidAmount,
+            'total'           => $partialByEntries ? ($paidAmount + max(0, $visitors - $paidEntries) * $unitPrice) : $data->total,
+            'visitors'        => $visitors,
             'description'     => $data->descripcion,
             'code'            => $this->codeGenerate(),
-            'diference'       => floatVal($data->total) - floatVal($data->monto),
+            'diference'       => $partialByEntries ? max(0, $visitors - $paidEntries) * $unitPrice : floatVal($data->total) - floatVal($data->monto),
             'total_payment'   => $pagoTotal,
             'payment_method'  => $data->metodoDePago,
             'approved'        => 1,
             'mp'              => 1,
             'annulled'        => 0,
             'id_customer'     => $idCustomer,
+            'partial_by_entries' => $partialByEntries,
+            'paid_entries'    => $paidEntries,
+            'IdPedido'        => $orderId,
         ];
 
         try {
             $bookingInsert = $bookingsModel->insert($queryBooking, true);
 
             if ($bookingInsert) {
-                $queryPayment = [
-                    'id_booking'     => $bookingsModel->getInsertID(),
-                    'id_user'        => session()->get('id_user'),
-                    'id_customer'    => $idCustomer,
-                    'amount'         => $data->monto,
-                    'payment_method' => $data->metodoDePago,
-                    'date'           => $data->fecha,
-                ];
-
-                // log_message('info', 'Datos recibidos: ' . print_r($queryPayment, true));
-                $paymentsModel->insert($queryPayment);
+                $bookingId = $bookingsModel->getInsertID();
 
                 if ($existingCustomer) {
                     $idCustomer = $existingCustomer['id'];
@@ -964,10 +1124,39 @@ class Bookings extends BaseController
                 }
 
                 if (!empty($idCustomer)) {
-                    $bookingsModel->update($bookingsModel->getInsertID(), ['id_customer' => $idCustomer]);
+                    $bookingsModel->update($bookingId, ['id_customer' => $idCustomer]);
                 }
 
-                $savedBooking = $bookingsModel->find($bookingsModel->getInsertID());
+                $queryPayment = [
+                    'id_booking'     => $bookingId,
+                    'id_user'        => session()->get('id_user'),
+                    'id_customer'    => $idCustomer,
+                    'amount'         => $paidAmount,
+                    'paid_entries'   => $partialByEntries ? $paidEntries : ($pagoTotal ? $visitors : null),
+                    'unit_price'     => $unitPrice > 0 ? $unitPrice : null,
+                    'payment_type'   => $partialByEntries ? ($pagoTotal ? 'total' : 'partial_entries') : ($pagoTotal ? 'total' : 'partial_amount'),
+                    'created_by_admin' => 1,
+                    'admin_user_id'  => session()->get('id_user'),
+                    'payment_method' => $data->metodoDePago,
+                    'date'           => $data->fecha,
+                    'created_at'     => Time::now(),
+                ];
+
+                $paymentsModel->insert($queryPayment);
+
+                $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $visitors . ' entradas.');
+                if ($paidAmount > 0) {
+                    if ($partialByEntries && !$pagoTotal) {
+                        $pendingEntries = max(0, $visitors - $paidEntries);
+                        $this->logBookingAction($orderId, 'P', 'Pago parcial por entradas. Cantidad: ' . $paidEntries . ' entradas. Precio unitario: ' . $this->formatAuditMoney($unitPrice) . '. Total: ' . $this->formatAuditMoney($paidAmount) . '. Medio: ' . $data->metodoDePago . '. Pendiente: ' . $pendingEntries . ' entradas.');
+                    } else {
+                        $paymentLabel = $pagoTotal ? 'Pago total. ' : 'Pago parcial. ';
+                        $pendingAmount = max(0, (float) ($queryBooking['diference'] ?? 0));
+                        $this->logBookingAction($orderId, 'P', $paymentLabel . 'Total abonado: ' . $this->formatAuditMoney($paidAmount) . '. Medio: ' . $data->metodoDePago . '. Saldo pendiente: ' . $this->formatAuditMoney($pendingAmount) . '.');
+                    }
+                }
+
+                $savedBooking = $bookingsModel->find($bookingId);
                 $this->sendBookingNotificationEmail($savedBooking, (object) [
                     'nombre' => $data->nombre ?? '',
                     'telefono' => $data->telefono ?? '',

@@ -14,6 +14,9 @@ const nombre = document.getElementById('nombre')
 const telefono = document.getElementById('telefono')
 const pagoReserva = document.getElementById('inputPagoReserva')
 const pagoTotal = document.getElementById('switchPagoTotal')
+const payByEntriesSection = document.getElementById('payByEntriesSection')
+const payByEntriesInput = document.getElementById('payByEntriesInput')
+const payByEntriesHelp = document.getElementById('payByEntriesHelp')
 const divTime = document.getElementById('div-time')
 const divTimeH = document.getElementById('div-time-h')
 const bookingTimeRow = horarioDesde?.closest('.horario')
@@ -106,6 +109,11 @@ let availables = []
 let currentCustomer
 let minVisitantes = 0
 let allowGroupCoordinator = false
+let payByEntriesConfig = {
+    enabled: false,
+    minEntries: 0,
+    minDaysBeforeBooking: 0
+}
 let openingTime = []
 let bookingDatePicker = null
 let currentTermsUtterance = null
@@ -827,6 +835,91 @@ function resetMercadoPagoButtons() {
 function applyPreferenceIdsToBookingData(preferences = {}) {
     data.preferenceIdParcial = preferences?.preferenceIdParcial || null
     data.preferenceIdTotal = preferences?.preferenceIdTotal || null
+}
+
+function formatPublicMoney(value) {
+    return `$${new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value) || 0)}`
+}
+
+function getTotalEntriesCount() {
+    return Math.max(0, Math.trunc(Number(inputqtyvisitors?.value || data?.visitantes || 0)))
+}
+
+function getPublicUnitPrice() {
+    const totalAmount = Number(inputMonto?.value || data?.total || 0)
+    const totalEntries = getTotalEntriesCount()
+
+    return totalEntries > 0 ? totalAmount / totalEntries : 0
+}
+
+function getDaysBeforeSelectedBooking() {
+    const selectedDate = parseInputDate(fechaInput?.value || selectedAvailabilityDate || '')
+    if (!selectedDate) {
+        return -1
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+
+    return Math.floor((selectedDate.getTime() - today.getTime()) / 86400000)
+}
+
+function isPayByEntriesAvailable() {
+    const totalEntries = getTotalEntriesCount()
+
+    return Boolean(payByEntriesConfig.enabled)
+        && totalEntries >= Number(payByEntriesConfig.minEntries || 0)
+        && getDaysBeforeSelectedBooking() >= Number(payByEntriesConfig.minDaysBeforeBooking || 0)
+        && totalEntries > 1
+}
+
+function getSelectedEntriesToPay() {
+    const totalEntries = getTotalEntriesCount()
+    const maxEntries = Math.max(1, totalEntries - 1)
+    const selectedEntries = Math.trunc(Number(payByEntriesInput?.value || 0))
+
+    return Math.min(maxEntries, Math.max(1, selectedEntries || 1))
+}
+
+function updatePayByEntriesControls(rateValue = 0) {
+    if (!payByEntriesSection || !payByEntriesInput) {
+        return
+    }
+
+    const totalEntries = getTotalEntriesCount()
+    const unitPrice = getPublicUnitPrice()
+    const available = isPayByEntriesAvailable() && !pagoTotal?.checked
+    payByEntriesSection.classList.toggle('d-none', !available)
+
+    if (!available) {
+        return
+    }
+
+    const maxEntries = Math.max(1, totalEntries - 1)
+    const defaultEntries = Math.min(maxEntries, Math.max(1, Math.ceil(totalEntries * Number(rateValue || 0) / 100)))
+    const selectedEntries = payByEntriesInput.value ? getSelectedEntriesToPay() : defaultEntries
+    payByEntriesInput.min = '1'
+    payByEntriesInput.max = String(maxEntries)
+    payByEntriesInput.value = String(selectedEntries)
+
+    if (payByEntriesHelp) {
+        const amount = selectedEntries * unitPrice
+        payByEntriesHelp.textContent = `${formatPublicMoney(unitPrice)} por entrada. Abonas ${selectedEntries} y quedan ${totalEntries - selectedEntries}. Total ahora: ${formatPublicMoney(amount)}.`
+    }
+}
+
+async function rebuildPublicMercadoPagoPreference(rateValue) {
+    if (!modalIngresarPagoElement?.classList.contains('show')) {
+        return
+    }
+
+    await cancelPendingMpReservation()
+    buildPublicPaymentData(rateValue, pagoTotal?.checked ? 'total' : 'parcial')
+    await setScriptMP(Number(inputMonto?.value || 0))
 }
 
 function showPublicNotice(message, type = 'error', title = '') {
@@ -2047,6 +2140,7 @@ document.addEventListener('change', async (e) => {
         } else if (e.target.id == 'switchPagoTotal') {
             const checkoutParcial = document.getElementById('checkout-btn-parcial')
             const checkoutTotal = document.getElementById('checkout-btn-total')
+            const rate = await getRate()
 
             if (pagoTotal.checked) {
                 if (checkoutParcial) checkoutParcial.style.display = 'none'
@@ -2055,6 +2149,14 @@ document.addEventListener('change', async (e) => {
                 if (checkoutParcial) checkoutParcial.style.display = 'block'
                 if (checkoutTotal) checkoutTotal.style.display = 'none'
             }
+            updatePayByEntriesControls(rate.value)
+            buildPublicPaymentData(rate.value, pagoTotal.checked ? 'total' : 'parcial')
+            await rebuildPublicMercadoPagoPreference(rate.value)
+        } else if (e.target.id == 'payByEntriesInput') {
+            const rate = await getRate()
+            updatePayByEntriesControls(rate.value)
+            buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
+            await rebuildPublicMercadoPagoPreference(rate.value)
         }
     }
 })
@@ -2173,19 +2275,8 @@ document.addEventListener('click', async (e) => {
         } else if (e.target.id == 'switchPagoTotal') {
             const switchPagoTotal = document.getElementById('switchPagoTotal')
             const rate = await getRate()
-            const parcial = parseFloat(inputMonto.value) * rate.value / 100
-            const total = parseFloat(inputMonto.value)
-
-            if (switchPagoTotal.checked) {
-                // if (nocturnalTime.time.includes(horarioDesde.value) && nocturnalTime.time.includes(horarioHasta.value)) {
-                //     pagoReserva.value = parseFloat(inputMonto.value)
-                // } else {
-                //     pagoReserva.value = parseFloat(inputMonto.value)
-                // }
-                pagoReserva.value = total
-            } else {
-                pagoReserva.value = parcial
-            }
+            updatePayByEntriesControls(rate.value)
+            buildPublicPaymentData(rate.value, switchPagoTotal.checked ? 'total' : 'parcial')
         } else if (e.target.id == 'abonarReservaBoton') { //Por defecto me va a traer el valor del porcentual
             const rate = await getRate()
             const openPaymentFlow = async () => {
@@ -2199,6 +2290,8 @@ document.addEventListener('click', async (e) => {
                 modalConfirmarReserva.hide()
                 modalIngresarPago.show()
 
+                updatePayByEntriesControls(rate.value)
+                buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
                 const preferences = await setScriptMP(parseFloat(inputMonto.value))
                 if (!preferences) {
                     skipCancelOnHide = true
@@ -2207,7 +2300,7 @@ document.addEventListener('click', async (e) => {
                 }
 
                 if (pagoReserva) {
-                    pagoReserva.value = parseFloat(inputMonto.value) * rate.value / 100
+                    buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
                 }
                 const amount = document.getElementById('adminBookingAmount')
                 const description = document.getElementById('adminBookingDescription')
@@ -2222,7 +2315,7 @@ document.addEventListener('click', async (e) => {
                 }
 
                 if (pagoReserva) {
-                    pagoReserva.value = parseFloat(inputMonto.value) * rate.value / 100
+                    buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
                 }
             }
 
@@ -2586,7 +2679,12 @@ async function saveAdminBooking(data) {
 
 function buildPublicPaymentData(rateValue, paymentType = 'parcial') {
     const totalAmount = Number(inputMonto?.value || 0)
-    const partialAmount = totalAmount * Number(rateValue || 0) / 100
+    const unitPrice = getPublicUnitPrice()
+    const payByEntriesApplies = paymentType !== 'total' && isPayByEntriesAvailable()
+    const entriesToPay = payByEntriesApplies ? getSelectedEntriesToPay() : 0
+    const partialAmount = payByEntriesApplies
+        ? entriesToPay * unitPrice
+        : totalAmount * Number(rateValue || 0) / 100
     const amountToPay = paymentType === 'total' ? totalAmount : partialAmount
 
     data.email = inputEmail?.value || currentCustomer?.email || data.email || ''
@@ -2598,6 +2696,13 @@ function buildPublicPaymentData(rateValue, paymentType = 'parcial') {
     data.pagoTotal = paymentType === 'total'
     data.metodoDePago = 'Mercado Pago'
     data.oferta = useOffer
+    data.partialByEntries = payByEntriesApplies ? 1 : 0
+    data.entriesToPay = payByEntriesApplies ? entriesToPay : null
+    data.paidEntries = payByEntriesApplies ? entriesToPay : null
+    data.unitPrice = unitPrice
+    if (pagoReserva) {
+        pagoReserva.value = formatAmountValue(amountToPay)
+    }
     applyGroupCoordinatorData(data)
 }
 
@@ -2786,9 +2891,15 @@ async function getRate() {
         if (responseData.data != '') {
             minVisitantes = responseData.data.qty_visitors
             allowGroupCoordinator = responseData.data.allow_group_coordinator === 1 || responseData.data.allow_group_coordinator === '1' || responseData.data.allow_group_coordinator === true
+            payByEntriesConfig = {
+                enabled: responseData.data.enable_pay_by_entries === 1 || responseData.data.enable_pay_by_entries === '1' || responseData.data.enable_pay_by_entries === true,
+                minEntries: Number(responseData.data.pay_by_entries_min_entries || 0),
+                minDaysBeforeBooking: Number(responseData.data.pay_by_entries_min_days_before_booking || 0)
+            }
             updateVisitorsFieldConfig()
             applyMinimumVisitorsDefault()
             updateGroupCoordinatorNotice()
+            updatePayByEntriesControls(responseData.data.value)
             return responseData.data
         } else {
             showPublicNotice('Algo salio mal. No se pudo obtener la informacion.');

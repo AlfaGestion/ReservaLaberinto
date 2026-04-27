@@ -13,7 +13,7 @@ class UploadModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['name', 'main_color', 'secondary_color', 'notification_email', 'invoice_email_subject', 'invoice_email_message'];
+    protected $allowedFields    = ['name', 'main_color', 'secondary_color', 'notification_email', 'invoice_email_subject', 'invoice_email_message', 'enable_pay_by_entries', 'pay_by_entries_min_entries', 'pay_by_entries_min_days_before_booking'];
 
     // Dates
     protected $useTimestamps = false;

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\RateModel;
+use App\Models\UploadModel;
 
 class Rate extends BaseController
 {
@@ -42,11 +43,21 @@ class Rate extends BaseController
 
     public function getRate(){
         $rateModel = new RateModel();
+        $uploadModel = new UploadModel();
 
-        $rate = $rateModel->findAll();
+        $rate = $rateModel->first() ?? [
+            'value' => 0,
+            'qty_visitors' => 0,
+            'allow_group_coordinator' => 0,
+        ];
+        $uploadConfig = $uploadModel->first() ?? [];
+
+        $rate['enable_pay_by_entries'] = !empty($uploadConfig['enable_pay_by_entries']) ? 1 : 0;
+        $rate['pay_by_entries_min_entries'] = (int) ($uploadConfig['pay_by_entries_min_entries'] ?? 0);
+        $rate['pay_by_entries_min_days_before_booking'] = (int) ($uploadConfig['pay_by_entries_min_days_before_booking'] ?? 0);
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $rate[0], 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $rate, 'Respuesta exitosa'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }

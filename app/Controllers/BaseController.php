@@ -2,7 +2,11 @@
 
 namespace App\Controllers;
 
+use App\Models\BookingsActionModel;
+use App\Models\BookingsModel;
+use App\Models\CustomersModel;
 use App\Models\UploadModel;
+use App\Models\ValuesModel;
 use CodeIgniter\Controller;
 use CodeIgniter\HTTP\CLIRequest;
 use CodeIgniter\HTTP\IncomingRequest;
@@ -183,5 +187,177 @@ abstract class BaseController extends Controller
     protected function renderEmailCard(array $data): string
     {
         return view('emails/card_email', array_merge($this->getEmailBranding(), $data));
+    }
+
+    protected function getPayByEntriesConfig(): array
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first() ?? [];
+
+        return [
+            'enabled' => !empty($config['enable_pay_by_entries']),
+            'min_entries' => max(0, (int) ($config['pay_by_entries_min_entries'] ?? 0)),
+            'min_days_before_booking' => max(0, (int) ($config['pay_by_entries_min_days_before_booking'] ?? 0)),
+        ];
+    }
+
+    protected function canPayByEntries(int $entries, ?string $bookingDate): bool
+    {
+        $config = $this->getPayByEntriesConfig();
+        if (! $config['enabled'] || $entries <= 0 || $entries < $config['min_entries']) {
+            return false;
+        }
+
+        $bookingDate = trim((string) $bookingDate);
+        if ($bookingDate === '') {
+            return false;
+        }
+
+        try {
+            $today = new \DateTimeImmutable(date('Y-m-d'));
+            $bookingDay = new \DateTimeImmutable($bookingDate);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        $daysBeforeBooking = (int) $today->diff($bookingDay)->format('%r%a');
+
+        return $daysBeforeBooking >= $config['min_days_before_booking'];
+    }
+
+    protected function generateBookingOrderId(): string
+    {
+        $bookingsModel = new BookingsModel();
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $candidate = 'RES-' . date('YmdHis') . '-' . substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6);
+            if (! $bookingsModel->where('IdPedido', $candidate)->first()) {
+                return $candidate;
+            }
+        }
+
+        return 'RES-' . date('YmdHis') . '-' . uniqid();
+    }
+
+    protected function ensureBookingOrderId(array $booking): string
+    {
+        $orderId = trim((string) ($booking['IdPedido'] ?? ''));
+        if ($orderId !== '') {
+            return $orderId;
+        }
+
+        $bookingId = (int) ($booking['id'] ?? 0);
+        $orderId = $bookingId > 0
+            ? 'RES-' . str_pad((string) $bookingId, 8, '0', STR_PAD_LEFT)
+            : $this->generateBookingOrderId();
+
+        if ($bookingId > 0) {
+            try {
+                (new BookingsModel())->update($bookingId, ['IdPedido' => $orderId]);
+            } catch (\Throwable $e) {
+                log_message('error', 'No se pudo completar IdPedido de reserva: ' . $e->getMessage());
+            }
+        }
+
+        return $orderId;
+    }
+
+    protected function getAuditUserLabel(?string $fallback = null): string
+    {
+        $session = session();
+        $name = trim((string) ($session->get('name') ?? ''));
+        $user = trim((string) ($session->get('user') ?? ''));
+        $id = trim((string) ($session->get('id_user') ?? ''));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        if ($user !== '') {
+            return $user;
+        }
+
+        if ($id !== '') {
+            return 'Usuario #' . $id;
+        }
+
+        return $fallback ?? 'CLIENTE';
+    }
+
+    protected function logBookingAction(?string $orderId, string $action, string $observation, ?string $user = null): void
+    {
+        $orderId = trim((string) $orderId);
+        $action = strtoupper(substr(trim($action), 0, 1));
+
+        if ($orderId === '' || $action === '') {
+            return;
+        }
+
+        try {
+            (new BookingsActionModel())->insert([
+                'IdPedido' => $orderId,
+                'fechaHora' => date('Y-m-d H:i:s'),
+                'Accion' => $action,
+                'observacion' => $observation,
+                'usuario' => $user ?? $this->getAuditUserLabel(),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo registrar historial de reserva: ' . $e->getMessage());
+        }
+    }
+
+    protected function formatAuditMoney(float $amount): string
+    {
+        return '$' . number_format($amount, 2, ',', '.');
+    }
+
+    protected function resolveCurrentUnitPriceForBooking(array $booking): float
+    {
+        $customer = null;
+        $customerId = (int) ($booking['id_customer'] ?? 0);
+
+        if ($customerId > 0) {
+            $customer = (new CustomersModel())->find($customerId);
+        }
+
+        if (! $customer && !empty($booking['phone'])) {
+            $customer = (new CustomersModel())->groupStart()
+                ->where('phone', $booking['phone'])
+                ->orWhere('complete_phone', $booking['phone'])
+                ->groupEnd()
+                ->first();
+        }
+
+        $institutionType = trim((string) ($customer['type_institution'] ?? ''));
+        if ($institutionType !== '') {
+            $value = (new ValuesModel())->where('value', $institutionType)->where('disabled', 0)->first();
+            $amount = (float) ($value['amount'] ?? 0);
+            $discount = (float) ($value['discount_percentage'] ?? 0);
+
+            if ($amount > 0) {
+                return max(0, $amount - (($amount * $discount) / 100));
+            }
+        }
+
+        $visitors = (int) ($booking['visitors'] ?? 0);
+        $total = (float) ($booking['total'] ?? 0);
+
+        return $visitors > 0 && $total > 0 ? $total / $visitors : 0.0;
+    }
+
+    protected function getBookingEntryPaymentSummary(array $booking): array
+    {
+        $totalEntries = max(0, (int) ($booking['visitors'] ?? 0));
+        $paidEntries = max(0, (int) ($booking['paid_entries'] ?? 0));
+        $pendingEntries = max(0, $totalEntries - $paidEntries);
+        $unitPrice = $this->resolveCurrentUnitPriceForBooking($booking);
+
+        return [
+            'total_entries' => $totalEntries,
+            'paid_entries' => $paidEntries,
+            'pending_entries' => $pendingEntries,
+            'unit_price' => $unitPrice,
+            'pending_amount' => $pendingEntries * $unitPrice,
+        ];
     }
 }

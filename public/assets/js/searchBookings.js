@@ -10,6 +10,8 @@ const sendInvoiceEmailModal = sendInvoiceEmailModalElement ? new bootstrap.Modal
 const totalReservasHoy = document.getElementById('totalReservasHoy')
 const bookingsTabButton = document.getElementById('nav-bookings-tab')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
+const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
+const medioPagoSelect = document.getElementById('medioPagoSelect')
 const selectDateBooking = document.getElementById('selectDateBooking')
 const invoiceEmailBookingIdInput = document.getElementById('invoiceEmailBookingId')
 const invoiceEmailToInput = document.getElementById('invoiceEmailTo')
@@ -22,6 +24,9 @@ const specialRequestsList = document.getElementById('specialRequestsList')
 const specialRequestsUnreadBadge = document.getElementById('specialRequestsUnreadBadge')
 const refreshSpecialRequestsButton = document.getElementById('refreshSpecialRequests')
 const specialRequestsTabButton = document.getElementById('nav-special-requests-tab')
+const completePaymentEntriesGroup = document.getElementById('completePaymentEntriesGroup')
+const inputCompletarPagoEntradas = document.getElementById('inputCompletarPagoEntradas')
+const completePaymentEntriesHelp = document.getElementById('completePaymentEntriesHelp')
 const specialRequestViewModalElement = document.getElementById('specialRequestViewModal')
 const specialRequestViewModal = specialRequestViewModalElement ? new bootstrap.Modal(specialRequestViewModalElement) : null
 const specialRequestViewContent = document.getElementById('specialRequestViewContent')
@@ -39,6 +44,7 @@ let currentBookingListMode = 'active'
 let knownActiveBookingIds = new Set()
 let unreadBookingIds = new Set()
 let knownSpecialRequestIds = new Set()
+let currentCompletePaymentBooking = null
 let specialRequestAudioContext = null
 let browserNotificationPermissionRequested = false
 let originalDocumentTitle = document.title
@@ -198,6 +204,45 @@ function formatSpecialRequestAmount(amount) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(numericAmount)}`
+}
+
+function formatBookingMoney(amount) {
+    const numericAmount = Number(amount)
+
+    if (!Number.isFinite(numericAmount)) {
+        return '$0,00'
+    }
+
+    return `$${new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(numericAmount)}`
+}
+
+function formatRawBookingAmount(amount) {
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount)) {
+        return '0'
+    }
+
+    const roundedAmount = Math.round((numericAmount + Number.EPSILON) * 100) / 100
+    return Number.isInteger(roundedAmount) ? String(roundedAmount) : roundedAmount.toFixed(2)
+}
+
+function updateCompletePaymentEntriesAmount() {
+    if (!currentCompletePaymentBooking || !inputCompletarPagoEntradas || !inputCompletarPagoReserva) {
+        return
+    }
+
+    const pendingEntries = Math.max(0, Number(currentCompletePaymentBooking.pending_entries || 0))
+    const unitPrice = Number(currentCompletePaymentBooking.current_unit_price || 0)
+    const selectedEntries = Math.min(pendingEntries, Math.max(1, Math.trunc(Number(inputCompletarPagoEntradas.value || 0))))
+    inputCompletarPagoEntradas.value = String(selectedEntries)
+    inputCompletarPagoReserva.value = formatRawBookingAmount(selectedEntries * unitPrice)
+
+    if (completePaymentEntriesHelp) {
+        completePaymentEntriesHelp.textContent = `${formatBookingMoney(unitPrice)} por entrada. Pendientes: ${pendingEntries}.`
+    }
 }
 
 function getSpecialRequestStatusMeta(status = '') {
@@ -743,6 +788,12 @@ bookingsTabButton?.addEventListener('shown.bs.tab', () => {
 document.addEventListener('pointerdown', unlockSpecialRequestAudio, { once: true })
 document.addEventListener('pointerdown', ensureBrowserNotificationPermission, { once: true })
 
+document.addEventListener('input', (e) => {
+    if (e.target?.id === 'inputCompletarPagoEntradas') {
+        updateCompletePaymentEntriesAmount()
+    }
+})
+
 
 document.addEventListener('click', async (e) => {
     if (e.target) {
@@ -777,10 +828,22 @@ document.addEventListener('click', async (e) => {
             const botonPagar = document.getElementById('botonCompletarPago')
             const booking = await getBooking(bookingId)
             botonPagar.setAttribute('data-id', bookingId)
+            currentCompletePaymentBooking = booking
 
             completarPagoModalButton.show()
             inputCompletarPagoReserva.value = booking.diference
             medioPagoSelect.value = ''
+            const isEntryPayment = Number(booking.partial_by_entries || 0) === 1 && Number(booking.pending_entries || 0) > 0
+            inputCompletarPagoReserva.readOnly = isEntryPayment
+            completePaymentEntriesGroup?.classList.toggle('d-none', !isEntryPayment)
+            if (isEntryPayment && inputCompletarPagoEntradas) {
+                inputCompletarPagoEntradas.min = '1'
+                inputCompletarPagoEntradas.max = String(booking.pending_entries)
+                inputCompletarPagoEntradas.value = String(booking.pending_entries)
+                updateCompletePaymentEntriesAmount()
+            } else if (inputCompletarPagoEntradas) {
+                inputCompletarPagoEntradas.value = ''
+            }
             if (botonPagar) {
                 botonPagar.disabled = false
                 botonPagar.innerText = 'Pagar'
@@ -819,6 +882,14 @@ document.addEventListener('click', async (e) => {
                 idUser: idUser,
                 medioPago: medioPagoSelect.value,
                 idCustomer: booking.id_customer,
+            }
+
+            if (Number(booking.partial_by_entries || 0) === 1) {
+                const paidEntries = Math.trunc(Number(inputCompletarPagoEntradas?.value || 0))
+                if (!paidEntries || paidEntries > Number(booking.pending_entries || 0)) {
+                    return alert('La cantidad de entradas a abonar es invalida')
+                }
+                data.paidEntries = paidEntries
             }
 
             botonCompletarPago.disabled = true
@@ -1354,6 +1425,13 @@ async function fillTableBookings(data, options = {}) {
             : `<span class="badge text-bg-secondary">${escapeHtml(reserva.factura_enviada || 'Pendiente')}</span>`
 
         const rowClass = reserva.pago_total === 'Si' ? 'admin-booking-row admin-booking-row--paid' : 'admin-booking-row'
+        const isEntryPayment = Number(reserva.partial_by_entries || 0) === 1
+        const paidAmountDisplay = isEntryPayment
+            ? `${formatBookingMoney(reserva.monto_reserva)}<small class="d-block text-muted">${Number(reserva.paid_entries || 0)} entradas abonadas</small>`
+            : escapeHtml(reserva.monto_reserva)
+        const pendingAmountDisplay = isEntryPayment
+            ? `${Number(reserva.pending_entries || 0) > 0 ? '-' + formatBookingMoney(reserva.pending_entries_amount) : '0'}<small class="d-block text-muted">${Number(reserva.pending_entries || 0)} entradas pendientes</small>`
+            : `${Number(reserva.diferencia || 0) > 0 ? '-' + escapeHtml(reserva.diferencia) : 0}`
 
         tr += `
         <tr class="${rowClass}">
@@ -1363,9 +1441,9 @@ async function fillTableBookings(data, options = {}) {
             <td>${reserva.nombre}</td>
             <td>${reserva.telefono}</td>
             <td>${reserva.visitantes}</td>
-            <td>${reserva.monto_reserva}</td>
+            <td>${paidAmountDisplay}</td>
             <td>${reserva.total_reserva}</td>
-            <td>${reserva.diferencia > 0 ? '-' + reserva.diferencia : 0}</td>
+            <td>${pendingAmountDisplay}</td>
             <td>${reserva.metodo_pago}</td>
             <td>${descripcion}</td>
             <td>${stateMP}</td>

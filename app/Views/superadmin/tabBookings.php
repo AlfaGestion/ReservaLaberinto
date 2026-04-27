@@ -122,6 +122,12 @@ $uploadData = $uploadModel->first();
                     <input type="text" class="form-control" id="inputCompletarPagoReserva" name="inputCompletarPagoReserva" placeholder="">
                 </div>
 
+                <div class="mb-3 d-none" id="completePaymentEntriesGroup">
+                    <label for="inputCompletarPagoEntradas" class="form-label">Entradas abonadas</label>
+                    <input type="number" class="form-control" id="inputCompletarPagoEntradas" min="1" step="1">
+                    <small class="text-muted d-block mt-2" id="completePaymentEntriesHelp"></small>
+                </div>
+
                 <div class="form-floating">
                     <select class="form-select" id="medioPagoSelect" aria-label="Floating label select example">
                         <option value="">Seleccionar</option>

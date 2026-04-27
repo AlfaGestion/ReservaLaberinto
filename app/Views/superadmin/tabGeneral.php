@@ -178,6 +178,28 @@ $uploadData = $uploadModel->first();
                             <label for="notificationEmail">Emails para reservas recibidas</label>
                         </div>
                         <small class="text-muted d-block">Podes cargar uno o varios emails separados por ;</small>
+
+                        <div class="border rounded-3 bg-white p-3 mt-4">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="enablePayByEntries" <?= !empty($uploadData['enable_pay_by_entries']) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-semibold" for="enablePayByEntries">Habilitar pago parcial por cantidad de entradas</label>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="number" min="0" class="form-control" id="payByEntriesMinEntries" placeholder="Entradas minimas" value="<?= esc($uploadData['pay_by_entries_min_entries'] ?? 0) ?>">
+                                        <label for="payByEntriesMinEntries">Entradas minimas</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="number" min="0" class="form-control" id="payByEntriesMinDaysBeforeBooking" placeholder="Dias de anticipacion" value="<?= esc($uploadData['pay_by_entries_min_days_before_booking'] ?? 0) ?>">
+                                        <label for="payByEntriesMinDaysBeforeBooking">Dias minimos de anticipacion</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="border rounded-4 p-4">
