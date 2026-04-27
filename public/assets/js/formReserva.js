@@ -17,6 +17,7 @@ const pagoTotal = document.getElementById('switchPagoTotal')
 const payByEntriesSection = document.getElementById('payByEntriesSection')
 const payByEntriesInput = document.getElementById('payByEntriesInput')
 const payByEntriesHelp = document.getElementById('payByEntriesHelp')
+const btnParcial = document.getElementById('btnParcial')
 const divTime = document.getElementById('div-time')
 const divTimeH = document.getElementById('div-time-h')
 const bookingTimeRow = horarioDesde?.closest('.horario')
@@ -93,6 +94,7 @@ const check10Div = document.getElementById('check10Div')
 const confirmRulesButton = document.getElementById('confirmRulesButton')
 const validateDataButton = document.getElementById('validateDataButton')
 const inputEmail = document.getElementById('inputEmail')
+const email = document.getElementById('email')
 // const welcomeModal = new bootstrap.Modal('#welcomeModal')
 const ofertaModal = new bootstrap.Modal('#ofertaModal')
 const publicKeyMp = document.getElementById('publicKeyMp')?.value || ''
@@ -894,7 +896,7 @@ function updatePayByEntriesControls(rateValue = 0) {
     const unitPrice = getPublicUnitPrice()
     const available = isPayByEntriesAvailable() && !pagoTotal?.checked
     payByEntriesSection.classList.toggle('d-none', !available)
-
+    btnParcial?.classList.toggle('d-none', !available)
     if (!available) {
         return
     }
@@ -1172,6 +1174,9 @@ function applyValidatedCustomer(customer) {
     telefono.value = customer.phone || ''
     nombre.value = customer.name || ''
     inputEmail.value = customer.email || inputEmail.value || ''
+    if (email) {
+        email.value = customer.email || inputEmail.value || email.value || ''
+    }
 
     validateDataButton?.classList.add('d-none')
     closeModalValidate?.classList.remove('d-none')
@@ -2252,8 +2257,27 @@ document.addEventListener('click', async (e) => {
             }
 
             await fetchFormInfo(data)
+            
+            const rateForEntries = await getRate()
+            updatePayByEntriesControls(rateForEntries.value)
             modalConfirmarReserva.show()
+         } else if (e.target.id == 'btnParcial') {
+            const rate = await getRate()
 
+            if (!isPayByEntriesAvailable()) {
+                showPublicNotice('El pago por entradas no está disponible para esta reserva.')
+                return
+            }
+
+            if (pagoTotal) {
+                pagoTotal.checked = false
+            }
+
+            updatePayByEntriesControls(rate.value)
+            buildPublicPaymentData(rate.value, 'parcial')
+
+            modalConfirmarReserva.hide()
+            modalIngresarPago.show()
         } else if (e.target.id == 'buttonCancel' || e.target.id == 'btnClose') {
             location.reload(true)
         } else if (e.target.id == 'cancelarReserva') {

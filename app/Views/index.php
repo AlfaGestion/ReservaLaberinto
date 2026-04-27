@@ -304,7 +304,7 @@ if (!empty($prefill['time_until'])) {
                         <label for="inputTelefono">Telefono</label>
                     </div>
                     <div class="form-floating flex-nowrap mb-3">
-                        <input type="text" class="form-control" name="inputEmail" id="inputEmail" aria-label="name">
+                        <input type="email" class="form-control" name="inputEmail" id="inputEmail" placeholder="Ingrese el email" aria-label="email" required>
                         <label for="inputEmail">Email</label>
                     </div>
 
@@ -476,10 +476,9 @@ if (!empty($prefill['time_until'])) {
                     <?php else : ?>
                         <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;" id="confirmarReserva">Confirmar reserva</button>
                     <?php endif; ?>
-
                     
-                    <button type="button" class="btn booking-stage__button booking-stage__button--ghost" id="btnParcial">
-                         Elegir cuántas entradas abonar ahora
+                    <button type="button" class="btn booking-stage__button booking-stage__button--secondary d-none" id="btnParcial">
+                        <i class="fa-solid fa-ticket me-2"></i>Elegir cuántas entradas abonar ahora
                     </button>
 
                     <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#5a5a5a' ?>;" id="cancelarReserva">Cancelar reserva</button>
@@ -642,25 +641,6 @@ if (!empty($prefill['time_until'])) {
 
             </div>
         </div>
-    </div>
-
-    <div id="modalParcial" style="display:none;">
-        <h3>Pago parcial</h3>
-
-        <p>Total entradas: <span id="totalEntradas"></span></p>
-        <p>Pagadas: <span id="pagadas"></span></p>
-        <p>Pendientes: <span id="pendientes"></span></p>
-        <p>Precio actual: $<span id="precio"></span></p>
-
-        <input type="number" id="entradasPagar" min="1">
-
-        <p>Total: $<span id="total"></span></p>
-
-        <p style="color:red;">
-            Las entradas no abonadas se cobrarán al valor vigente al momento del pago.
-        </p>
-
-        <button id="confirmarPagoParcial">Confirmar</button>
     </div>
 
 </div>
