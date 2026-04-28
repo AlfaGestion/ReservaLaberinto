@@ -528,12 +528,12 @@ if (!empty($prefill['time_until'])) {
         <!-- Second Modal -->
         <div class="modal fade" id="ingresarPago" aria-hidden="true" data-bs-backdrop="static" aria-labelledby="ingresarPagoLabel" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="ingresarPagoLabel">Ingresar pago</h1>
+                <div class="modal-content payment-entry-modal">
+                    <div class="modal-header payment-entry-modal__header">
+                        <h1 class="modal-title fs-5" id="ingresarPagoLabel">Confirmar pago</h1>
                         <button type="button" id="buttonCancel" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body payment-entry-modal__body">
 
                         <?php if (session()->logueado) : ?>
                             <div class="mb-3">
@@ -564,35 +564,57 @@ if (!empty($prefill['time_until'])) {
                             </div>
 
                         <?php else : ?>
-                            <div class="mb-3">
-                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                                    <small style="font-size: 0.65rem;">Importante: Lo que esta por abonar corresponde unicamente a la sena para la reserva. El saldo restante se abona al momento de concurrir al establecimiento. En caso de abonar el total de la reserva no debera realizar ningun pago adicional al momento de asistir.
+                            <div class="payment-entry-panel">
+                                <div class="alert alert-warning payment-entry-note" role="alert">
+                                    <small>Estas pagando la sena para confirmar la reserva. El resto se abona al llegar. Si preferis pagar el total ahora, no te quedara saldo pendiente para el dia de la visita.
                                     </small>
                                 </div>
-                                <div class="form-check form-switch mb-2">
+                                <div class="form-check form-switch payment-entry-switch">
                                     <input class="form-check-input" type="checkbox" role="switch" name="switchPagoTotal" id="switchPagoTotal">
-                                    <label class="form-check-label" for="switchPagoTotal">Pagar el total</label>
+                                    <label class="form-check-label" for="switchPagoTotal">Quiero pagar el total</label>
                                 </div>
-                                <label for="inputPagoReserva" class="form-label">A abonar</label>
-                                <input type="text" class="form-control" id="inputPagoReserva" name="inputPagoReserva" placeholder="" disabled value="0" style="font-size: 1.5rem;">
-                                <div id="payByEntriesToggleWrapper" class="border rounded-3 p-3 mt-3 d-none">
+                                <div class="payment-entry-amount-block">
+                                    <label for="inputPagoReserva" class="form-label payment-entry-amount-label">Monto a pagar ahora</label>
+                                    <input type="text" class="form-control payment-entry-amount" id="inputPagoReserva" name="inputPagoReserva" placeholder="" disabled value="0">
+                                </div>
+                                <div id="payByEntriesToggleWrapper" class="border rounded-3 p-3 mt-3 d-none payment-entry-card">
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="checkbox" id="payByEntriesToggle">
-                                        <label class="form-check-label fw-semibold" for="payByEntriesToggle">Abonar por cantidad de entradas</label>
+                                        <label class="form-check-label fw-semibold" for="payByEntriesToggle">Pagar solo algunas entradas ahora</label>
                                     </div>
 
                                     <div id="payByEntriesSection" class="d-none">
                                         <div class="form-floating mb-3">
                                             <input type="number" class="form-control" id="payByEntriesInput" min="1" step="1" value="1" placeholder="Cantidad de entradas">
-                                            <label for="payByEntriesInput">Cantidad de entradas a abonar ahora</label>
+                                            <label for="payByEntriesInput">Cuantas entradas queres pagar ahora</label>
                                         </div>
 
-                                        <div class="small">
-                                            <div>Total de entradas reservadas: <strong id="payByEntriesTotal">0</strong></div>
-                                            <div>Total de la reserva: <strong id="payByEntriesBookingTotal">$0</strong></div>
-                                            <div>Precio por entrada hoy: <strong id="payByEntriesUnitPrice">$0</strong></div>
-                                            <div>Total a pagar ahora: <strong id="payByEntriesAmount">$0</strong></div>
-                                            <div>Entradas pendientes: <strong id="payByEntriesPending">0</strong></div>
+                                        <div class="pay-by-entries-summary">
+                                            <div class="pay-by-entries-summary__totals">
+                                                <div class="pay-by-entries-summary__card pay-by-entries-summary__card--primary">
+                                                    <span class="pay-by-entries-summary__label">Total de Entradas</span>
+                                                    <strong class="pay-by-entries-summary__value pay-by-entries-summary__value--xl" id="payByEntriesTotal">0</strong>
+                                                </div>
+                                                <div class="pay-by-entries-summary__card">
+                                                    <span class="pay-by-entries-summary__label">Total $</span>
+                                                    <strong class="pay-by-entries-summary__value" id="payByEntriesBookingTotal">$0</strong>
+                                                </div>
+                                            </div>
+
+                                            <div class="pay-by-entries-summary__row">
+                                                <span class="pay-by-entries-summary__label">Precio por entrada</span>
+                                                <strong class="pay-by-entries-summary__value" id="payByEntriesUnitPrice">$0</strong>
+                                            </div>
+
+                                            <div class="pay-by-entries-summary__highlight">
+                                                <span class="pay-by-entries-summary__highlight-label">Total a pagar ahora</span>
+                                                <strong class="pay-by-entries-summary__highlight-value" id="payByEntriesAmount">$0</strong>
+                                            </div>
+
+                                            <div class="pay-by-entries-summary__footer">
+                                                <span class="pay-by-entries-summary__footer-label">Entradas pendientes</span>
+                                                <strong class="pay-by-entries-summary__footer-value" id="payByEntriesPending">0</strong>
+                                            </div>
                                         </div>
 
                                         <div class="alert alert-warning mt-3 mb-0">
@@ -602,13 +624,13 @@ if (!empty($prefill['time_until'])) {
                                 </div>
                             </div>
 
-                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                                <small style="font-size: 0.65rem;"> <b>UNA VEZ EFECTUADO EL PAGO, AGUARDE EL TIEMPO ESTIPULADO POR MERCADO PAGO PARA SER REDIRECCIONADO AL SITIO. DE OTRA FORMA, EL PAGO NO SERA CONFIRMADO.</b></small>
+                            <div class="alert alert-warning payment-entry-note payment-entry-note--strong mt-3 mb-0" role="alert">
+                                <small><b>Cuando termines el pago, espera la redireccion de Mercado Pago para que podamos confirmarlo correctamente.</b></small>
                             </div>
                         <?php endif; ?>
 
                     </div>
-                    <div class="modal-footer d-flex justify-contente-center align-items-center">
+                    <div class="modal-footer d-flex justify-contente-center align-items-center payment-entry-modal__footer">
                         <div id="checkout-btn-parcial"></div>
                         <div id="checkout-btn-total" style="display:none;"></div>
                         <?php if (session()->logueado) : ?>

@@ -51,10 +51,18 @@ class Rate extends BaseController
             'allow_group_coordinator' => 0,
         ];
         $uploadConfig = $uploadModel->first() ?? [];
+        $defaultEntriesPercentage = ($uploadConfig['pay_by_entries_default_percentage'] ?? null) !== null
+            ? (int) $uploadConfig['pay_by_entries_default_percentage']
+            : 50;
+
+        if ($defaultEntriesPercentage < 1 || $defaultEntriesPercentage > 100) {
+            $defaultEntriesPercentage = 50;
+        }
 
         $rate['enable_pay_by_entries'] = !empty($uploadConfig['enable_pay_by_entries']) ? 1 : 0;
         $rate['pay_by_entries_min_entries'] = (int) ($uploadConfig['pay_by_entries_min_entries'] ?? 0);
         $rate['pay_by_entries_min_days_before_booking'] = (int) ($uploadConfig['pay_by_entries_min_days_before_booking'] ?? 0);
+        $rate['pay_by_entries_default_percentage'] = $defaultEntriesPercentage;
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $rate, 'Respuesta exitosa'));

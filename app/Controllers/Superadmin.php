@@ -1033,12 +1033,18 @@ class Superadmin extends BaseController
         $enablePayByEntries = !empty($data->enable_pay_by_entries) ? 1 : 0;
         $payByEntriesMinEntries = (int) ($data->pay_by_entries_min_entries ?? 0);
         $payByEntriesMinDays = (int) ($data->pay_by_entries_min_days_before_booking ?? 0);
+        $payByEntriesDefaultPercentage = (int) ($data->pay_by_entries_default_percentage ?? 50);
         $qtyVisitors = ($qtyVisitors === null || $qtyVisitors === '') ? null : (int) $qtyVisitors;
         $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
 
         if ($payByEntriesMinEntries < 0 || $payByEntriesMinDays < 0) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
                 ->setJSON(['error' => true, 'message' => 'Los minimos de pago por entradas no pueden ser negativos']);
+        }
+
+        if ($payByEntriesDefaultPercentage < 1 || $payByEntriesDefaultPercentage > 100) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON(['error' => true, 'message' => 'El porcentaje por defecto de pago por entradas debe estar entre 1 y 100']);
         }
 
         foreach ($notificationEmailList as $email) {
@@ -1073,6 +1079,7 @@ class Superadmin extends BaseController
                 'enable_pay_by_entries' => $enablePayByEntries,
                 'pay_by_entries_min_entries' => $payByEntriesMinEntries,
                 'pay_by_entries_min_days_before_booking' => $payByEntriesMinDays,
+                'pay_by_entries_default_percentage' => $payByEntriesDefaultPercentage,
             ];
 
             if ($existingUpload) {

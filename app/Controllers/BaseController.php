@@ -198,6 +198,9 @@ abstract class BaseController extends Controller
             'enabled' => !empty($config['enable_pay_by_entries']),
             'min_entries' => max(0, (int) ($config['pay_by_entries_min_entries'] ?? 0)),
             'min_days_before_booking' => max(0, (int) ($config['pay_by_entries_min_days_before_booking'] ?? 0)),
+            'default_percentage' => ($config['pay_by_entries_default_percentage'] ?? null) !== null
+                ? min(100, max(1, (int) $config['pay_by_entries_default_percentage']))
+                : 50,
         ];
     }
 

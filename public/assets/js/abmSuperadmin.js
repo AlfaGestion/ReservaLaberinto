@@ -13,6 +13,7 @@ const inputInvoiceEmailMessage = document.getElementById('invoiceEmailMessage')
 const inputEnablePayByEntries = document.getElementById('enablePayByEntries')
 const inputPayByEntriesMinEntries = document.getElementById('payByEntriesMinEntries')
 const inputPayByEntriesMinDaysBeforeBooking = document.getElementById('payByEntriesMinDaysBeforeBooking')
+const inputPayByEntriesDefaultPercentage = document.getElementById('payByEntriesDefaultPercentage')
 const inputOfferRate = document.getElementById('offerRate')
 const descriptionOffer = document.getElementById('descriptionOffer')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
@@ -356,7 +357,8 @@ document.addEventListener('click', async (e) => {
                 invoice_email_message: inputInvoiceEmailMessage?.value || '',
                 enable_pay_by_entries: inputEnablePayByEntries?.checked ? 1 : 0,
                 pay_by_entries_min_entries: inputPayByEntriesMinEntries?.value || 0,
-                pay_by_entries_min_days_before_booking: inputPayByEntriesMinDaysBeforeBooking?.value || 0
+                pay_by_entries_min_days_before_booking: inputPayByEntriesMinDaysBeforeBooking?.value || 0,
+                pay_by_entries_default_percentage: inputPayByEntriesDefaultPercentage?.value || 50
             }
 
             saveGeneralSettings(`${baseUrl}saveWebGeneral`, data)

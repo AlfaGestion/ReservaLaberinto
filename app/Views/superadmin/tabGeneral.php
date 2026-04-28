@@ -186,16 +186,22 @@ $uploadData = $uploadModel->first();
                             </div>
 
                             <div class="row g-3">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-floating">
                                         <input type="number" min="0" class="form-control" id="payByEntriesMinEntries" placeholder="Entradas minimas" value="<?= esc($uploadData['pay_by_entries_min_entries'] ?? 0) ?>">
                                         <label for="payByEntriesMinEntries">Entradas minimas</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-floating">
                                         <input type="number" min="0" class="form-control" id="payByEntriesMinDaysBeforeBooking" placeholder="Dias de anticipacion" value="<?= esc($uploadData['pay_by_entries_min_days_before_booking'] ?? 0) ?>">
                                         <label for="payByEntriesMinDaysBeforeBooking">Dias minimos de anticipacion</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="number" min="1" max="100" class="form-control" id="payByEntriesDefaultPercentage" placeholder="Porcentaje por defecto" value="<?= esc($uploadData['pay_by_entries_default_percentage'] ?? 50) ?>">
+                                        <label for="payByEntriesDefaultPercentage">Entradas a abonar por defecto (%)</label>
                                     </div>
                                 </div>
                             </div>
