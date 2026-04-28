@@ -10,7 +10,8 @@ const sendInvoiceEmailModal = sendInvoiceEmailModalElement ? new bootstrap.Modal
 const totalReservasHoy = document.getElementById('totalReservasHoy')
 const bookingsTabButton = document.getElementById('nav-bookings-tab')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
-const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
+//const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
+const completarPagoReservaInput = document.getElementById('inputCompletarPagoReserva')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
 const selectDateBooking = document.getElementById('selectDateBooking')
 const invoiceEmailBookingIdInput = document.getElementById('invoiceEmailBookingId')
@@ -230,7 +231,7 @@ function formatRawBookingAmount(amount) {
 }
 
 function updateCompletePaymentEntriesAmount() {
-    if (!currentCompletePaymentBooking || !inputCompletarPagoEntradas || !inputCompletarPagoReserva) {
+    if (!currentCompletePaymentBooking || !inputCompletarPagoEntradas || !completarPagoReservaInput) {
         return
     }
 
@@ -238,7 +239,7 @@ function updateCompletePaymentEntriesAmount() {
     const unitPrice = Number(currentCompletePaymentBooking.current_unit_price || 0)
     const selectedEntries = Math.min(pendingEntries, Math.max(1, Math.trunc(Number(inputCompletarPagoEntradas.value || 0))))
     inputCompletarPagoEntradas.value = String(selectedEntries)
-    inputCompletarPagoReserva.value = formatRawBookingAmount(selectedEntries * unitPrice)
+    completarPagoReservaInput.value = formatRawBookingAmount(selectedEntries * unitPrice)
 
     if (completePaymentEntriesHelp) {
         completePaymentEntriesHelp.textContent = `${formatBookingMoney(unitPrice)} por entrada. Pendientes: ${pendingEntries}.`
@@ -831,10 +832,10 @@ document.addEventListener('click', async (e) => {
             currentCompletePaymentBooking = booking
 
             completarPagoModalButton.show()
-            inputCompletarPagoReserva.value = booking.diference
+            completarPagoReservaInput.value = booking.diference
             medioPagoSelect.value = ''
             const isEntryPayment = Number(booking.partial_by_entries || 0) === 1 && Number(booking.pending_entries || 0) > 0
-            inputCompletarPagoReserva.readOnly = isEntryPayment
+            completarPagoReservaInput.readOnly = isEntryPayment
             completePaymentEntriesGroup?.classList.toggle('d-none', !isEntryPayment)
             if (isEntryPayment && inputCompletarPagoEntradas) {
                 inputCompletarPagoEntradas.min = '1'
@@ -901,16 +902,16 @@ document.addEventListener('click', async (e) => {
             const bookingId = botonPagar.dataset.id
             const booking = await getBooking(bookingId)
 
-            if (medioPagoSelect.value == '' || inputCompletarPagoReserva.value == '') {
+            if (medioPagoSelect.value == '' || completarPagoReservaInput.value == '') {
                 return alert('Debe completar todos los campos')
             }
 
-            // if (inputCompletarPagoReserva.value > booking.diference) {
+            // if (completarPagoReservaInput.value > booking.diference) {
             //     return alert('El monto a abonar no puede ser mayor al saldo')
             // }
 
             let data = {
-                pago: inputCompletarPagoReserva.value,
+                pago: completarPagoReservaInput.value,
                 idUser: idUser,
                 medioPago: medioPagoSelect.value,
                 idCustomer: booking.id_customer,
