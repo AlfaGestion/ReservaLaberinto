@@ -23,10 +23,7 @@ class MercadoPago extends BaseController
             return;
         }
 
-        $bookingSlotsModel->update($slotId, [
-            'active' => 0,
-            'status' => 'cancelled',
-        ]);
+        $bookingSlotsModel->delete($slotId);
     }
 
     private function releaseActiveSlots(BookingSlotsModel $bookingSlotsModel, array $conditions): void
@@ -39,6 +36,46 @@ class MercadoPago extends BaseController
         $slots = $builder->findAll();
         foreach ($slots as $slot) {
             $this->releaseBookingSlot($bookingSlotsModel, (int) $slot['id']);
+        }
+    }
+
+    private function expirePendingSlots(BookingSlotsModel $bookingSlotsModel, BookingsModel $bookingsModel, array $conditions = []): void
+    {
+        $builder = $bookingSlotsModel
+            ->where('active', 1)
+            ->where('status', 'pending')
+            ->where('expires_at <', date('Y-m-d H:i:s'));
+
+        foreach ($conditions as $field => $value) {
+            $builder->where($field, $value);
+        }
+
+        $slots = $builder->findAll();
+        if ($slots === []) {
+            return;
+        }
+
+        $bookingIds = [];
+        foreach ($slots as $slot) {
+            if (!empty($slot['booking_id'])) {
+                $bookingIds[] = (int) $slot['booking_id'];
+            }
+
+            $this->releaseBookingSlot($bookingSlotsModel, (int) $slot['id']);
+        }
+
+        if ($bookingIds === []) {
+            return;
+        }
+
+        $bookings = $bookingsModel->whereIn('id', array_values(array_unique($bookingIds)))->findAll();
+        foreach ($bookings as $booking) {
+            if ((int) ($booking['approved'] ?? 0) === 1 || (int) ($booking['annulled'] ?? 0) === 1) {
+                continue;
+            }
+
+            $bookingsModel->update($booking['id'], ['annulled' => 1]);
+            $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion automatica de reserva pendiente vencida de Mercado Pago.', 'SISTEMA');
         }
     }
 
@@ -266,6 +303,15 @@ class MercadoPago extends BaseController
             $timeFrom = $bookingArr['horarioDesde'] ?? null;
             $timeUntil = $bookingArr['horarioHasta'] ?? null;
 
+            if ($bookingDate && $bookingField && $timeFrom && $timeUntil) {
+                $this->expirePendingSlots($bookingSlotsModel, $bookingsModel, [
+                    'date' => $bookingDate,
+                    'id_field' => $bookingField,
+                    'time_from' => $timeFrom,
+                    'time_until' => $timeUntil,
+                ]);
+            }
+
             $existingBooking = $bookingsModel->where('date', $bookingDate)
                 ->where('id_field', $bookingField)
                 ->where('time_from', $timeFrom)
@@ -397,7 +443,12 @@ class MercadoPago extends BaseController
                 $this->releaseBookingSlot($bookingSlotsModel, (int) $slotId);
             }
             log_message('error', 'Error en setPreference: ' . $e->getMessage());
-            return $this->response->setJSON($this->setResponse(409, true, null, 'El horario ya fue tomado por otra reserva. Actualiza e intenta nuevamente.'));
+            $publicMessage = 'No se pudo preparar el pago de la reserva. Intente nuevamente.';
+            if (str_contains($e->getMessage(), 'uniq_booking_slots_active')) {
+                $publicMessage = 'Ese horario sigue ocupado por un intento anterior. Actualiza e intenta nuevamente.';
+            }
+
+            return $this->response->setJSON($this->setResponse(409, true, null, $publicMessage));
         }
     }
 
@@ -517,8 +568,7 @@ class MercadoPago extends BaseController
 
                     $bookingSlotsModel->where('booking_id', $existingBooking['id'])
                         ->where('active', 1)
-                        ->set(['status' => 'confirmed', 'expires_at' => null])
-                        ->update();
+                        ->delete();
 
                     $data['id_booking'] = $existingBooking['id'];
                     $mercadoPagoModel->insert($data);

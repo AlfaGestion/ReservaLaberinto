@@ -28,6 +28,7 @@ const divTime = document.getElementById('div-time')
 const divTimeH = document.getElementById('div-time-h')
 const bookingTimeRow = horarioDesde?.closest('.horario')
 const modalConfirmarReserva = new bootstrap.Modal('#modalConfirmarReserva')
+const modalSpinnerElement = document.getElementById('modalSpinner')
 const modalSpinner = new bootstrap.Modal('#modalSpinner')
 const modalIngresarPago = new bootstrap.Modal('#ingresarPago')
 const modalIngresarPagoElement = document.getElementById('ingresarPago')
@@ -1097,8 +1098,16 @@ function showPublicNotice(message, type = 'error', title = '') {
     showPublicNoticeWithAction(message, type, title)
 }
 
-function showPublicNoticeWithAction(message, type = 'error', title = '', onAccept = null) {
+function showPublicNoticeWithAction(message, type = 'error', title = '', onAccept = null, deferWhileSpinnerVisible = true) {
     if (!publicNoticeModal || !publicNoticeInline || !publicNoticeTitle || !publicNoticeMessage || !publicNoticeIcon) {
+        return
+    }
+
+    if (deferWhileSpinnerVisible && modalSpinnerElement?.classList.contains('show')) {
+        modalSpinnerElement.addEventListener('hidden.bs.modal', () => {
+            showPublicNoticeWithAction(message, type, title, onAccept, false)
+        }, { once: true })
+        modalSpinner.hide()
         return
     }
 
@@ -2520,17 +2529,15 @@ document.addEventListener('click', async (e) => {
                 pendingMpContext = null
                 resetMercadoPagoButtons()
 
-                modalConfirmarReserva.hide()
-                modalIngresarPago.show()
-
                 updatePayByEntriesControls(rate.value)
                 buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
                 const preferences = await setScriptMP(Number(data?.monto || 0))
                 if (!preferences) {
-                    skipCancelOnHide = true
-                    modalIngresarPago.hide()
                     return
                 }
+
+                modalConfirmarReserva.hide()
+                modalIngresarPago.show()
 
                 if (pagoReserva) {
                     buildPublicPaymentData(rate.value, pagoTotal?.checked ? 'total' : 'parcial')
@@ -3014,7 +3021,7 @@ async function setScriptMP(amount) {
         return preferences
     } catch (error) {
         console.error('Error:', error)
-        showPublicNotice('No se pudo preparar el pago de la reserva. Intente nuevamente.')
+        showPublicNotice(error?.message || 'No se pudo preparar el pago de la reserva. Intente nuevamente.')
         return null
     } finally {
         modalSpinner.hide()

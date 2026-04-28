@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\BookingsModel;
+use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
 use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
@@ -251,6 +252,7 @@ class Home extends BaseController
     public function deleteRejected()
     {
         $bookingsModel = new BookingsModel();
+        $bookingSlotsModel = new BookingSlotsModel();
         $mercadoPagoModel = new MercadoPagoModel();
 
         $hora_actual = date("Y-m-d H:i:s");
@@ -260,6 +262,27 @@ class Home extends BaseController
             ->orWhere('status', 'null')->findAll();
 
         try {
+            $bookingIdsToDelete = $bookingsModel
+                ->select('id')
+                ->groupStart()
+                ->where('approved', 0)
+                ->orWhere('approved', null)
+                ->groupEnd()
+                ->where('booking_time <', $nueva_hora)
+                ->findColumn('id');
+
+            if (!empty($bookingIdsToDelete)) {
+                $bookingSlotsModel
+                    ->where('active', 1)
+                    ->whereIn('booking_id', $bookingIdsToDelete)
+                    ->delete();
+            }
+
+            $bookingSlotsModel
+                ->where('active', 1)
+                ->where('status', 'pending')
+                ->where('expires_at <', $hora_actual)
+                ->delete();
 
             if (isset($mpPayments)) {
                 $mercadoPagoModel->where('status', 'rejected')
@@ -267,8 +290,10 @@ class Home extends BaseController
                     ->delete();
             }
 
-            $bookingsModel->where('approved', 0)
+            $bookingsModel->groupStart()
+                ->where('approved', 0)
                 ->orWhere('approved', null)
+                ->groupEnd()
                 ->where('booking_time <', $nueva_hora)->delete();
 
             return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));

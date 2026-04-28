@@ -853,14 +853,46 @@ document.addEventListener('click', async (e) => {
             bookingId = e.target.dataset.id
 
         } else if (e.target.id == 'confirmarMP') {
+            const confirmButton = e.target
             const check = document.getElementById('confirmarMPCheck')
+            const originalLabel = confirmButton.innerText
 
             let dataState = {
                 confirm: check.checked,
                 bookingId: bookingId
             }
 
-            confirmMP(dataState)
+            confirmButton.disabled = true
+            confirmButton.innerText = 'Guardando...'
+
+            try {
+                const responseData = await confirmMP(dataState)
+                cambiarEstadoMPModal.hide()
+
+                if (currentBookingListMode === 'active' && bookingData?.fechaDesde && bookingData?.fechaHasta) {
+                    await getActiveBookings(bookingData, {
+                        showPendingMpAlert: false,
+                        markAsSeen: isBookingsTabActive(),
+                    })
+                } else {
+                    location.reload(true)
+                    return
+                }
+
+                if (typeof showAdminNotice === 'function') {
+                    showAdminNotice(responseData?.message || 'Estado de pago actualizado')
+                }
+            } catch (error) {
+                console.error('Error:', error)
+                if (typeof showAdminNotice === 'function') {
+                    showAdminNotice(error.message || 'No se pudo actualizar el estado de pago', 'error')
+                } else {
+                    alert(error.message || 'No se pudo actualizar el estado de pago')
+                }
+            } finally {
+                confirmButton.disabled = false
+                confirmButton.innerText = originalLabel
+            }
 
         } else if (e.target.id == 'botonCompletarPago') {
 
@@ -1211,7 +1243,18 @@ async function confirmMP(data) {
             body: JSON.stringify(data)
         });
 
-        location.reload(true)
+        let responseData = null
+        try {
+            responseData = await response.json()
+        } catch (error) {
+            responseData = null
+        }
+
+        if (!response.ok || responseData?.error) {
+            throw new Error(responseData?.message || 'No se pudo actualizar el estado de pago.')
+        }
+
+        return responseData
 
     } catch (error) {
         console.error('Error:', error);

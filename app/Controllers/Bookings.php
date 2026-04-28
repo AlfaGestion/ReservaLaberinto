@@ -171,10 +171,7 @@ class Bookings extends BaseController
 
         $slots = $builder->findAll();
         foreach ($slots as $slot) {
-            $bookingSlotsModel->update($slot['id'], [
-                'active' => 0,
-                'status' => 'cancelled',
-            ]);
+            $bookingSlotsModel->delete($slot['id']);
         }
     }
 
@@ -700,6 +697,7 @@ class Bookings extends BaseController
     {
         $mercadoPagoModel = new MercadoPagoModel();
         $bookingsModel = new BookingsModel();
+        $bookingSlotsModel = new BookingSlotsModel();
         $data = $this->request->getJSON();
         $idBooking = $data->idBooking;
         $mpPayment = $mercadoPagoModel->where('id_booking', $idBooking)->first();
@@ -710,6 +708,9 @@ class Bookings extends BaseController
                 $mercadoPagoModel->update($mpPayment['id'], ['annulled' => 1]);
             }
             $bookingsModel->update($idBooking, ['annulled' => 1]);
+            $bookingSlotsModel->where('booking_id', $idBooking)
+                ->where('active', 1)
+                ->delete();
             if ($booking) {
                 $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva.');
             }
