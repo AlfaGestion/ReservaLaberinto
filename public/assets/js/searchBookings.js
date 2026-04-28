@@ -12,7 +12,13 @@ const bookingsTabButton = document.getElementById('nav-bookings-tab')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
 //const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
 const completarPagoReservaInput = document.getElementById('inputCompletarPagoReserva')
-const medioPagoSelect = document.getElementById('medioPagoSelect')
+(function () {
+
+    const medioPagoSelect = document.getElementById('medioPagoSelect')
+
+})();
+//const medioPagoSelect = document.getElementById('medioPagoSelect')
+
 const selectDateBooking = document.getElementById('selectDateBooking')
 const invoiceEmailBookingIdInput = document.getElementById('invoiceEmailBookingId')
 const invoiceEmailToInput = document.getElementById('invoiceEmailTo')
