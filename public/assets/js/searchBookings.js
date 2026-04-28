@@ -1,3 +1,4 @@
+(() => {
 const searchBookingButton = document.getElementById('searchBooking')
 const inputDesdeBooking = document.getElementById('fechaDesdeBooking')
 const inputHastaBooking = document.getElementById('fechaHastaBooking')
@@ -10,14 +11,8 @@ const sendInvoiceEmailModal = sendInvoiceEmailModalElement ? new bootstrap.Modal
 const totalReservasHoy = document.getElementById('totalReservasHoy')
 const bookingsTabButton = document.getElementById('nav-bookings-tab')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
-//const inputCompletarPagoReserva = document.getElementById('inputCompletarPagoReserva')
 const completarPagoReservaInput = document.getElementById('inputCompletarPagoReserva')
-(function () {
-
-    const medioPagoSelect = document.getElementById('medioPagoSelect')
-
-})();
-//const medioPagoSelect = document.getElementById('medioPagoSelect')
+const medioPagoSelect = document.getElementById('medioPagoSelect')
 
 const selectDateBooking = document.getElementById('selectDateBooking')
 const invoiceEmailBookingIdInput = document.getElementById('invoiceEmailBookingId')
@@ -56,12 +51,81 @@ let specialRequestAudioContext = null
 let browserNotificationPermissionRequested = false
 let originalDocumentTitle = document.title
 let originalBookingsTabLabel = bookingsTabButton?.innerHTML || '<i class="fa-regular fa-calendar-days"></i> Reservas'
+let bookingsViewInitialized = false
+let bookingRefreshIntervalId = null
 
 function formatLocalDate(date) {
     const year = date.getFullYear()
     const month = `${date.getMonth() + 1}`.padStart(2, '0')
     const day = `${date.getDate()}`.padStart(2, '0')
     return `${year}-${month}-${day}`
+}
+
+function isValidDateInputValue(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(`${value || ''}`)
+}
+
+function normalizeDateInputValue(value) {
+    const rawValue = `${value || ''}`.trim()
+
+    if (isValidDateInputValue(rawValue)) {
+        return rawValue
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}\s/.test(rawValue)) {
+        return rawValue.slice(0, 10)
+    }
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawValue)) {
+        const [day, month, year] = rawValue.split('/')
+        return `${year}-${month}-${day}`
+    }
+
+    return ''
+}
+
+function getMondayOfWeek(referenceDate = new Date()) {
+    const date = new Date(referenceDate)
+    const day = date.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    date.setDate(date.getDate() + diff)
+    return date
+}
+
+function getInitialBookingDateRange() {
+    const today = formatLocalDate(new Date())
+    const fallbackWeekStart = formatLocalDate(getMondayOfWeek(new Date()))
+    const rawWeekStart = selectDateBooking?.dataset.weekStart || fallbackWeekStart
+    const rawLatestBookingDate = selectDateBooking?.dataset.latestBookingDate || today
+
+    let fechaDesde = normalizeDateInputValue(rawWeekStart) || fallbackWeekStart
+    let fechaHasta = normalizeDateInputValue(rawLatestBookingDate) || today
+
+    if (fechaHasta < fechaDesde) {
+        fechaHasta = fechaDesde
+    }
+
+    return { fechaDesde, fechaHasta }
+}
+
+function getCurrentBookingFilters() {
+    const initialRange = getInitialBookingDateRange()
+    const fechaDesde = normalizeDateInputValue(inputDesdeBooking?.value) || initialRange.fechaDesde
+    let fechaHasta = normalizeDateInputValue(inputHastaBooking?.value) || initialRange.fechaHasta
+
+    if (fechaHasta < fechaDesde) {
+        fechaHasta = fechaDesde
+    }
+
+    if (inputDesdeBooking) {
+        inputDesdeBooking.value = fechaDesde
+    }
+
+    if (inputHastaBooking) {
+        inputHastaBooking.value = fechaHasta
+    }
+
+    return { fechaDesde, fechaHasta }
 }
 
 function getInvoiceEmailDefaults() {
@@ -236,19 +300,64 @@ function formatRawBookingAmount(amount) {
     return Number.isInteger(roundedAmount) ? String(roundedAmount) : roundedAmount.toFixed(2)
 }
 
+function resolveCompletePaymentEntryUnitPrice(booking = currentCompletePaymentBooking) {
+    if (!booking) {
+        return 0
+    }
+
+    const directUnitPrice = Number(booking.current_unit_price || 0)
+    if (Number.isFinite(directUnitPrice) && directUnitPrice > 0) {
+        return directUnitPrice
+    }
+
+    const pendingEntries = Math.max(0, Number(booking.pending_entries || 0))
+    const currentEntriesAmountDue = Number(booking.current_entries_amount_due || 0)
+    if (pendingEntries > 0 && Number.isFinite(currentEntriesAmountDue) && currentEntriesAmountDue > 0) {
+        return currentEntriesAmountDue / pendingEntries
+    }
+
+    const difference = Number(booking.diference || 0)
+    if (pendingEntries > 0 && Number.isFinite(difference) && difference > 0) {
+        return difference / pendingEntries
+    }
+
+    const visitors = Math.max(0, Number(booking.visitors || 0))
+    const total = Number(booking.total || 0)
+    if (visitors > 0 && Number.isFinite(total) && total > 0) {
+        return total / visitors
+    }
+
+    return 0
+}
+
 function updateCompletePaymentEntriesAmount() {
     if (!currentCompletePaymentBooking || !inputCompletarPagoEntradas || !completarPagoReservaInput) {
         return
     }
 
     const pendingEntries = Math.max(0, Number(currentCompletePaymentBooking.pending_entries || 0))
-    const unitPrice = Number(currentCompletePaymentBooking.current_unit_price || 0)
-    const selectedEntries = Math.min(pendingEntries, Math.max(1, Math.trunc(Number(inputCompletarPagoEntradas.value || 0))))
+    const unitPrice = resolveCompletePaymentEntryUnitPrice(currentCompletePaymentBooking)
+
+    if (pendingEntries <= 0) {
+        inputCompletarPagoEntradas.value = '0'
+        completarPagoReservaInput.value = '0'
+        if (completePaymentEntriesHelp) {
+            completePaymentEntriesHelp.textContent = 'No quedan entradas pendientes para cobrar.'
+        }
+        return
+    }
+
+    const selectedEntries = Math.min(
+        pendingEntries,
+        Math.max(1, Math.trunc(Number(inputCompletarPagoEntradas.value || 0)))
+    )
+    const totalAmount = selectedEntries * unitPrice
+
     inputCompletarPagoEntradas.value = String(selectedEntries)
-    completarPagoReservaInput.value = formatRawBookingAmount(selectedEntries * unitPrice)
+    completarPagoReservaInput.value = formatRawBookingAmount(totalAmount)
 
     if (completePaymentEntriesHelp) {
-        completePaymentEntriesHelp.textContent = `${formatBookingMoney(unitPrice)} por entrada. Pendientes: ${pendingEntries}.`
+        completePaymentEntriesHelp.textContent = `${formatBookingMoney(unitPrice)} por entrada. ${selectedEntries} de ${pendingEntries} pendientes = ${formatBookingMoney(totalAmount)}.`
     }
 }
 
@@ -761,30 +870,47 @@ async function deleteSpecialRequestFromAdmin(requestId) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async (e) => {
-    const today = formatLocalDate(new Date())
-    const weekStart = selectDateBooking?.dataset.weekStart || today
-    const latestBookingDate = selectDateBooking?.dataset.latestBookingDate || today
-
-    inputDesdeBooking.value = weekStart
-    inputHastaBooking.value = latestBookingDate
-
-    bookingData = {
-        fechaDesde: inputDesdeBooking.value,
-        fechaHasta: inputHastaBooking.value
+async function initializeBookingsView() {
+    if (bookingsViewInitialized || !inputDesdeBooking || !inputHastaBooking || !selectDateBooking) {
+        return
     }
 
+    bookingsViewInitialized = true
+
+    const { fechaDesde, fechaHasta } = getInitialBookingDateRange()
+
+    inputDesdeBooking.value = fechaDesde
+    inputHastaBooking.value = fechaHasta
+
+    bookingData = { fechaDesde, fechaHasta }
     currentBookingListMode = 'active'
-    await getActiveBookings(bookingData, {
-        resetKnown: true,
-        markAsSeen: true,
-    })
-    fetchSpecialBookingRequests()
-    setInterval(() => {
-        refreshBookingNotifications(true)
-        fetchSpecialBookingRequests(true)
-    }, 30000)
-})
+
+    try {
+        await getActiveBookings(bookingData, {
+            resetKnown: true,
+            markAsSeen: true,
+        })
+        fetchSpecialBookingRequests()
+    } catch (error) {
+        console.error('Error inicializando reservas:', error)
+        if (typeof showAdminNotice === 'function') {
+            showAdminNotice('No se pudieron cargar las reservas iniciales', 'error')
+        }
+    }
+
+    if (!bookingRefreshIntervalId) {
+        bookingRefreshIntervalId = setInterval(() => {
+            refreshBookingNotifications(true)
+            fetchSpecialBookingRequests(true)
+        }, 30000)
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeBookingsView)
+} else {
+    initializeBookingsView()
+}
 
 bookingsTabButton?.addEventListener('shown.bs.tab', () => {
     if (currentBookingListMode === 'active') {
@@ -801,14 +927,17 @@ document.addEventListener('input', (e) => {
     }
 })
 
+document.addEventListener('change', (e) => {
+    if (e.target?.id === 'inputCompletarPagoEntradas') {
+        updateCompletePaymentEntriesAmount()
+    }
+})
+
 
 document.addEventListener('click', async (e) => {
     if (e.target) {
         if (e.target.id == 'searchBooking') {
-            bookingData = {
-                fechaDesde: inputDesdeBooking.value,
-                fechaHasta: inputHastaBooking.value
-            }
+            bookingData = getCurrentBookingFilters()
 
             currentBookingListMode = 'active'
             await getActiveBookings(bookingData, {
@@ -816,10 +945,7 @@ document.addEventListener('click', async (e) => {
                 markAsSeen: isBookingsTabActive(),
             })
         } else if (e.target.id == 'searchAnnulledBooking') {
-            bookingData = {
-                fechaDesde: inputDesdeBooking.value,
-                fechaHasta: inputHastaBooking.value
-            }
+            bookingData = getCurrentBookingFilters()
 
             currentBookingListMode = 'annulled'
             await getAnnulledBookings(bookingData)
@@ -838,18 +964,24 @@ document.addEventListener('click', async (e) => {
             currentCompletePaymentBooking = booking
 
             completarPagoModalButton.show()
-            completarPagoReservaInput.value = booking.diference
             medioPagoSelect.value = ''
             const isEntryPayment = Number(booking.partial_by_entries || 0) === 1 && Number(booking.pending_entries || 0) > 0
             completarPagoReservaInput.readOnly = isEntryPayment
             completePaymentEntriesGroup?.classList.toggle('d-none', !isEntryPayment)
             if (isEntryPayment && inputCompletarPagoEntradas) {
+                completarPagoReservaInput.value = formatRawBookingAmount(
+                    Number(booking.current_entries_amount_due ?? booking.diference ?? 0)
+                )
                 inputCompletarPagoEntradas.min = '1'
                 inputCompletarPagoEntradas.max = String(booking.pending_entries)
                 inputCompletarPagoEntradas.value = String(booking.pending_entries)
                 updateCompletePaymentEntriesAmount()
             } else if (inputCompletarPagoEntradas) {
+                completarPagoReservaInput.value = formatRawBookingAmount(Number(booking.diference || 0))
                 inputCompletarPagoEntradas.value = ''
+                if (completePaymentEntriesHelp) {
+                    completePaymentEntriesHelp.textContent = ''
+                }
             }
             if (botonPagar) {
                 botonPagar.disabled = false
@@ -924,10 +1056,12 @@ document.addEventListener('click', async (e) => {
             }
 
             if (Number(booking.partial_by_entries || 0) === 1) {
+                updateCompletePaymentEntriesAmount()
                 const paidEntries = Math.trunc(Number(inputCompletarPagoEntradas?.value || 0))
                 if (!paidEntries || paidEntries > Number(booking.pending_entries || 0)) {
                     return alert('La cantidad de entradas a abonar es invalida')
                 }
+                data.pago = completarPagoReservaInput.value
                 data.paidEntries = paidEntries
             }
 
@@ -1302,7 +1436,7 @@ async function getActiveBookings(data, options = {}) {
             processIncomingBookings(bookings, notifyOnNew, markAsSeen)
         }
 
-        if (updateSummary) {
+        if (updateSummary && totalReservasHoy) {
             totalReservasHoy.innerHTML = '&nbsp;' + bookings.length
         }
 
@@ -1340,6 +1474,10 @@ async function getAnnulledBookings(data) {
 async function fillTableBookings(data, options = {}) {
     const { showPendingMpAlert = true } = options
     const divBookings = document.querySelector('.divBookings')
+    if (!divBookings) {
+        return
+    }
+
     const bookings = Array.isArray(data) ? [...data] : []
 
     let existPending = false
@@ -1507,3 +1645,4 @@ async function fillTableBookings(data, options = {}) {
 
     divBookings.innerHTML = tr
 }
+})()
