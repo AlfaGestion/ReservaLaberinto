@@ -397,18 +397,13 @@ class Bookings extends BaseController
         }
 
 
-        if ($occupied) {
-            try {
-                return $this->response->setJSON($this->setResponse(null, null, [
-                    'reservas' => $timeBookings,
-                    'canchas' => $fieldsModel->findAll()
-                ], 'Respuesta exitosa'));
-            } catch (\Exception $e) {
-                return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
-            }
-        } else {
-            log_message('info', 'No hay reservas para la fecha seleccionada');
-            return $this->response->setJSON($this->setResponse(200, true, null, 'No hay reservas para la fecha seleccionada'));
+        try {
+            return $this->response->setJSON($this->setResponse(200, false, [
+                'reservas' => $timeBookings,
+                'canchas' => $fieldsModel->findAll()
+            ], $occupied ? 'Respuesta exitosa' : 'No hay reservas para la fecha seleccionada'));
+        } catch (\Exception $e) {
+            return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
     }
 
@@ -1497,29 +1492,33 @@ class Bookings extends BaseController
         $bookingsModel = new BookingsModel();
         $timeModel = new TimeModel();
 
-        // 1. Obtener el punto de partida y el rango de 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as.
-        $today = Time::now('America/Argentina/Buenos_Aires');
-
-        // El punto de inicio de la disponibilidad es MAÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ANA.
+        $timezone = 'America/Argentina/Buenos_Aires';
+        $today = Time::now($timezone)->setTime(0, 0, 0);
+        $requestedStartDate = trim((string) $this->request->getGet('startDate'));
         $startDay = $today->addDays(1);
 
-        // ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â CORRECCIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN 1: Definir el final del rango como 6 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as despuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©s del dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a de inicio (7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as en total).
+        if ($requestedStartDate !== '') {
+            try {
+                $parsedStartDay = Time::parse($requestedStartDate, $timezone)->setTime(0, 0, 0);
+                $startDay = $parsedStartDay->isBefore($today) ? $today : $parsedStartDay;
+            } catch (\Throwable $exception) {
+                $startDay = $today->addDays(1);
+            }
+        }
+
         $availabilityDays = 30;
         $endOfRange = $startDay->addDays($availabilityDays - 1)->toDateString();
 
         $currentWeek = [];
-        $currentDay = $startDay; // El bucle comienza en maÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ana
+        $currentDay = $startDay;
 
-        // Iteramos exactamente por 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as (MaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ana hasta el final del rango).
         while ($currentDay->toDateString() <= $endOfRange) {
             $currentWeek[] = $currentDay->toDateString();
             $currentDay = $currentDay->addDays(1);
         }
 
-        // 2. Obtener el horario de apertura. (Sin cambios)
         $openingHours = $timeModel->getOpeningTime();
 
-        // 3. Generar todos los lapsos de 2 horas posibles. (Sin cambios)
         $possibleSlots = [];
         $hoursCount = count($openingHours);
         for ($i = 0; $i < $hoursCount - 4; $i += 4) {
@@ -1533,7 +1532,6 @@ class Bookings extends BaseController
             }
         }
 
-        // 4. Obtener las reservas existentes para el nuevo rango de 7 dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as.
         $reservedBookings = $bookingsModel
             ->where('id_field', $idField)
             ->where('date >=', $startDay->toDateString())
@@ -1541,7 +1539,6 @@ class Bookings extends BaseController
             ->where('annulled', 0)
             ->findAll();
 
-        // Crear una lista de reservas existentes. (Sin cambios)
         $reservedSlots = [];
         foreach ($reservedBookings as $booking) {
             $date = $booking['date'];
@@ -1569,17 +1566,16 @@ class Bookings extends BaseController
             'Sunday' => 'domingos',
             'Monday' => 'lunes',
             'Tuesday' => 'martes',
-            'Wednesday' => 'miÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©rcoles',
+            'Wednesday' => 'miercoles',
             'Thursday' => 'jueves',
             'Friday' => 'viernes',
-            'Saturday' => 'sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡bados'
+            'Saturday' => 'sabados'
         ];
 
         foreach ($currentWeek as $date) {
             $currentDay = Time::parse($date);
             $dayName = $currentDay->format('l');
 
-            // ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â CORRECCIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN 2: LÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³gica de dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as cerrados (Restaurada y Funcional)
             $dayKey = $dayMapping[$dayName] ?? null;
 
             if ($dayKey && ($openingHours[$dayKey] ?? null) == 1) {
@@ -1588,7 +1584,7 @@ class Bookings extends BaseController
                     'date' => $currentDay->format('d/m/Y'),
                     'available_slots' => ["Cerrado los {$dayNameInSpanish}"]
                 ];
-                continue; // Pasa al siguiente dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a del bucle si estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ cerrado.
+                continue;
             }
 
             $availableToday = [];
@@ -1606,23 +1602,23 @@ class Bookings extends BaseController
                     }
                 }
 
-                // Mantenemos solo el filtro de reserva (ya que todos los dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­as son futuros)
                 if (!$isReserved) {
                     $availableToday[] = $slot['from'] . ' a ' . $slot['until'];
                 }
             }
 
-            if (!empty($availableToday)) {
-                $availability[] = [
-                    'date' => Time::parse($date)->format('d/m/Y'),
-                    'available_slots' => $availableToday
-                ];
-            }
+            $availability[] = [
+                'date' => Time::parse($date)->format('d/m/Y'),
+                'available_slots' => $availableToday
+            ];
         }
 
-        // 6. Devolver el resultado en formato JSON.
         try {
-            return $this->response->setJSON($this->setResponse(200, false, ['availability' => $availability], 'Horarios disponibles obtenidos correctamente.'));
+            return $this->response->setJSON($this->setResponse(200, false, [
+                'start_date' => $startDay->toDateString(),
+                'days' => $availabilityDays,
+                'availability' => $availability
+            ], 'Horarios disponibles obtenidos correctamente.'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, 'Error al procesar la disponibilidad: ' . $e->getMessage()));
         }
