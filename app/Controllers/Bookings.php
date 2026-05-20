@@ -7,6 +7,7 @@ use App\Libraries\PrintBookings;
 use App\Models\BookingSlotsModel;
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
+use App\Models\CustomerNoticeModel;
 use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
 use App\Models\PaymentsModel;
@@ -1635,6 +1636,7 @@ class Bookings extends BaseController
         $offerModel = new OffersModel();
         $uploadModel = new UploadModel();
         $valuesModel = new ValuesModel();
+        $customerNoticeModel = new CustomerNoticeModel();
 
         $users = $usersModel->findAll();
 
@@ -1732,7 +1734,7 @@ class Bookings extends BaseController
             }
         }
 
-        return view('customers/booking', ['bookings' => $bookings, 'rate' => $rate, 'customers' => $customers, 'time' => $time, 'openingTime' => $openingTime, 'fields' => $fields, 'users' => $users, 'offerRate' => $offerRate, 'logo' => $logo, 'values' => $values, 'esDomingo' => $isSunday, 'prefill' => $prefill]);
+        return view('customers/booking', ['bookings' => $bookings, 'rate' => $rate, 'customers' => $customers, 'time' => $time, 'openingTime' => $openingTime, 'fields' => $fields, 'users' => $users, 'offerRate' => $offerRate, 'logo' => $logo, 'values' => $values, 'esDomingo' => $isSunday, 'prefill' => $prefill, 'customerNotice' => $customerNoticeModel->getActiveNotice()]);
     }
 
     public function showCustomerBooking($code)

@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\BookingsModel;
 use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
+use App\Models\CustomerNoticeModel;
 use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
 use App\Models\OffersModel;
@@ -89,6 +90,8 @@ class Home extends BaseController
 
         $timeModel = new TimeModel();
         $openingTime = array_slice($timeModel->getOpeningTime(), 0, -7);
+        $customerNoticeModel = new CustomerNoticeModel();
+        $customerNotice = $customerNoticeModel->getActiveNotice();
 
         $firstRow = $timeModel->first();
         $isSunday = $firstRow['is_sunday'] ?? 0;
@@ -100,6 +103,7 @@ class Home extends BaseController
             'esDomingo' => $isSunday,
             'prefill' => $prefill,
             'prefillToken' => $prefillToken,
+            'customerNotice' => $customerNotice,
         ]);
     }
 

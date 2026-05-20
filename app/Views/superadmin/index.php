@@ -55,7 +55,7 @@ $userData = $modelUploads->first();
                 </div>
 
                 <div class="tab-pane fade admin-pane" id="nav-general" role="tabpanel" aria-labelledby="nav-general-tab" tabindex="0">
-                    <?= view('superadmin/tabGeneral', ['users' => $users]) ?>
+                    <?= view('superadmin/tabGeneral', ['users' => $users, 'rate' => $rate, 'customerNotices' => $customerNotices ?? []]) ?>
                 </div>
 
                 <div class="tab-pane fade admin-pane" id="nav-fields" role="tabpanel" aria-labelledby="nav-fields-tab" tabindex="0">
@@ -145,7 +145,7 @@ $userData = $modelUploads->first();
 
 <?php echo $this->section('scripts') ?>
 
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/abmSuperadmin.js?v=20260428-1810") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/abmSuperadmin.js?v=20260520-1200") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js?v=20260428-1810") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchReports.js?v=20260428-1810") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/editReserva.js?v=20260428-1810") ?>"></script>

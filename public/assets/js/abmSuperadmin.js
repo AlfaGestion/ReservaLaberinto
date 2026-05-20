@@ -14,6 +14,12 @@ const inputEnablePayByEntries = document.getElementById('enablePayByEntries')
 const inputPayByEntriesMinEntries = document.getElementById('payByEntriesMinEntries')
 const inputPayByEntriesMinDaysBeforeBooking = document.getElementById('payByEntriesMinDaysBeforeBooking')
 const inputPayByEntriesDefaultPercentage = document.getElementById('payByEntriesDefaultPercentage')
+const customerNoticeForm = document.getElementById('customerNoticeForm')
+const customerNoticeMessage = document.getElementById('customerNoticeMessage')
+const customerNoticeType = document.getElementById('customerNoticeType')
+const customerNoticeDateFrom = document.getElementById('customerNoticeDateFrom')
+const customerNoticeDateUntil = document.getElementById('customerNoticeDateUntil')
+const customerNoticesTableBody = document.getElementById('customerNoticesTableBody')
 const inputOfferRate = document.getElementById('offerRate')
 const descriptionOffer = document.getElementById('descriptionOffer')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
@@ -95,6 +101,125 @@ function showAdminNotice(message, type = 'success', title = '') {
 }
 
 adminTabs._element.addEventListener("shown.bs.tab", () => {})
+
+function escapeHtml(value) {
+    return `${value ?? ''}`
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
+
+function formatAdminDate(value) {
+    if (!value) {
+        return ''
+    }
+
+    const parts = `${value}`.split('-')
+    if (parts.length !== 3) {
+        return value
+    }
+
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+}
+
+function getCustomerNoticeTypeLabel(type) {
+    const labels = {
+        info: 'Informacion',
+        warning: 'Advertencia',
+        important: 'Importante',
+        success: 'Exito'
+    }
+
+    return labels[type] || type || 'No indicado'
+}
+
+function renderCustomerNoticeRows(notices) {
+    if (!customerNoticesTableBody) {
+        return
+    }
+
+    if (!Array.isArray(notices) || notices.length === 0) {
+        customerNoticesTableBody.innerHTML = `
+            <tr id="customerNoticesEmptyRow">
+                <td colspan="6" class="text-center text-muted">Todavia no hay avisos cargados.</td>
+            </tr>
+        `
+        return
+    }
+
+    customerNoticesTableBody.innerHTML = notices.map((notice) => {
+        const status = notice.status || 'vigente'
+        const message = escapeHtml(notice.message).replace(/\n/g, '<br>')
+
+        return `
+            <tr id="customer-notice-row-${notice.id}">
+                <td style="min-width: 260px;">${message}</td>
+                <td>${escapeHtml(getCustomerNoticeTypeLabel(notice.type))}</td>
+                <td>${escapeHtml(formatAdminDate(notice.date_from))}</td>
+                <td>${escapeHtml(formatAdminDate(notice.date_until))}</td>
+                <td>
+                    <span class="badge customer-notice-status customer-notice-status--${escapeHtml(status)}">
+                        ${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}
+                    </span>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm customer-notice-delete-trigger" data-id="${notice.id}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `
+    }).join('')
+}
+
+customerNoticeForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    const data = {
+        message: customerNoticeMessage?.value || '',
+        type: customerNoticeType?.value || '',
+        date_from: customerNoticeDateFrom?.value || '',
+        date_until: customerNoticeDateUntil?.value || ''
+    }
+
+    if (data.date_until < data.date_from) {
+        showAdminNotice('La fecha hasta no puede ser menor que la fecha desde', 'error')
+        return
+    }
+
+    try {
+        const response = await fetch(`${baseUrl}saveCustomerNotice`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(data)
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || result.error) {
+            showAdminNotice(result.message || 'No se pudo guardar el aviso', 'error')
+            return
+        }
+
+        renderCustomerNoticeRows(result.data)
+        customerNoticeForm.reset()
+        if (customerNoticeDateFrom) {
+            customerNoticeDateFrom.value = new Date().toISOString().slice(0, 10)
+        }
+        if (customerNoticeDateUntil) {
+            customerNoticeDateUntil.value = customerNoticeDateFrom?.value || new Date().toISOString().slice(0, 10)
+        }
+        showAdminNotice(result.message || 'Aviso guardado correctamente')
+    } catch (error) {
+        console.error('Error:', error)
+        showAdminNotice('No se pudo guardar el aviso', 'error')
+    }
+})
 
 serviceName.addEventListener('input', (e) => {
     serviceValue.value = serviceName.value.toLowerCase().replace(/\s+/g, '_')
@@ -279,6 +404,37 @@ valueForm?.addEventListener('submit', async (e) => {
 
 
 document.addEventListener('click', async (e) => {
+    const deleteCustomerNoticeButton = e.target.closest('.customer-notice-delete-trigger')
+    if (deleteCustomerNoticeButton) {
+        const noticeId = deleteCustomerNoticeButton.dataset.id
+        if (!confirm('Desea eliminar este aviso?')) {
+            return
+        }
+
+        try {
+            const response = await fetch(`${baseUrl}deleteCustomerNotice/${noticeId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || result.error) {
+                showAdminNotice(result.message || 'No se pudo eliminar el aviso', 'error')
+                return
+            }
+
+            renderCustomerNoticeRows(result.data)
+            showAdminNotice(result.message || 'Aviso eliminado correctamente')
+        } catch (error) {
+            console.error('Error:', error)
+            showAdminNotice('No se pudo eliminar el aviso', 'error')
+        }
+        return
+    }
+
     const editFieldButton = e.target.closest('.field-edit-trigger')
     if (editFieldButton) {
         currentFieldId = editFieldButton.dataset.id

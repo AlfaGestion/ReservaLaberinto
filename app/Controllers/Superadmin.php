@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
+use App\Models\CustomerNoticeModel;
 use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
 use App\Models\MercadoPagoKeysModel;
@@ -313,6 +314,7 @@ class Superadmin extends BaseController
         $offerModel = new OffersModel();
         $uploadModel = new UploadModel();
         $valuesModel = new ValuesModel();
+        $customerNoticeModel = new CustomerNoticeModel();
 
         $users = $usersModel->findAll();
 
@@ -396,6 +398,7 @@ class Superadmin extends BaseController
             'values' => $values,
             'latestBookingDate' => $latestBookingDate,
             'weekStart' => $weekStart,
+            'customerNotices' => $customerNoticeModel->getHistoryWithStatus(),
         ]);
     }
 
@@ -1096,6 +1099,83 @@ class Superadmin extends BaseController
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
                 ->setJSON(['error' => true, 'message' => 'No se pudo guardar la configuracion general']);
         }
+    }
+
+    public function customerNotices()
+    {
+        $customerNoticeModel = new CustomerNoticeModel();
+
+        return $this->response->setJSON($this->setResponse(null, false, $customerNoticeModel->getHistoryWithStatus(), 'Respuesta exitosa'));
+    }
+
+    public function saveCustomerNotice()
+    {
+        $customerNoticeModel = new CustomerNoticeModel();
+        $data = $this->request->getJSON(true) ?? $this->request->getPost();
+
+        $message = trim((string) ($data['message'] ?? ''));
+        $type = trim((string) ($data['type'] ?? ''));
+        $dateFrom = trim((string) ($data['date_from'] ?? ''));
+        $dateUntil = trim((string) ($data['date_until'] ?? ''));
+
+        if ($message === '') {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'El mensaje es obligatorio.'));
+        }
+
+        if (!in_array($type, CustomerNoticeModel::TYPES, true)) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'El tipo de aviso es invalido.'));
+        }
+
+        if (!$this->isValidDate($dateFrom) || !$this->isValidDate($dateUntil)) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'Debe ingresar fechas validas.'));
+        }
+
+        if ($dateUntil < $dateFrom) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'La fecha hasta no puede ser menor que la fecha desde.'));
+        }
+
+        $now = date('Y-m-d H:i:s');
+
+        try {
+            $customerNoticeModel->insert([
+                'message' => $message,
+                'type' => $type,
+                'date_from' => $dateFrom,
+                'date_until' => $dateUntil,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return $this->response->setJSON($this->setResponse(null, false, $customerNoticeModel->getHistoryWithStatus(), 'Aviso guardado correctamente.'));
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'No se pudo guardar el aviso: ' . $e->getMessage()));
+        }
+    }
+
+    public function deleteCustomerNotice($id)
+    {
+        $customerNoticeModel = new CustomerNoticeModel();
+
+        try {
+            $customerNoticeModel->delete((int) $id);
+
+            return $this->response->setJSON($this->setResponse(null, false, $customerNoticeModel->getHistoryWithStatus(), 'Aviso eliminado correctamente.'));
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON($this->setResponse(400, true, null, 'No se pudo eliminar el aviso: ' . $e->getMessage()));
+        }
+    }
+
+    private function isValidDate(string $date): bool
+    {
+        $parsedDate = \DateTime::createFromFormat('Y-m-d', $date);
+
+        return $parsedDate instanceof \DateTimeInterface && $parsedDate->format('Y-m-d') === $date;
     }
 
     public function setResponse($code = 200, $error = false, $data = null, $message = '')

@@ -14,6 +14,7 @@ $uploadData = $uploadModel->first();
 <div class="nav nav-tabs admin-subtabs" id="general-subtab" role="tablist">
     <button class="nav-link active" id="general-users-tab" data-bs-toggle="tab" data-bs-target="#general-users-pane" type="button" role="tab" aria-controls="general-users-pane" aria-selected="true">Usuarios</button>
     <button class="nav-link" id="general-config-tab" data-bs-toggle="tab" data-bs-target="#general-config-pane" type="button" role="tab" aria-controls="general-config-pane" aria-selected="false">Config web</button>
+    <button class="nav-link" id="general-customer-notices-tab" data-bs-toggle="tab" data-bs-target="#general-customer-notices-pane" type="button" role="tab" aria-controls="general-customer-notices-pane" aria-selected="false">Avisos clientes</button>
 </div>
 
 <div class="tab-content">
@@ -230,6 +231,10 @@ $uploadData = $uploadModel->first();
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="tab-pane fade" id="general-customer-notices-pane" role="tabpanel" aria-labelledby="general-customer-notices-tab" tabindex="0">
+        <?= view('superadmin/tabCustomerNotices', ['customerNotices' => $customerNotices ?? []]) ?>
     </div>
 </div>
 

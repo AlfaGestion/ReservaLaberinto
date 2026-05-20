@@ -37,6 +37,8 @@ if (!empty($prefill['time_until'])) {
     }
 </style>
 <div class="container">
+    <?= view('partials/customer_notice', ['customerNotice' => $customerNotice ?? null]) ?>
+
     <div
         id="bookingRequestPrefill"
         class="d-none"

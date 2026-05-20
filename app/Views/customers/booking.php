@@ -19,6 +19,8 @@ $mpKeys = $mpKeysModel->first();
 <?= $this->section('content') ?>
 
 <div class="container">
+    <?= view('partials/customer_notice', ['customerNotice' => $customerNotice ?? null]) ?>
+
     <div
         id="bookingPrefill"
         class="d-none"
