@@ -22,6 +22,20 @@ const availabilityResult = document.getElementById('availabilityResult')
 let minVisitantes = 0
 let openingTime = []
 let currentBooking = {}
+let availables = { availability: [] }
+
+function showBookingMessage(message, type = 'secondary') {
+    bookingCardContainer.classList.remove('d-none');
+    bookingCardContainer.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
+}
+
+async function parseJsonResponse(response) {
+    try {
+        return await response.json();
+    } catch (error) {
+        return { message: 'No se pudo interpretar la respuesta del servidor.' };
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const prefillElement = document.getElementById('bookingPrefill');
@@ -430,26 +444,30 @@ async function getAvailability() {
 async function searchBooking(codeValue) {
     // modalSpinner.show();
 
+    if (!codeValue) {
+        showBookingMessage('Debe ingresar el codigo de reserva.', 'warning');
+        return;
+    }
+
     try {
         const response = await fetch(`${baseUrl}customers/showCustomerBooking/${codeValue}`);
+        const responseData = await parseJsonResponse(response);
 
         if (!response.ok) {
-            throw new Error(`Error en la solicitud: ${response.status}`);
+            showBookingMessage(responseData.message || 'No se encontro ninguna reserva con ese codigo.', 'warning');
+            return;
         }
-
-        const responseData = await response.json();
 
         if (responseData.data && responseData.data !== '') {
             currentBooking = responseData.data
             renderBookingCard(responseData.data); // Usamos la nueva función
         } else {
-            bookingCardContainer.classList.add('d-none');
-            alert('No se encontró ninguna reserva con ese código o algo salió mal.');
+            showBookingMessage(responseData.message || 'No se encontro ninguna reserva con ese codigo.', 'warning');
         }
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Ocurrió un error al intentar obtener la reserva.');
+        showBookingMessage('No se pudo consultar la reserva. Intente nuevamente.', 'danger');
     } finally {
         // modalSpinner.hide();
     }
@@ -457,7 +475,7 @@ async function searchBooking(codeValue) {
 
 async function searchCustomerBookings(phoneValue, emailValue) {
     if (!phoneValue || !emailValue) {
-        alert('Debe ingresar telefono y email para ver todas las reservas.');
+        showBookingMessage('Debe ingresar telefono y email para ver todas las reservas.', 'warning');
         return;
     }
 
@@ -472,22 +490,21 @@ async function searchCustomerBookings(phoneValue, emailValue) {
                 email: emailValue
             })
         });
+        const responseData = await parseJsonResponse(response);
 
         if (!response.ok) {
-            throw new Error(`Error en la solicitud: ${response.status}`);
+            showBookingMessage(responseData.message || 'No se encontraron reservas para ese cliente.', 'warning');
+            return;
         }
-
-        const responseData = await response.json();
 
         if (responseData.data && responseData.data.length > 0) {
             renderBookingsList(responseData.data);
         } else {
-            bookingCardContainer.classList.add('d-none');
-            alert('No se encontraron reservas para ese cliente.');
+            showBookingMessage(responseData.message || 'No se encontraron reservas para ese cliente.', 'warning');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Ocurrio un error al intentar obtener las reservas.');
+        showBookingMessage('No se pudieron consultar las reservas. Intente nuevamente.', 'danger');
     }
 }
 
@@ -507,23 +524,23 @@ async function searchBookingWithHistory(codeValue, phoneValue, emailValue) {
             })
         ]);
 
-        if (!bookingResponse.ok) {
-            throw new Error(`Error en la reserva: ${bookingResponse.status}`);
-        }
+        const bookingData = await parseJsonResponse(bookingResponse);
+        const historyData = historyResponse.ok ? await parseJsonResponse(historyResponse) : { data: [] };
 
-        const bookingData = await bookingResponse.json();
-        const historyData = historyResponse.ok ? await historyResponse.json() : { data: [] };
+        if (!bookingResponse.ok) {
+            showBookingMessage(bookingData.message || 'No se encontro la reserva solicitada.', 'warning');
+            return;
+        }
 
         if (bookingData.data && bookingData.data !== '') {
             currentBooking = bookingData.data;
             renderBookingWithHistory(bookingData.data, historyData.data || []);
         } else {
-            bookingCardContainer.classList.add('d-none');
-            alert('No se encontro la reserva solicitada.');
+            showBookingMessage(bookingData.message || 'No se encontro la reserva solicitada.', 'warning');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Ocurrio un error al intentar obtener la reserva y el historial.');
+        showBookingMessage('No se pudo consultar la reserva y el historial. Intente nuevamente.', 'danger');
     }
 }
 

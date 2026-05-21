@@ -135,7 +135,7 @@ $userData = $modelUploads->first();
                     let sessionUserLogued = <?= json_encode(session()->logueado) ?>;
                     let sessionUserSuperadmin = <?= json_encode(session()->superadmin) ?>;
                 </script>
-                <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js") ?>"></script>
+                <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js?v=20260521-1325") ?>"></script>
 
                 <?php echo $this->renderSection('scripts') ?>
         </body>
