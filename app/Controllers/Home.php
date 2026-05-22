@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\MercadoPagoReservationService;
 use App\Models\BookingsModel;
 use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
@@ -255,57 +256,15 @@ class Home extends BaseController
 
     public function deleteRejected()
     {
-        $bookingsModel = new BookingsModel();
-        $bookingSlotsModel = new BookingSlotsModel();
-        $mercadoPagoModel = new MercadoPagoModel();
-
-        $hora_actual = date("Y-m-d H:i:s");
-        $nueva_hora = date("Y-m-d H:i:s", strtotime($hora_actual . " -10 minutes"));
-
-        $mpPayments = $mercadoPagoModel->where('status', 'rejected')
-            ->orWhere('status', 'null')->findAll();
-
         try {
-            $bookingIdsToDelete = $bookingsModel
-                ->select('id')
-                ->groupStart()
-                ->where('approved', 0)
-                ->orWhere('approved', null)
-                ->groupEnd()
-                ->where('booking_time <', $nueva_hora)
-                ->findColumn('id');
+            $service = new MercadoPagoReservationService();
+            $result = $service->expirePendingReservations([], 'home_deleteRejected');
 
-            if (!empty($bookingIdsToDelete)) {
-                $bookingSlotsModel
-                    ->where('active', 1)
-                    ->whereIn('booking_id', $bookingIdsToDelete)
-                    ->delete();
-            }
-
-            $bookingSlotsModel
-                ->where('active', 1)
-                ->where('status', 'pending')
-                ->where('expires_at <', $hora_actual)
-                ->delete();
-
-            if (isset($mpPayments)) {
-                $mercadoPagoModel->where('status', 'rejected')
-                    ->orWhere('status', 'null')
-                    ->delete();
-            }
-
-            $bookingsModel->groupStart()
-                ->where('approved', 0)
-                ->orWhere('approved', null)
-                ->groupEnd()
-                ->where('booking_time <', $nueva_hora)->delete();
-
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
+            return $this->response->setJSON($this->setResponse(null, null, $result, 'Operación completada'));
         } catch (\Exception $e) {
-            return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
+            return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
     }
-
 
     public function infoReserva()
     {
@@ -471,4 +430,6 @@ class Home extends BaseController
         return $response;
     }
 }
+
+
 

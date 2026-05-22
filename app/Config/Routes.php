@@ -44,6 +44,7 @@ $routes->post('cancelPendingMpReservation', 'MercadoPago::cancelPendingMpReserva
 $routes->post('savePreferenceIds', 'MercadoPago::savePreferenceIds');
 $routes->get('payment/success', 'MercadoPago::success');
 $routes->get('payment/failure', 'MercadoPago::failure');
+$routes->post('payment/webhook', 'MercadoPago::webhook');
 $routes->get('pagoAprobado/(:num)', 'MercadoPago::successView/$1');
 $routes->get('pagoRechazado', 'MercadoPago::failureView');
 

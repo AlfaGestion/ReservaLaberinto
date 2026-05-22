@@ -793,11 +793,16 @@ class Bookings extends BaseController
         $bookingUrl = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
             'code' => (string) ($booking['code'] ?? ''),
         ])));
-        $messageHtml = '<p>Se registro una nueva reserva en el sistema.</p>';
+        $isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) !== 1;
+        $messageHtml = $isApprovedBooking
+            ? '<p>Se registro una reserva confirmada en el sistema.</p>'
+            : '<p>Se registro una reserva pendiente de confirmacion de pago.</p>';
         $html = $this->renderEmailCard([
             'eyebrow' => 'Nueva reserva',
             'title' => $subjectName !== '' ? $subjectName . ' reservo una visita' : 'Se recibio una nueva reserva',
-            'intro' => 'Revise los datos de la visita y haga seguimiento desde el panel o el acceso de reservas.',
+            'intro' => $isApprovedBooking
+                ? 'Revise los datos de la visita y haga seguimiento desde el panel o el acceso de reservas.'
+                : 'La reserva aun no esta confirmada. Queda pendiente hasta acreditar el pago.',
             'details' => [
                 'Nombre' => (string) ($requestData->nombre ?? ''),
                 'Telefono' => (string) ($requestData->telefono ?? ''),
@@ -814,12 +819,19 @@ class Bookings extends BaseController
 
         $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
 
-        $this->sendCustomerBookingConfirmationEmail($booking, $requestData);
+        // Solo enviamos confirmacion al cliente si la reserva quedo aprobada.
+        if ($isApprovedBooking) {
+            $this->sendCustomerBookingConfirmationEmail($booking, $requestData);
+        }
     }
 
     private function sendCustomerBookingConfirmationEmail(array $booking, object $requestData): void
     {
         try {
+            if ((int) ($booking['approved'] ?? 0) !== 1 || (int) ($booking['annulled'] ?? 0) === 1) {
+                return;
+            }
+
             $customerEmail = $this->resolveCustomerEmail($booking, $requestData);
 
             if ($customerEmail === '') {
@@ -912,6 +924,7 @@ class Bookings extends BaseController
         $fieldsModel = new FieldsModel();
         $field = $fieldsModel->getField($booking['id_field']) ?? [];
         $mpPayment = $mpPayment ?? ['payment_id' => 'No corresponde', 'status' => ''];
+        $isConfirmed = (int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) !== 1;
 
         return [
             'nombre' => $booking['name'],
@@ -925,6 +938,8 @@ class Bookings extends BaseController
             'detalle' => $booking['description'] ?? '',
             'id_mercado_pago' => $mpPayment['payment_id'] ?? 'No corresponde',
             'estado_pago' => $mpPayment['status'] ?? '',
+            'reserva_confirmada' => $isConfirmed ? 1 : 0,
+            'estado_reserva' => $isConfirmed ? 'CONFIRMADA' : 'NO CONFIRMADA',
         ];
     }
 

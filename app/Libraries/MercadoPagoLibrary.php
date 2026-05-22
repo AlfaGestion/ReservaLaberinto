@@ -7,6 +7,8 @@ use App\Models\MercadoPagoKeysModel;
 use MercadoPago\SDK; 
 use MercadoPago\Preference;
 use MercadoPago\Item;
+use MercadoPago\Payment;
+use MercadoPago\MerchantOrder;
 // use MercadoPago\Exceptions\MPApiException; // <--- COMENTADO/ELIMINADO
 
 class MercadoPagoLibrary
@@ -48,6 +50,7 @@ class MercadoPagoLibrary
             "success" => $baseUrl . 'payment/success',
             "failure" => $baseUrl . 'payment/failure',
             ];
+            $preference->notification_url = $baseUrl . 'payment/webhook';
 
             $preference->auto_return = "approved";
             $preference->binary_mode = true;
@@ -71,6 +74,120 @@ class MercadoPagoLibrary
         } catch (\Exception $e) {
             // Captura cualquier error de la SDK, incluyendo la excepción que forzamos arriba.
             throw new \Exception("Error al crear la preferencia de pago: " . $e->getMessage());
+        }
+    }
+
+    public function getPaymentById(string $paymentId): ?array
+    {
+        $result = $this->getPaymentByIdWithMeta($paymentId);
+        return $result['data'] ?? null;
+    }
+
+    public function getPaymentByIdWithMeta(string $paymentId): array
+    {
+        $paymentId = trim($paymentId);
+        if ($paymentId === '') {
+            return [
+                'api_reachable' => true,
+                'found' => false,
+                'data' => null,
+                'error' => 'missing_payment_id',
+            ];
+        }
+
+        $mpKeysModel = new MercadoPagoKeysModel();
+        $mpKeys = $mpKeysModel->first();
+        if (empty($mpKeys) || empty($mpKeys['access_token'])) {
+            return [
+                'api_reachable' => false,
+                'found' => false,
+                'data' => null,
+                'error' => 'missing_access_token',
+            ];
+        }
+
+        $caFile = $this->ensureCaBundle();
+        $this->configureSdkHttpClient($caFile);
+        SDK::setAccessToken($mpKeys['access_token']);
+
+        try {
+            $payment = Payment::find_by_id($paymentId);
+            if (!$payment) {
+                return [
+                    'api_reachable' => true,
+                    'found' => false,
+                    'data' => null,
+                    'error' => 'payment_not_found',
+                ];
+            }
+
+            return [
+                'api_reachable' => true,
+                'found' => true,
+                'error' => null,
+                'data' => [
+                'id' => $payment->id ?? null,
+                'status' => $payment->status ?? null,
+                'status_detail' => $payment->status_detail ?? null,
+                'external_reference' => $payment->external_reference ?? null,
+                'transaction_amount' => $payment->transaction_amount ?? null,
+                'payment_type_id' => $payment->payment_type_id ?? null,
+                'order_id' => $payment->order->id ?? null,
+                ],
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo consultar payment en MP [' . $paymentId . ']: ' . $e->getMessage());
+            return [
+                'api_reachable' => false,
+                'found' => false,
+                'data' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    public function getMerchantOrderById(string $merchantOrderId): ?array
+    {
+        $merchantOrderId = trim($merchantOrderId);
+        if ($merchantOrderId === '') {
+            return null;
+        }
+
+        $mpKeysModel = new MercadoPagoKeysModel();
+        $mpKeys = $mpKeysModel->first();
+        if (empty($mpKeys) || empty($mpKeys['access_token'])) {
+            return null;
+        }
+
+        $caFile = $this->ensureCaBundle();
+        $this->configureSdkHttpClient($caFile);
+        SDK::setAccessToken($mpKeys['access_token']);
+
+        try {
+            $order = MerchantOrder::find_by_id($merchantOrderId);
+            if (!$order) {
+                return null;
+            }
+
+            $payments = [];
+            if (!empty($order->payments) && is_array($order->payments)) {
+                foreach ($order->payments as $item) {
+                    $payments[] = [
+                        'id' => $item->id ?? null,
+                        'status' => $item->status ?? null,
+                        'status_detail' => $item->status_detail ?? null,
+                    ];
+                }
+            }
+
+            return [
+                'id' => $order->id ?? null,
+                'status' => $order->order_status ?? null,
+                'payments' => $payments,
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo consultar merchant order en MP [' . $merchantOrderId . ']: ' . $e->getMessage());
+            return null;
         }
     }
 

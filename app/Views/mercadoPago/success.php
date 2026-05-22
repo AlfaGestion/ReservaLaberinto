@@ -39,6 +39,7 @@ $schedule = trim($timeFrom . ' a ' . $timeUntil);
 $total = number_format((float) ($booking['total'] ?? 0), 0, ',', '.');
 $payment = number_format((float) ($booking['payment'] ?? 0), 0, ',', '.');
 $difference = number_format((float) ($booking['diference'] ?? 0), 0, ',', '.');
+$isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && $paymentStatus === 'approved' && (int) ($booking['annulled'] ?? 0) !== 1;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -78,7 +79,9 @@ $difference = number_format((float) ($booking['diference'] ?? 0), 0, ',', '.');
 
             <div class="d-flex flex-wrap gap-2 justify-content-center mt-4">
                 <a class="btn btn-outline-secondary" href="<?= base_url() ?>">Volver al inicio</a>
-                <a class="btn btn-success" href="<?= base_url('bookingPdf/' . $bookingId) ?>">Descargar comprobante</a>
+                <?php if ($isApprovedBooking) : ?>
+                    <a class="btn btn-success" href="<?= base_url('bookingPdf/' . $bookingId) ?>">Descargar comprobante</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>

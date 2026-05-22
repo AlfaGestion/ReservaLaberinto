@@ -61,6 +61,8 @@ if ($fechaReserva !== '') {
 }
 
 $estadoPagoRaw = trim((string) ($data['estado_pago'] ?? ''));
+$reservaConfirmada = (int) ($data['reserva_confirmada'] ?? 0) === 1;
+$estadoReservaTexto = trim((string) ($data['estado_reserva'] ?? ($reservaConfirmada ? 'CONFIRMADA' : 'NO CONFIRMADA')));
 $estadoPagoTexto = 'No corresponde';
 $estadoPagoClase = 'status-na';
 
@@ -188,6 +190,27 @@ if ($estadoPagoRaw === 'approved') {
             color: #425249;
             text-align: justify;
         }
+
+        .booking-status {
+            margin-top: 10px;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 999px;
+            padding: 6px 12px;
+        }
+
+        .booking-status--confirmed {
+            background: #e8f6ed;
+            color: #0f7a41;
+            border: 1px solid #b9e6c9;
+        }
+
+        .booking-status--pending {
+            background: #fdecec;
+            color: #aa2835;
+            border: 1px solid #f2b8bf;
+        }
     </style>
 </head>
 
@@ -198,7 +221,10 @@ if ($estadoPagoRaw === 'approved') {
                 <img class="logo" src="<?= $logoDataUri ?>" alt="Logo">
             <?php endif; ?>
             <p class="title">Detalle de la reserva</p>
-            <p class="subtitle">Comprobante de pago y datos de la visita</p>
+            <p class="subtitle"><?= $reservaConfirmada ? 'Comprobante de pago y datos de la visita' : 'Reserva pendiente de confirmacion de pago' ?></p>
+            <span class="booking-status <?= $reservaConfirmada ? 'booking-status--confirmed' : 'booking-status--pending' ?>">
+                <?= esc($estadoReservaTexto) ?>
+            </span>
         </div>
 
         <div class="section">

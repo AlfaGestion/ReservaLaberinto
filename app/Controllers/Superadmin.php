@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\MercadoPagoReservationService;
 use App\Models\BookingsModel;
 use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
@@ -23,33 +24,11 @@ use Config\Services;
 
 class Superadmin extends BaseController
 {
-    private const PAYMENT_RETRY_MINUTES = 30;
 
     private function expireStaleMercadoPagoBookings(): void
     {
-        $bookingsModel = new BookingsModel();
-        $bookingSlotsModel = new BookingSlotsModel();
-
-        $expiresBefore = date('Y-m-d H:i:s', strtotime('-' . self::PAYMENT_RETRY_MINUTES . ' minutes'));
-
-        $staleBookings = $bookingsModel
-            ->where('annulled', 0)
-            ->where('approved', 0)
-            ->where('mp', 0)
-            ->whereIn('payment_method', ['Mercado Pago', 'mercado_pago'])
-            ->where('booking_time <', $expiresBefore)
-            ->findAll();
-
-        foreach ($staleBookings as $booking) {
-            $bookingsModel->update((int) $booking['id'], ['annulled' => 1]);
-            $bookingSlotsModel->where('booking_id', (int) $booking['id'])->delete();
-            $this->logBookingAction(
-                $this->ensureBookingOrderId($booking),
-                'C',
-                'Cancelacion automatica por pago pendiente vencido de Mercado Pago.',
-                'SISTEMA'
-            );
-        }
+        $service = new MercadoPagoReservationService();
+        $service->expirePendingReservations([], 'superadmin_expireStaleMercadoPagoBookings');
     }
 
     private function formatBookingDate(string $rawDate): string
@@ -1219,7 +1198,8 @@ class Superadmin extends BaseController
                 ->setJSON(['error' => true, 'message' => 'No hay preference de Mercado Pago para reenviar']);
         }
 
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+' . self::PAYMENT_RETRY_MINUTES . ' minutes'));
+        $service = new MercadoPagoReservationService();
+        $expiresAt = $service->getExpiresAtFromNow();
         $rejectedPaymentsModel->update((int) $id, [
             'retry_url' => $retryUrl,
             'payment_status' => 'pending_retry',

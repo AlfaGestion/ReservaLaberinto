@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Libraries\MercadoPagoLibrary;
+use App\Libraries\MercadoPagoReservationService;
 use App\Models\BookingSlotsModel;
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
@@ -18,6 +19,25 @@ use Config\Services;
 class MercadoPago extends BaseController
 {
     private const PAYMENT_RETRY_MINUTES = 30;
+    private ?MercadoPagoReservationService $reservationService = null;
+
+    private function reservationService(): MercadoPagoReservationService
+    {
+        if ($this->reservationService === null) {
+            $this->reservationService = new MercadoPagoReservationService();
+        }
+
+        return $this->reservationService;
+    }
+
+    private function logMercadoPagoCallback(string $source, array $payload): void
+    {
+        try {
+            log_message('info', 'MP callback [' . $source . ']: ' . json_encode($payload, JSON_UNESCAPED_UNICODE));
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo registrar log de callback MP [' . $source . ']: ' . $e->getMessage());
+        }
+    }
 
     private function releaseBookingSlot(BookingSlotsModel $bookingSlotsModel, int $slotId): void
     {
@@ -44,47 +64,7 @@ class MercadoPago extends BaseController
 
     private function expirePendingSlots(BookingSlotsModel $bookingSlotsModel, BookingsModel $bookingsModel, array $conditions = []): void
     {
-        $builder = $bookingSlotsModel
-            ->where('active', 1)
-            ->where('status', 'pending')
-            ->where('expires_at <', date('Y-m-d H:i:s'));
-
-        foreach ($conditions as $field => $value) {
-            $builder->where($field, $value);
-        }
-
-        $slots = $builder->findAll();
-        if ($slots === []) {
-            return;
-        }
-
-        $bookingIds = [];
-        foreach ($slots as $slot) {
-            if (!empty($slot['booking_id'])) {
-                $bookingIds[] = (int) $slot['booking_id'];
-            }
-
-            $this->releaseBookingSlot($bookingSlotsModel, (int) $slot['id']);
-        }
-
-        if ($bookingIds === []) {
-            return;
-        }
-
-        $bookings = $bookingsModel->whereIn('id', array_values(array_unique($bookingIds)))->findAll();
-        foreach ($bookings as $booking) {
-            if ((int) ($booking['approved'] ?? 0) === 1 || (int) ($booking['annulled'] ?? 0) === 1) {
-                continue;
-            }
-
-            $bookingsModel->update($booking['id'], ['annulled' => 1]);
-            $this->upsertRejectedPaymentRecord($booking, [
-                'status' => 'expired',
-                'status_detail' => 'Reserva pendiente vencida por tiempo de pago',
-                'preference_id' => $booking['id_preference_parcial'] ?? null,
-            ], 'expired', false);
-            $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion automatica de reserva pendiente vencida de Mercado Pago.', 'SISTEMA');
-        }
+        $this->reservationService()->expirePendingReservations($conditions, 'setPreference');
     }
 
     private function codeGenerate(): string
@@ -454,7 +434,7 @@ class MercadoPago extends BaseController
                 'time_until' => $timeUntil,
                 'status' => 'pending',
                 'active' => 1,
-                'expires_at' => date('Y-m-d H:i:s', strtotime('+' . self::PAYMENT_RETRY_MINUTES . ' minutes')),
+                'expires_at' => $this->reservationService()->getExpiresAtFromNow(),
                 'created_at' => date('Y-m-d H:i:s'),
             ], true);
 
@@ -578,244 +558,58 @@ class MercadoPago extends BaseController
 
     public function success()
     {
-        $mercadoPagoModel = new MercadoPagoModel();
-        $bookingsModel = new BookingsModel();
-        $customersModel = new CustomersModel();
-        $bookingSlotsModel = new BookingSlotsModel();
-        $paymentsModel = new PaymentsModel();
+        $payload = [
+            'collection_id' => $this->request->getVar('collection_id'),
+            'collection_status' => $this->request->getVar('collection_status'),
+            'payment_id' => $this->request->getVar('payment_id'),
+            'status' => $this->request->getVar('status'),
+            'external_reference' => $this->request->getVar('external_reference'),
+            'payment_type' => $this->request->getVar('payment_type'),
+            'merchant_order_id' => $this->request->getVar('merchant_order_id'),
+            'preference_id' => $this->request->getVar('preference_id'),
+            'site_id' => $this->request->getVar('site_id'),
+            'processing_mode' => $this->request->getVar('processing_mode'),
+            'merchant_account_id' => $this->request->getVar('merchant_account_id'),
+        ];
 
-        $preferenceId = $this->request->getVar('preference_id');
-        $existingBooking = null;
-        $booking = null;
-        $mercadoPago = null;
+        $result = $this->reservationService()->processCheckoutCallback($payload, 'redirect_success');
 
-        if (!empty($preferenceId)) {
-            $data = [
-                'collection_id' => $this->request->getVar('collection_id'),
-                'collection_status' => $this->request->getVar('collection_status'),
-                'payment_id' => $this->request->getVar('payment_id'),
-                'status' => $this->request->getVar('status'),
-                'external_reference' => $this->request->getVar('external_reference'),
-                'payment_type' => $this->request->getVar('payment_type'),
-                'merchant_order_id' => $this->request->getVar('merchant_order_id'),
-                'preference_id' => $this->request->getVar('preference_id'),
-                'site_id' => $this->request->getVar('site_id'),
-                'processing_mode' => $this->request->getVar('processing_mode'),
-                'merchant_account_id' => $this->request->getVar('merchant_account_id'),
-            ];
-
-            $existingBooking = $bookingsModel->where('id_preference_parcial', $preferenceId)
-                ->orWhere('id_preference_total', $preferenceId)
-                ->first();
-
-            if ($existingBooking) {
-                $alreadyStoredMpPayment = null;
-                if (!empty($data['payment_id'])) {
-                    $alreadyStoredMpPayment = $paymentsModel
-                        ->where('id_booking', $existingBooking['id'])
-                        ->where('id_mercado_pago', $data['payment_id'])
-                        ->first();
-                }
-
-                if ($alreadyStoredMpPayment) {
-                    $booking = $bookingsModel->find($existingBooking['id']);
-                } else {
-                    $paymentStatus = strtolower(trim((string) ($data['status'] ?? '')));
-                    if ($paymentStatus !== 'approved') {
-                        $bookingsModel->update($existingBooking['id'], [
-                            'approved' => 0,
-                            'annulled' => 1,
-                        ]);
-                        $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
-                        $this->upsertRejectedPaymentRecord($existingBooking, $data, in_array($paymentStatus, ['pending', 'in_process'], true) ? 'pending_retry' : 'rejected', true);
-                        $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Pago no aprobado en retorno de Mercado Pago. Estado: ' . ($paymentStatus ?: 'desconocido') . '.', 'CLIENTE');
-                        $data['id_booking'] = $existingBooking['id'];
-                        $mercadoPagoModel->insert($data);
-                        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($paymentStatus ?: 'rejected')));
-                    }
-
-                    $isTotalPreference = $preferenceId === $existingBooking['id_preference_total'];
-                    $isEntryPayment = (int) ($existingBooking['partial_by_entries'] ?? 0) === 1;
-                    $totalEntries = max(0, (int) ($existingBooking['visitors'] ?? 0));
-                    $currentPaidEntries = max(0, (int) ($existingBooking['paid_entries'] ?? 0));
-                    $unitPriceAtBooking = $totalEntries > 0 ? (float) $existingBooking['total'] / $totalEntries : 0.0;
-                    $paid = $isTotalPreference ? (float) $existingBooking['total'] : (float) $existingBooking['parcial'];
-                    $paidEntries = null;
-                    $paymentType = $isTotalPreference ? 'total' : 'partial_amount';
-                    $newPayment = $paid;
-                    $newDifference = max(0, (float) $existingBooking['total'] - $paid);
-                    $newPaidEntries = $currentPaidEntries;
-                    $totalPaymentCompleted = $paid == (float) $existingBooking['total'];
-
-                    if ($isEntryPayment) {
-                        if ($isTotalPreference) {
-                            $paidEntries = max(0, $totalEntries - $currentPaidEntries);
-                            $newPaidEntries = $totalEntries;
-                            $newPayment = (float) $existingBooking['total'];
-                            $newDifference = 0.0;
-                            $totalPaymentCompleted = true;
-                            $paymentType = 'total';
-                        } else {
-                            $pendingEntriesBeforePayment = max(0, $totalEntries - $currentPaidEntries);
-                            $paidEntries = $unitPriceAtBooking > 0 ? (int) round($paid / $unitPriceAtBooking) : 0;
-                            $paidEntries = min(max(1, $paidEntries), $pendingEntriesBeforePayment);
-                            $newPaidEntries = min($totalEntries, $currentPaidEntries + $paidEntries);
-                            $pendingEntries = max(0, $totalEntries - $newPaidEntries);
-                            $newPayment = (float) ($existingBooking['payment'] ?? 0) + $paid;
-                            $newDifference = $pendingEntries * $unitPriceAtBooking;
-                            $totalPaymentCompleted = $pendingEntries === 0;
-                            $paymentType = 'partial_entries';
-                        }
-                    } elseif ($isTotalPreference) {
-                        $newPaidEntries = $totalEntries;
-                    }
-
-                    $customer = $customersModel->groupStart()
-                        ->where('phone', $existingBooking['phone'])
-                        ->orWhere('complete_phone', $existingBooking['phone'])
-                        ->groupEnd()
-                        ->first();
-
-                    if (!$customer) {
-                        $customersModel->insert([
-                            'name' => $existingBooking['name'],
-                            'phone' => $existingBooking['phone'],
-                            'complete_phone' => $existingBooking['phone'],
-                            'offer' => 0,
-                            'quantity' => 1,
-                        ]);
-                        $customerId = $customersModel->getInsertID();
-                    } else {
-                        $customerId = $customer['id'];
-                        $customersModel->update($customerId, [
-                            'name' => $existingBooking['name'],
-                            'quantity' => ((int) ($customer['quantity'] ?? 0)) + 1,
-                        ]);
-                    }
-
-                    $bookingsModel->update($existingBooking['id'], [
-                        'mp' => 1,
-                        'approved' => 1,
-                        'payment' => $newPayment,
-                        'reservation' => $newPayment,
-                        'diference' => $newDifference,
-                        'total_payment' => $totalPaymentCompleted ? 1 : 0,
-                        'id_customer' => $customerId,
-                        'paid_entries' => $newPaidEntries,
-                    ]);
-
-                    $bookingSlotsModel->where('booking_id', $existingBooking['id'])
-                        ->where('active', 1)
-                        ->delete();
-
-                    $data['id_booking'] = $existingBooking['id'];
-                    $mercadoPagoModel->insert($data);
-
-                    try {
-                        $paymentUserId = $this->resolvePaymentUserId();
-                        $paymentsModel->insert([
-                            'id_user' => $paymentUserId > 0 ? $paymentUserId : 1,
-                            'id_booking' => $existingBooking['id'],
-                            'id_customer' => $customerId,
-                            'id_mercado_pago' => $data['payment_id'] ?? null,
-                            'amount' => $paid,
-                            'payment_method' => 'mercado_pago',
-                            'date' => date('Y-m-d'),
-                            'created_at' => date('Y-m-d H:i:s'),
-                            'paid_entries' => $paidEntries,
-                            'unit_price' => $unitPriceAtBooking > 0 ? $unitPriceAtBooking : null,
-                            'payment_type' => $paymentType,
-                            'created_by_admin' => 0,
-                            'admin_user_id' => null,
-                        ]);
-                    } catch (\Throwable $e) {
-                        log_message('error', 'No se pudo registrar pago MP: ' . $e->getMessage());
-                    }
-
-                    $orderId = $this->ensureBookingOrderId($existingBooking);
-                    if ($isEntryPayment && $paymentType === 'partial_entries') {
-                        $pendingEntries = max(0, $totalEntries - $newPaidEntries);
-                        $this->logBookingAction(
-                            $orderId,
-                            'P',
-                            'Pago parcial por entradas. Cantidad: ' . $paidEntries . ' entradas. Precio unitario: ' . $this->formatAuditMoney($unitPriceAtBooking) . '. Total: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago. Pendiente: ' . $pendingEntries . ' entradas.',
-                            'CLIENTE'
-                        );
-                    } elseif ($totalPaymentCompleted) {
-                        $this->logBookingAction($orderId, 'P', 'Pago total. Total abonado: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago.', 'CLIENTE');
-                    } else {
-                        $this->logBookingAction($orderId, 'P', 'Pago parcial. Total abonado: ' . $this->formatAuditMoney($paid) . '. Medio: Mercado Pago. Saldo pendiente: ' . $this->formatAuditMoney($newDifference) . '.', 'CLIENTE');
-                    }
-
-                    $booking = $bookingsModel->find($existingBooking['id']);
-                    $mercadoPago = $mercadoPagoModel->where('id_booking', $existingBooking['id'])->first();
-                    $this->sendBookingEmails($booking);
-                }
-            }
-        }
-
-        if (!$existingBooking) {
+        if (!isset($result['booking_id'])) {
             return redirect()->to(base_url('pagoRechazado?status=error'));
         }
 
-        return redirect()->to(base_url('pagoAprobado/' . $existingBooking['id']));
+        if (($result['status'] ?? '') === 'approved' || ($result['status'] ?? '') === 'already_approved') {
+            return redirect()->to(base_url('pagoAprobado/' . $result['booking_id']));
+        }
+
+        $status = strtolower(trim((string) ($payload['status'] ?? '')));
+        if ($status === '') {
+            $status = strtolower(trim((string) ($result['status'] ?? 'rejected')));
+        }
+
+        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($status)));
     }
 
     public function failure()
     {
-        $mercadoPagoModel = new MercadoPagoModel();
-        $bookingsModel = new BookingsModel();
-        $bookingSlotsModel = new BookingSlotsModel();
+        $payload = [
+            'collection_id' => $this->request->getVar('collection_id'),
+            'collection_status' => $this->request->getVar('collection_status'),
+            'payment_id' => $this->request->getVar('payment_id'),
+            'status' => $this->request->getVar('status'),
+            'external_reference' => $this->request->getVar('external_reference'),
+            'payment_type' => $this->request->getVar('payment_type'),
+            'merchant_order_id' => $this->request->getVar('merchant_order_id'),
+            'preference_id' => $this->request->getVar('preference_id'),
+            'site_id' => $this->request->getVar('site_id'),
+            'processing_mode' => $this->request->getVar('processing_mode'),
+            'merchant_account_id' => $this->request->getVar('merchant_account_id'),
+        ];
 
-        $preferenceId = $this->request->getVar('preference_id');
+        $result = $this->reservationService()->processCheckoutCallback($payload, 'redirect_failure');
+        $status = strtolower(trim((string) ($result['status'] ?? $payload['status'] ?? 'cancelled')));
 
-        if (!empty($preferenceId)) {
-            $data = [
-                'collection_id' => $this->request->getVar('collection_id'),
-                'collection_status' => $this->request->getVar('collection_status'),
-                'payment_id' => $this->request->getVar('payment_id'),
-                'status' => $this->request->getVar('status'),
-                'external_reference' => $this->request->getVar('external_reference'),
-                'payment_type' => $this->request->getVar('payment_type'),
-                'merchant_order_id' => $this->request->getVar('merchant_order_id'),
-                'preference_id' => $this->request->getVar('preference_id'),
-                'site_id' => $this->request->getVar('site_id'),
-                'processing_mode' => $this->request->getVar('processing_mode'),
-                'merchant_account_id' => $this->request->getVar('merchant_account_id'),
-            ];
-
-            $existingBooking = $bookingsModel->where('id_preference_parcial', $preferenceId)
-                ->orWhere('id_preference_total', $preferenceId)
-                ->first();
-
-            if ($existingBooking) {
-                $status = strtolower(trim((string) ($data['status'] ?? '')));
-                $statusDetail = strtolower(trim((string) ($data['collection_status'] ?? '')));
-                $isMeaningfulFailure = $status !== '' || $statusDetail !== '';
-
-                if ($isMeaningfulFailure) {
-                    $bookingsModel->update($existingBooking['id'], [
-                        'approved' => 0,
-                        'annulled' => 1,
-                    ]);
-                    $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
-                    $this->upsertRejectedPaymentRecord($existingBooking, $data, in_array($status, ['pending', 'in_process'], true) ? 'pending_retry' : 'rejected', true);
-                    $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Pago no aprobado en flujo failure de Mercado Pago. Estado: ' . ($status ?: 'desconocido') . '.', 'CLIENTE');
-                } else {
-                    $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'M', 'El cliente abandono o regreso del checkout sin confirmar pago.', 'CLIENTE');
-                }
-
-                $data['id_booking'] = $existingBooking['id'];
-                $mercadoPagoModel->insert($data);
-            }
-        }
-
-        $viewStatus = strtolower(trim((string) ($this->request->getVar('status') ?? '')));
-        if ($viewStatus === '') {
-            $viewStatus = 'cancelled';
-        }
-
-        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($viewStatus)));
+        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($status !== '' ? $status : 'cancelled')));
     }
 
     public function successView($bookingId)
@@ -848,7 +642,6 @@ class MercadoPago extends BaseController
     public function cancelPendingMpReservation()
     {
         $bookingsModel = new BookingsModel();
-        $bookingSlotsModel = new BookingSlotsModel();
         $data = $this->request->getJSON();
 
         $bookingId = $data->bookingId ?? null;
@@ -858,15 +651,8 @@ class MercadoPago extends BaseController
         try {
             if ($bookingId) {
                 $booking = $bookingsModel->find($bookingId);
-                if ($booking && (int) ($booking['approved'] ?? 0) !== 1) {
-                    $bookingsModel->update($bookingId, ['annulled' => 1]);
-                    $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $bookingId]);
-                    $this->upsertRejectedPaymentRecord($booking, [
-                        'status' => 'abandoned',
-                        'status_detail' => 'Checkout abandonado por el cliente',
-                        'preference_id' => $booking['id_preference_parcial'] ?? null,
-                    ], 'closed', false);
-                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago por abandono del checkout.', 'CLIENTE');
+                if ($booking) {
+                    $this->reservationService()->markBookingAsAbandoned($booking, 'frontend_cancel_booking_id');
                 }
             } elseif ($preferenceIdParcial || $preferenceIdTotal) {
                 $query = $bookingsModel->groupStart();
@@ -880,18 +666,7 @@ class MercadoPago extends BaseController
 
                 $bookings = $query->findAll();
                 foreach ($bookings as $booking) {
-                    if ((int) ($booking['approved'] ?? 0) === 1) {
-                        continue;
-                    }
-
-                    $bookingsModel->update($booking['id'], ['annulled' => 1]);
-                    $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $booking['id']]);
-                    $this->upsertRejectedPaymentRecord($booking, [
-                        'status' => 'abandoned',
-                        'status_detail' => 'Checkout abandonado por el cliente',
-                        'preference_id' => $booking['id_preference_parcial'] ?? null,
-                    ], 'closed', false);
-                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago por abandono del checkout.', 'CLIENTE');
+                    $this->reservationService()->markBookingAsAbandoned($booking, 'frontend_cancel_preference');
                 }
             }
 
@@ -899,6 +674,20 @@ class MercadoPago extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, $e->getMessage()));
         }
+    }
+
+    public function webhook()
+    {
+        $payload = (array) ($this->request->getJSON(true) ?? []);
+        $query = $this->request->getGet();
+        $result = $this->reservationService()->processWebhook($payload, is_array($query) ? $query : []);
+
+        log_message('info', 'MP webhook result: ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+
+        return $this->response->setStatusCode(200)->setJSON([
+            'ok' => true,
+            'status' => $result['status'] ?? 'processed',
+        ]);
     }
 
     public function savePreferenceIds()

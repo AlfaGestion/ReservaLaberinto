@@ -31,7 +31,7 @@ class Filters extends BaseConfig
     public array $globals = [
         'before' => [
             // 'honeypot',
-            // 'csrf',
+            // 'csrf' => ['except' => ['payment/webhook', 'payment/webhook/*']],
             // 'invalidchars',
         ],
         'after' => [
