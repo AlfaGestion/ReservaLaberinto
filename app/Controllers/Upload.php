@@ -51,7 +51,7 @@ class Upload extends BaseController
                 $modelUpload->update($existingLogo['id'], $query);
             }
 
-            $data = ['errors' => 'Datos guardados exitosamente.'];
+            $data = ['errors' => 'Datos guardados con éxito.'];
 
             return redirect()->to('uploadLogo')->with('msg', ['type' => 'success', 'body' => $data]);
         } else {
@@ -79,7 +79,7 @@ class Upload extends BaseController
 
                 $img->move(ROOTPATH . 'public/assets/images/uploads', $fileName);
 
-                $data = ['errors' => 'Datos guardados exitosamente.'];
+                $data = ['errors' => 'Datos guardados con éxito.'];
 
                 return redirect()->to('uploadLogo')->with('msg', ['type' => 'success', 'body' => $data]);
             }
@@ -98,9 +98,10 @@ class Upload extends BaseController
 
         if ($bg) {
             $modelUpload->delete($bg['id']);
-            return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'success', 'body' => 'Eliminado correctamente']);
+            return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'success', 'body' => 'Eliminado con éxito']);
         } else {
             return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'danger', 'body' => 'No hay archivos para eliminar']);
         }
     }
 }
+

@@ -139,7 +139,7 @@ document.addEventListener('click', async (e) => {
             const result = await response.json()
 
             if (!response.ok || result.error) {
-                showAdminNotice(result.message || 'No se pudo desactivar el usuario', 'error')
+                showAdminNotice(result.message || 'No pudimos desactivar el usuario', 'error')
                 return
             }
 
@@ -147,10 +147,10 @@ document.addEventListener('click', async (e) => {
             if (row) {
                 row.remove()
             }
-            showAdminNotice(result.message || 'Usuario desactivado correctamente')
+            showAdminNotice(result.message || 'Usuario desactivado con éxito')
         } catch (error) {
             console.error('Error:', error)
-            showAdminNotice('No se pudo desactivar el usuario', 'error')
+            showAdminNotice('No pudimos desactivar el usuario', 'error')
         }
         return
     }
@@ -173,30 +173,30 @@ document.addEventListener('click', async (e) => {
     }
 
     if (!payload.user || !payload.name) {
-        showAdminNotice('Debe completar usuario y nombre', 'error')
+        showAdminNotice('Completá usuario y nombre', 'error')
         return
     }
 
     if (!isEdit) {
         if (!payload.password || !payload.repeat_password) {
-            showAdminNotice('Debe completar las contrasenas', 'error')
+            showAdminNotice('Completá las contraseñas', 'error')
             return
         }
 
         if (payload.password !== payload.repeat_password) {
-            showAdminNotice('Las contrasenas no coinciden', 'error')
+            showAdminNotice('Las contraseñas no coinciden', 'error')
             return
         }
     }
 
     if (isEdit && shouldUpdatePassword && (payload.password !== '' || payload.repeat_password !== '')) {
         if (!payload.password || !payload.repeat_password) {
-            showAdminNotice('Debe completar y repetir la nueva contrasena', 'error')
+            showAdminNotice('Completá y repetí la nueva contraseña', 'error')
             return
         }
 
         if (payload.password !== payload.repeat_password) {
-            showAdminNotice('Las contrasenas no coinciden', 'error')
+            showAdminNotice('Las contraseñas no coinciden', 'error')
             return
         }
     }
@@ -216,18 +216,20 @@ document.addEventListener('click', async (e) => {
         const result = await response.json()
 
         if (!response.ok || result.error) {
-            showAdminNotice(result.message || 'No se pudo guardar el usuario', 'error')
+            showAdminNotice(result.message || 'No pudimos guardar el usuario', 'error')
             return
         }
 
         upsertUserRow(result.item, isEdit ? 'updated' : 'created')
         userModal?.hide()
-        showAdminNotice(result.message || 'Usuario guardado correctamente')
+        showAdminNotice(result.message || 'Usuario guardado con éxito')
     } catch (error) {
         console.error('Error:', error)
-        showAdminNotice('No se pudo guardar el usuario', 'error')
+        showAdminNotice('No pudimos guardar el usuario', 'error')
     } finally {
         saveButton.disabled = false
         saveButton.innerText = 'Guardar'
     }
 })
+
+

@@ -13,10 +13,14 @@ $logoPath = $logoFile !== ''
 
 $field = $fieldsModel->find($booking['id_field'] ?? null);
 $fieldName = trim((string) ($field['name'] ?? 'Reserva'));
-$paymentStatus = trim((string) ($mercadoPago['status'] ?? ''));
-$paymentStatusLabel = $paymentStatus === 'approved'
-    ? 'Aprobado'
-    : ($paymentStatus === 'pending' ? 'Pendiente' : 'Rechazado');
+$paymentStatus = strtolower(trim((string) ($mercadoPago['status'] ?? 'approved')));
+
+$statusMap = [
+    'approved' => ['label' => 'Aprobado', 'title' => 'Pago confirmado con éxito', 'subtitle' => 'Tu reserva ya quedo registrada correctamente.', 'icon' => 'fa-circle-check', 'tone' => 'success'],
+    'pending' => ['label' => 'Pendiente', 'title' => 'Pago pendiente', 'subtitle' => 'Estamos esperando la acreditacion final del pago.', 'icon' => 'fa-hourglass-half', 'tone' => 'warning'],
+    'in_process' => ['label' => 'En proceso', 'title' => 'Pago en revision', 'subtitle' => 'Mercado Pago esta validando la operacion.', 'icon' => 'fa-clock', 'tone' => 'warning'],
+];
+$currentStatus = $statusMap[$paymentStatus] ?? ['label' => 'No aprobado', 'title' => 'Pago no aprobado', 'subtitle' => 'No pudimos acreditar el pago de esta reserva.', 'icon' => 'fa-circle-xmark', 'tone' => 'danger'];
 
 $rawDate = trim((string) ($booking['date'] ?? ''));
 $formattedDate = $rawDate;
@@ -35,107 +39,50 @@ $schedule = trim($timeFrom . ' a ' . $timeUntil);
 $total = number_format((float) ($booking['total'] ?? 0), 0, ',', '.');
 $payment = number_format((float) ($booking['payment'] ?? 0), 0, ',', '.');
 $difference = number_format((float) ($booking['diference'] ?? 0), 0, ',', '.');
-$description = trim((string) ($booking['description'] ?? ''));
-if ($description === '') {
-    $description = 'Reserva';
-}
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago aprobado</title>
+    <title><?= esc($currentStatus['title']) ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/css/success.css') ?>">
 </head>
-
-<body>
-    <div class="page">
-        <section class="div-principal">
-            <div class="brand brand-top">
-                <img src="<?= esc($logoPath) ?>" alt="Laberinto Patagonia">
-            </div>
-            <h1 class="status-title">Reserva confirmada</h1>
-            <p class="status-copy">El pago fue recibido correctamente y la reserva ya quedo registrada.</p>
-            <i class="fa-regular fa-circle-check status-icon" aria-hidden="true"></i>
-        </section>
-
-        <section class="result">
-            <div class="header">
-                <h2>Detalle de la reserva</h2>
-                <p>Te dejamos el resumen del pago y los datos principales de la visita.</p>
+<body class="bg-light">
+<div class="container py-5">
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-4 p-md-5">
+            <div class="text-center mb-4">
+                <img src="<?= esc($logoPath) ?>" alt="Laberinto Patagonia" style="max-height:68px;" class="mb-3">
+                <div class="mb-2 text-<?= esc($currentStatus['tone']) ?>"><i class="fa-regular <?= esc($currentStatus['icon']) ?> fa-3x"></i></div>
+                <h1 class="h3 mb-2"><?= esc($currentStatus['title']) ?></h1>
+                <p class="text-muted mb-0"><?= esc($currentStatus['subtitle']) ?></p>
             </div>
 
-            <div class="details-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Nombre</span>
-                    <span class="detail-value"><?= esc((string) ($booking['name'] ?? '')) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Telefono</span>
-                    <span class="detail-value"><?= esc((string) ($booking['phone'] ?? '')) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Fecha</span>
-                    <span class="detail-value"><?= esc($formattedDate) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Horario</span>
-                    <span class="detail-value"><?= esc($schedule) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Servicio</span>
-                    <span class="detail-value"><?= esc($fieldName) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Visitantes</span>
-                    <span class="detail-value"><?= esc((string) ($booking['visitors'] ?? '')) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Codigo de reserva</span>
-                    <span class="detail-value"><?= esc((string) ($booking['code'] ?? '')) ?></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Detalle</span>
-                    <span class="detail-value"><?= esc($description) ?></span>
-                </div>
+            <div class="row g-3">
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Nombre<br><strong><?= esc((string) ($booking['name'] ?? '')) ?></strong></div></div>
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Telefono<br><strong><?= esc((string) ($booking['phone'] ?? '')) ?></strong></div></div>
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Fecha<br><strong><?= esc($formattedDate) ?></strong></div></div>
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Horario<br><strong><?= esc($schedule) ?></strong></div></div>
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Servicio<br><strong><?= esc($fieldName) ?></strong></div></div>
+                <div class="col-md-6"><div class="p-3 rounded-3 bg-light border">Codigo de reserva<br><strong><?= esc((string) ($booking['code'] ?? '')) ?></strong></div></div>
             </div>
 
-            <hr>
-
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <span class="summary-label">Valor total</span>
-                    <strong class="summary-value">$<?= esc($total) ?></strong>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Pagado</span>
-                    <strong class="summary-value">$<?= esc($payment) ?></strong>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Resta</span>
-                    <strong class="summary-value">$<?= esc($difference) ?></strong>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Estado del pago</span>
-                    <strong class="summary-value"><?= esc($paymentStatusLabel) ?></strong>
-                </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-3"><div class="p-3 rounded-3 border">Total<br><strong>$<?= esc($total) ?></strong></div></div>
+                <div class="col-md-3"><div class="p-3 rounded-3 border">Pagado<br><strong>$<?= esc($payment) ?></strong></div></div>
+                <div class="col-md-3"><div class="p-3 rounded-3 border">Saldo<br><strong>$<?= esc($difference) ?></strong></div></div>
+                <div class="col-md-3"><div class="p-3 rounded-3 border">Estado<br><strong><?= esc($currentStatus['label']) ?></strong></div></div>
             </div>
 
-            <div class="payment-meta">
-                <span class="payment-meta-label">Codigo de pago de Mercado Pago</span>
-                <span class="payment-meta-value"><?= esc((string) ($mercadoPago['payment_id'] ?? 'No informado')) ?></span>
+            <div class="d-flex flex-wrap gap-2 justify-content-center mt-4">
+                <a class="btn btn-outline-secondary" href="<?= base_url() ?>">Volver al inicio</a>
+                <a class="btn btn-success" href="<?= base_url('bookingPdf/' . $bookingId) ?>">Descargar comprobante</a>
             </div>
-        </section>
-
-        <div class="cta-row">
-            <a class="cta-link cta-secondary" href="<?= base_url() ?>">Volver a la pantalla principal</a>
-            <a class="cta-link cta-primary" href="<?= base_url('bookingPdf/' . $bookingId) ?>">Descargar detalle de la reserva en PDF</a>
         </div>
     </div>
+</div>
 </body>
-
 </html>
+

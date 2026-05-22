@@ -21,18 +21,18 @@ document.addEventListener('DOMContentLoaded', (e) => {
     fecha.setAttribute('min', fechaActual)
     fecha.value = fechaActual;
 
-    // Eliminar los últimos 3 horarios de "Desde"
+    // Eliminar los Ãºltimos 3 horarios de "Desde"
     for (let i = 0; i < 3; i++) {
         horarioDesde.remove(horarioDesde.options.length - 1);
     }
 
-    // Aseguramos que todos estén habilitados
+    // Aseguramos que todos estÃ©n habilitados
     for (let i = 0; i < horarioDesde.options.length; i++) {
         horarioDesde.options[i].disabled = false;
     }
 
-    // Aplicar lógica de bloques de 120 minutos (cada 4)
-    // Saltamos índice 0 ("Seleccionar")
+    // Aplicar lÃ³gica de bloques de 120 minutos (cada 4)
+    // Saltamos Ã­ndice 0 ("Seleccionar")
     for (let i = 1; i < horarioDesde.options.length; i++) {
         if ((i - 1) % 4 !== 0) {
             horarioDesde.options[i].disabled = true;
@@ -81,7 +81,7 @@ document.addEventListener('click', async (e) => {
 
 
             if (fecha.value == '' || cancha.value == '' || horarioDesde.value == '' || nombre.value == '' || telefono.value == '') {
-                alert('Debe completar todos los datos')
+                alert('Completá todos los datos para continuar')
                 return;
             }
 
@@ -113,12 +113,12 @@ document.addEventListener('change', async (e) => {
                 horarioHasta.options[i].disabled = true;
             }
 
-            // Habilitar opciones que estén a múltiplos de 4 bloques (120 min, 240, etc.)
+            // Habilitar opciones que estÃ©n a mÃºltiplos de 4 bloques (120 min, 240, etc.)
             for (let offset = 4; indexDesde + offset < horarioHasta.options.length; offset += 4) {
                 horarioHasta.options[indexDesde + offset].disabled = false;
             }
 
-            // Seleccionar automáticamente la opción de 90 minutos (1er múltiplo)
+            // Seleccionar automÃ¡ticamente la opciÃ³n de 90 minutos (1er mÃºltiplo)
             if (indexDesde + 4 < horarioHasta.options.length) {
                 horarioHasta.value = horarioHasta.options[indexDesde + 4].value;
             }
@@ -143,7 +143,7 @@ inputqtyvisitors.addEventListener('input', (e) => {
     // }
 
     // if (inputqtyvisitors.value < 10) {
-    //     alert('La cantidad mínima de visitantes es 10')
+    //     alert('La cantidad mÃ­nima de visitantes es 10')
     //     return;
     // }
 
@@ -184,7 +184,7 @@ async function updateBooking(data) {
 
 
         } else {
-            alert('Algo salió mal. No se pudo editar la reserva.');
+            alert('Algo saliÃ³ mal. No se pudo editar la reserva.');
             return
         }
 
@@ -221,7 +221,7 @@ async function getCustomer(phone) {
             return responseData.data
 
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
 
     } catch (error) {
@@ -242,7 +242,7 @@ async function getBooking(id) {
             return responseData.data
 
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
 
     } catch (error) {
@@ -279,7 +279,7 @@ function generateTimeSlotsWithEnd() {
             timeSlots.push(`${hour}:${minute}`);
         }
     }
-    // Agrego 24:00 como tope para poder “cerrar” el rango sin trucos
+    // Agrego 24:00 como tope para poder â€œcerrarâ€ el rango sin trucos
     timeSlots.push('24:00');
     return timeSlots;
 }
@@ -319,10 +319,10 @@ async function getFieldForTimeBookings(data) {
     const indexDesde = SLOTS.indexOf(currentDesde);
     const indexHasta = SLOTS.indexOf(currentHasta);
 
-    // Si algo no está en la grilla o el rango es inválido, muestro mensaje y salgo
+    // Si algo no estÃ¡ en la grilla o el rango es invÃ¡lido, muestro mensaje y salgo
     if (indexDesde === -1 || indexHasta === -1 || indexHasta <= indexDesde) {
         selectCancha.innerHTML = '';
-        const opt = new Option('Seleccioná un rango válido (múltiplos de 30 min)', '');
+        const opt = new Option('SeleccionÃ¡ un rango vÃ¡lido (mÃºltiplos de 30 min)', '');
         selectCancha.appendChild(opt);
         selectCancha.style.backgroundColor = '#bb2d3b';
         return;
@@ -341,7 +341,7 @@ async function getFieldForTimeBookings(data) {
         const reservasDeCancha = timeBookings.find(e => e.id_cancha == c.id);
         const horariosOcupados = Array.isArray(reservasDeCancha?.time) ? reservasDeCancha.time : [];
 
-        // Excluyo el último slot de cada reserva (el final es “libre” para iniciar la siguiente)
+        // Excluyo el Ãºltimo slot de cada reserva (el final es â€œlibreâ€ para iniciar la siguiente)
         const ocupadosSinFinal = horariosOcupados.slice(0, -1);
         const ocupadosSet = new Set(ocupadosSinFinal);
 
@@ -377,7 +377,7 @@ async function getField(id) {
             return responseData.data
 
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
 
     } catch (error) {
@@ -397,7 +397,7 @@ async function getNocturnalTime() {
 
             return nocturnalTime
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -452,10 +452,11 @@ async function getRate() {
 
             return responseData.data.value
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
     } catch (error) {
         console.error('Error:', error);
         throw error;
     }
 }
+

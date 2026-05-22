@@ -33,7 +33,7 @@ async function parseJsonResponse(response) {
     try {
         return await response.json();
     } catch (error) {
-        return { message: 'No se pudo interpretar la respuesta del servidor.' };
+        return { message: 'No pudimos interpretar la respuesta del servidor.' };
     }
 }
 
@@ -90,16 +90,16 @@ document.addEventListener('click', async (e) => {
         const availabilityData = availables.availability;
 
         if (availabilityData && availabilityData.length > 0) {
-            // Recorremos cada día disponible
+            // Recorremos cada dÃ­a disponible
             availabilityData.forEach(day => {
                 // console.log(day);
 
-                // La lógica de validación se simplifica.
+                // La lÃ³gica de validaciÃ³n se simplifica.
                 // Verificamos si el array tiene un solo elemento y si ese elemento
                 // es la cadena de "cerrado" generada por el backend.
                 const isClosed = day.available_slots.length === 1 && day.available_slots[0].startsWith('Cerrado los ');
 
-                // Creamos una sección para cada fecha
+                // Creamos una secciÃ³n para cada fecha
                 let dayContent = `
                 <h5 class="text-xl font-semibold mt-4 text-gray-800">${day.date}</h5>
                 <hr class="my-2 border-gray-300">
@@ -107,14 +107,14 @@ document.addEventListener('click', async (e) => {
             `;
 
                 if (isClosed) {
-                    // Si el día está cerrado, mostramos un solo mensaje
+                    // Si el dÃ­a estÃ¡ cerrado, mostramos un solo mensaje
                     dayContent += `
                     <div class="col-span-2 text-center text-gray-600 p-2 rounded-lg bg-gray-100">
                         ${day.available_slots[0]}
                     </div>
                 `;
                 } else {
-                    // Recorremos cada uno de los lapsos disponibles para ese día
+                    // Recorremos cada uno de los lapsos disponibles para ese dÃ­a
                     day.available_slots.forEach(slot => {
                         const [start, end] = slot.split(' a ');
 
@@ -140,9 +140,9 @@ document.addEventListener('click', async (e) => {
                     });
                 }
 
-                dayContent += `</div>`; // Cierre del contenedor de la cuadrícula
+                dayContent += `</div>`; // Cierre del contenedor de la cuadrÃ­cula
 
-                // Agregamos el contenido completo del día al modal
+                // Agregamos el contenido completo del dÃ­a al modal
                 availabilityResult.innerHTML += dayContent;
             });
         } else {
@@ -184,12 +184,12 @@ horarioDesde.addEventListener('change', async () => {
         horarioHasta.options[indexDesde + offset].disabled = false;
     }
 
-    // Seleccionar automáticamente la opción de 90 minutos
+    // Seleccionar automÃ¡ticamente la opciÃ³n de 90 minutos
     if (indexDesde + 4 < horarioHasta.options.length) {
         horarioHasta.value = horarioHasta.options[indexDesde + 4].value;
     }
 
-    // Mover esta línea para que se ejecute al final
+    // Mover esta lÃ­nea para que se ejecute al final
     await getTimeFromBookings();
 });
 
@@ -232,11 +232,11 @@ async function getFieldForTimeBookings(data) {
         const reservasDeCancha = timeBookings.find(e => e.id_cancha == cancha.id);
         const horariosOcupados = reservasDeCancha ? reservasDeCancha.time : [];
 
-        // Creamos un nuevo array que excluye el último horario de la reserva.
+        // Creamos un nuevo array que excluye el Ãºltimo horario de la reserva.
         // Esto permite que el horario final de una reserva se convierta en el de inicio para la siguiente.
         const horariosOcupadosSinFinal = horariosOcupados.slice(0, -1);
 
-        // Ahora verificamos si algún horario seleccionado se cruza con los horarios ocupados.
+        // Ahora verificamos si algÃºn horario seleccionado se cruza con los horarios ocupados.
         const hayCruce = rangoSeleccionado.some(hora => horariosOcupadosSinFinal.includes(hora));
 
         if (!hayCruce) {
@@ -288,7 +288,7 @@ async function updateBooking() {
 
             contentEditBookingResult.innerHTML = `
             <div class="modal-body modalResultPayment d-flex justify-content-center align-items-center flex-column" style="background-color: #157347; color: #fff">
-                <h4 class="mb-5">Reserva modificada!</h4>
+                <h4 class="mb-5">Reserva actualizada con éxito</h4>
                 <i class="fa-regular fa-circle-check fa-2xl" style="margin-bottom: 20px;"></i>
             </div>`
 
@@ -299,7 +299,7 @@ async function updateBooking() {
 
 
         } else {
-            alert('Algo salió mal. No se pudo editar la reserva.');
+            alert('Algo saliÃ³ mal. No se pudo editar la reserva.');
             return
         }
 
@@ -314,21 +314,21 @@ async function initializeEditBookingModal() {
     getAvailability();
     getTime();
 
-    // Eliminar los últimos 3 horarios de "Desde" para ajustar los bloques de 2 horas.
-    // Nota: Esto asume que tu lógica de backend genera 3 horarios extra.
+    // Eliminar los Ãºltimos 3 horarios de "Desde" para ajustar los bloques de 2 horas.
+    // Nota: Esto asume que tu lÃ³gica de backend genera 3 horarios extra.
     for (let i = 0; i < 3; i++) {
         if (horarioDesde.options.length > 1) { // Evitar errores si hay pocas opciones
             horarioDesde.remove(horarioDesde.options.length - 1);
         }
     }
 
-    // Aseguramos que todas las opciones estén habilitadas por defecto.
+    // Aseguramos que todas las opciones estÃ©n habilitadas por defecto.
     for (let i = 0; i < horarioDesde.options.length; i++) {
         horarioDesde.options[i].disabled = false;
     }
 
-    // Aplicar lógica de bloques de 120 minutos (habilitar cada 4ta opción).
-    // Se salta el índice 0 que es "Seleccionar".
+    // Aplicar lÃ³gica de bloques de 120 minutos (habilitar cada 4ta opciÃ³n).
+    // Se salta el Ã­ndice 0 que es "Seleccionar".
     for (let i = 1; i < horarioDesde.options.length; i++) {
         if ((i - 1) % 4 !== 0) {
             horarioDesde.options[i].disabled = true;
@@ -337,24 +337,24 @@ async function initializeEditBookingModal() {
 
     const fechaSistema = new Date();
 
-    // 1. Calcular la fecha de mañana.
+    // 1. Calcular la fecha de maÃ±ana.
     const fechaMananaObj = new Date(fechaSistema);
     fechaMananaObj.setDate(fechaSistema.getDate() + 1);
 
-    // 2. Formatear la fecha de mañana al formato 'YYYY-MM-DD' requerido por el input.
-    const añoManana = fechaMananaObj.getFullYear();
+    // 2. Formatear la fecha de maÃ±ana al formato 'YYYY-MM-DD' requerido por el input.
+    const aÃ±oManana = fechaMananaObj.getFullYear();
     const mesManana = String(fechaMananaObj.getMonth() + 1).padStart(2, '0');
     const diaManana = String(fechaMananaObj.getDate()).padStart(2, '0');
-    const fechaManana = `${añoManana}-${mesManana}-${diaManana}`;
+    const fechaManana = `${aÃ±oManana}-${mesManana}-${diaManana}`;
 
-    // 3. Establecer la fecha mínima y el valor por defecto en el input de fecha.
+    // 3. Establecer la fecha mÃ­nima y el valor por defecto en el input de fecha.
     // (Asumiendo que la variable de tu input de fecha es 'fechaInput').
     if (fechaInput) {
-        fechaInput.setAttribute('min', fechaManana); // La fecha más temprana seleccionable es mañana.
-        fechaInput.value = fechaManana;            // El valor inicial del campo será mañana.
+        fechaInput.setAttribute('min', fechaManana); // La fecha mÃ¡s temprana seleccionable es maÃ±ana.
+        fechaInput.value = fechaManana;            // El valor inicial del campo serÃ¡ maÃ±ana.
     }
 
-    // --- LÓGICA ADICIONAL ---
+    // --- LÃ“GICA ADICIONAL ---
 
     inputqtyvisitors.disabled = true;
 
@@ -362,7 +362,7 @@ async function initializeEditBookingModal() {
         checkSunday();
     }
 
-    // Llamadas a funciones finales para inicializar el estado de la página.
+    // Llamadas a funciones finales para inicializar el estado de la pÃ¡gina.
     // getRate();
 
     inputqtyvisitors.value = currentBooking.visitors
@@ -397,7 +397,7 @@ function checkSunday() {
 //             minVisitantes = responseData.data.qty_visitors
 //             return responseData.data
 //         } else {
-//             alert('Algo salió mal. No se pudo obtener la información.');
+//             alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
 //         }
 //     } catch (error) {
 //         console.error('Error:', error);
@@ -415,7 +415,7 @@ async function getTime() {
             openingTime = responseData.data
             return responseData.data
         } else {
-            alert('Algo salió mal. No se pudo obtener la información.');
+            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -460,14 +460,14 @@ async function searchBooking(codeValue) {
 
         if (responseData.data && responseData.data !== '') {
             currentBooking = responseData.data
-            renderBookingCard(responseData.data); // Usamos la nueva función
+            renderBookingCard(responseData.data); // Usamos la nueva funciÃ³n
         } else {
             showBookingMessage(responseData.message || 'No se encontro ninguna reserva con ese codigo.', 'warning');
         }
 
     } catch (error) {
         console.error('Error:', error);
-        showBookingMessage('No se pudo consultar la reserva. Intente nuevamente.', 'danger');
+        showBookingMessage('No pudimos consultar tu reserva. Intentá nuevamente.', 'danger');
     } finally {
         // modalSpinner.hide();
     }
@@ -493,14 +493,14 @@ async function searchCustomerBookings(phoneValue, emailValue) {
         const responseData = await parseJsonResponse(response);
 
         if (!response.ok) {
-            showBookingMessage(responseData.message || 'No se encontraron reservas para ese cliente.', 'warning');
+            showBookingMessage(responseData.message || 'No encontramos reservas para ese cliente.', 'warning');
             return;
         }
 
         if (responseData.data && responseData.data.length > 0) {
             renderBookingsList(responseData.data);
         } else {
-            showBookingMessage(responseData.message || 'No se encontraron reservas para ese cliente.', 'warning');
+            showBookingMessage(responseData.message || 'No encontramos reservas para ese cliente.', 'warning');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -540,7 +540,7 @@ async function searchBookingWithHistory(codeValue, phoneValue, emailValue) {
         }
     } catch (error) {
         console.error('Error:', error);
-        showBookingMessage('No se pudo consultar la reserva y el historial. Intente nuevamente.', 'danger');
+        showBookingMessage('No pudimos consultar tu reserva y el historial. Intentá nuevamente.', 'danger');
     }
 }
 
@@ -571,16 +571,16 @@ function renderBookingCard(booking) {
                 <div class="row g-3">
                     
                     <div class="col-md-6 border-end">
-                        <p class="mb-2"><strong>📅 Fecha:</strong> ${booking.date}</p>
-                        <p class="mb-2"><strong>⏰ Horario:</strong> ${booking.time_from} - ${booking.time_until}</p>
-                        <p class="mb-2"><strong>🛎️ Servicio:</strong> Laberinto</p>
-                        <p class="mb-0"><strong>👤 Visitantes:</strong> <span class="badge bg-info text-dark">${booking.visitors}</span></p>
+                        <p class="mb-2"><strong>ðŸ“… Fecha:</strong> ${booking.date}</p>
+                        <p class="mb-2"><strong>â° Horario:</strong> ${booking.time_from} - ${booking.time_until}</p>
+                        <p class="mb-2"><strong>ðŸ›Žï¸ Servicio:</strong> Laberinto</p>
+                        <p class="mb-0"><strong>ðŸ‘¤ Visitantes:</strong> <span class="badge bg-info text-dark">${booking.visitors}</span></p>
                     </div>
 
                     <div class="col-md-6">
-                        <p class="mb-2"><strong>🙋 Nombre:</strong> ${booking.name}</p>
-                        <p class="mb-2"><strong>📞 Teléfono:</strong> ${booking.phone}</p>
-                        <p class="mb-0"><strong>📝 Descripción:</strong> ${booking.description || 'Sin descripción'}</p>
+                        <p class="mb-2"><strong>ðŸ™‹ Nombre:</strong> ${booking.name}</p>
+                        <p class="mb-2"><strong>ðŸ“ž TelÃ©fono:</strong> ${booking.phone}</p>
+                        <p class="mb-0"><strong>ðŸ“ DescripciÃ³n:</strong> ${booking.description || 'Sin descripciÃ³n'}</p>
                     </div>
                 </div>
             </div>
@@ -588,9 +588,9 @@ function renderBookingCard(booking) {
             <div class="card-footer bg-light d-flex flex-wrap justify-content-between align-items-center p-3">
                 
                 <div class="mb-2 mb-md-0">
-                    <p class="mb-1"><strong>💰 Total:</strong> <span class="text-dark fw-bold">$${booking.total}</span></p>
-                    <p class="mb-1"><strong>✅ Pagado:</strong> $${booking.payment} (${booking.payment_method})</p>
-                    <p class="mb-0 text-danger fw-bold"><strong>💸 Saldo:</strong> $${booking.diference}</p>
+                    <p class="mb-1"><strong>ðŸ’° Total:</strong> <span class="text-dark fw-bold">$${booking.total}</span></p>
+                    <p class="mb-1"><strong>âœ… Pagado:</strong> $${booking.payment} (${booking.payment_method})</p>
+                    <p class="mb-0 text-danger fw-bold"><strong>ðŸ’¸ Saldo:</strong> $${booking.diference}</p>
                 </div>
                 
                 <div class="d-flex flex-row justify-content-center align-items-end gap-2">
@@ -779,8 +779,10 @@ function buildHistorySections(bookings) {
     }
 
     if (html === '') {
-        return `<div class="alert alert-secondary mb-0">No se encontraron reservas para este cliente.</div>`;
+        return `<div class="alert alert-secondary mb-0">No hay reservas para este cliente.</div>`;
     }
 
     return html;
 }
+
+

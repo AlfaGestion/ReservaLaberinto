@@ -247,7 +247,7 @@ class Home extends BaseController
     //         $mercadoPagoModel->where('status', 'rejected')->delete();
     //         $bookingsModel->where('approved', 0)
     //             ->orWhere('approved', null)->delete();
-    //         return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+    //         return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
     //     } catch (\Exception $e) {
     //         return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
     //     }
@@ -300,7 +300,7 @@ class Home extends BaseController
                 ->groupEnd()
                 ->where('booking_time <', $nueva_hora)->delete();
 
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -325,7 +325,7 @@ class Home extends BaseController
         ];
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $datosReserva, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $datosReserva, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -452,10 +452,10 @@ class Home extends BaseController
         ]);
 
         if (!$this->sendEmailWithFallback($notificationEmailList, $subject, $html, true)) {
-            return $this->response->setJSON($this->setResponse(400, true, null, 'No se pudo enviar la solicitud especial.'));
+            return $this->response->setJSON($this->setResponse(400, true, null, 'No pudimos enviar la solicitud especial.'));
         }
 
-        return $this->response->setJSON($this->setResponse(null, false, null, 'Solicitud enviada correctamente. Te contactaremos para confirmar disponibilidad.'));
+        return $this->response->setJSON($this->setResponse(null, false, null, 'Solicitud enviada con éxito. Te contactaremos para confirmar disponibilidad.'));
     }
 
 
@@ -471,3 +471,4 @@ class Home extends BaseController
         return $response;
     }
 }
+

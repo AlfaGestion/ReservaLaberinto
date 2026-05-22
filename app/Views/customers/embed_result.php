@@ -11,7 +11,7 @@
     <script>
         window.parent.postMessage({
             type: 'customer-form-saved',
-            message: <?= json_encode($message ?? 'Guardado correctamente') ?>,
+            message: <?= json_encode($message ?? 'Guardado con éxito') ?>,
             action: <?= json_encode($action ?? 'updated') ?>,
             customer: <?= json_encode($customer ?? null) ?>
         }, window.location.origin);
@@ -19,3 +19,4 @@
 </body>
 
 </html>
+

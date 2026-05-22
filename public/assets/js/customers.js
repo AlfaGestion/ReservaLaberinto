@@ -137,9 +137,9 @@ async function setOfferTrue(data) {
         });
 
         if (response.ok) {
-            alert('Operación exitosa')
+            alert('OperaciÃ³n exitosa')
         } else {
-            alert('Ocurrió un error y no se pudo actualizar el valor')
+            alert('OcurriÃ³ un error y no se pudo actualizar el valor')
         }
 
         location.reload(true)
@@ -161,9 +161,9 @@ async function setOfferFalse(data) {
         });
 
         if (response.ok) {
-            alert('Operación exitosa')
+            alert('OperaciÃ³n exitosa')
         } else {
-            alert('Ocurrió un error y no se pudo actualizar el valor')
+            alert('OcurriÃ³ un error y no se pudo actualizar el valor')
         }
 
         location.reload(true)
@@ -199,7 +199,7 @@ async function searchCustomer(url) {
             fillCustomersTable(responseData.data)
 
         } else {
-            alert('No hay resultados para la búqueda realizada');
+            alert('No hay resultados para la bÃºqueda realizada');
         }
 
     } catch (error) {
@@ -277,10 +277,12 @@ async function fillCustomersTable(data) {
             </tr>
             `
     } else {
-        console.error('El parámetro data no es un formato válido.');
+        console.error('El parÃ¡metro data no es un formato vÃ¡lido.');
         return;
     }
 
     customersDiv.innerHTML = tr
 
 }
+
+

@@ -21,7 +21,7 @@ class Users extends BaseController
 
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $user, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $user, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -41,7 +41,7 @@ class Users extends BaseController
 
         if ($query['user'] === '' || $query['name'] === '') {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                ->setJSON(['error' => true, 'message' => 'Debe completar usuario y nombre']);
+                ->setJSON(['error' => true, 'message' => 'Completá usuario y nombre']);
         }
 
         if ($password !== '') {
@@ -53,7 +53,7 @@ class Users extends BaseController
 
             return  $this->response->setJSON([
                 'error' => false,
-                'message' => 'Usuario actualizado correctamente',
+                'message' => 'Usuario actualizado con éxito',
                 'item' => $modelUsers->find($data->id),
             ]);
         } catch (\Exception $e) {
@@ -75,7 +75,7 @@ class Users extends BaseController
 
         if ($user === '' || $name === '' || $password === '') {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                ->setJSON(['error' => true, 'message' => 'Debe completar todos los datos']);
+                ->setJSON(['error' => true, 'message' => 'Completá todos los datos']);
         }
 
         if ($password !== $repeatPassword) {
@@ -100,12 +100,12 @@ class Users extends BaseController
             $id = $modelUsers->insert($query, true);
             return $this->response->setJSON([
                 'error' => false,
-                'message' => 'Usuario creado correctamente',
+                'message' => 'Usuario creado con éxito',
                 'item' => $modelUsers->find($id),
             ]);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                ->setJSON(['error' => true, 'message' => 'No se pudo crear el usuario']);
+                ->setJSON(['error' => true, 'message' => 'No pudimos crear el usuario']);
         }
     }
 
@@ -123,12 +123,12 @@ class Users extends BaseController
             $modelUsers->update($id, ['active' => 0]);
             return $this->response->setJSON([
                 'error' => false,
-                'message' => 'Usuario desactivado correctamente',
+                'message' => 'Usuario desactivado con éxito',
                 'id' => $id,
             ]);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                ->setJSON(['error' => true, 'message' => 'No se pudo desactivar el usuario']);
+                ->setJSON(['error' => true, 'message' => 'No pudimos desactivar el usuario']);
         }
     }
 
@@ -144,3 +144,4 @@ class Users extends BaseController
         return $response;
     }
 }
+

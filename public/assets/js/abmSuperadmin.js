@@ -88,7 +88,7 @@ function showAdminNotice(message, type = 'success', title = '') {
             <i class="fa-solid ${iconMap[type] || iconMap.info}"></i>
         </div>
         <div class="admin-notice__content">
-            <span class="admin-notice__title">${title || (type === 'error' ? 'No se pudo completar' : 'Listo')}</span>
+            <span class="admin-notice__title">${title || (type === 'error' ? 'No pudimos completar la operación' : 'Listo')}</span>
             <span class="admin-notice__message">${message}</span>
         </div>
     `
@@ -202,7 +202,7 @@ customerNoticeForm?.addEventListener('submit', async (e) => {
         const result = await response.json()
 
         if (!response.ok || result.error) {
-            showAdminNotice(result.message || 'No se pudo guardar el aviso', 'error')
+            showAdminNotice(result.message || 'No pudimos guardar el aviso', 'error')
             return
         }
 
@@ -217,7 +217,7 @@ customerNoticeForm?.addEventListener('submit', async (e) => {
         showAdminNotice(result.message || 'Aviso guardado correctamente')
     } catch (error) {
         console.error('Error:', error)
-        showAdminNotice('No se pudo guardar el aviso', 'error')
+        showAdminNotice('No pudimos guardar el aviso', 'error')
     }
 })
 
@@ -422,7 +422,7 @@ document.addEventListener('click', async (e) => {
             const result = await response.json()
 
             if (!response.ok || result.error) {
-                showAdminNotice(result.message || 'No se pudo eliminar el aviso', 'error')
+                showAdminNotice(result.message || 'No pudimos eliminar el aviso', 'error')
                 return
             }
 
@@ -430,7 +430,7 @@ document.addEventListener('click', async (e) => {
             showAdminNotice(result.message || 'Aviso eliminado correctamente')
         } catch (error) {
             console.error('Error:', error)
-            showAdminNotice('No se pudo eliminar el aviso', 'error')
+            showAdminNotice('No pudimos eliminar el aviso', 'error')
         }
         return
     }
@@ -462,7 +462,7 @@ document.addEventListener('click', async (e) => {
             const result = await response.json()
 
             if (!response.ok || result.error) {
-                showAdminNotice(result.message || 'No se pudo deshabilitar el servicio', 'error')
+                showAdminNotice(result.message || 'No pudimos deshabilitar el servicio', 'error')
                 return
             }
 
@@ -473,7 +473,7 @@ document.addEventListener('click', async (e) => {
             showAdminNotice(result.message || 'Servicio deshabilitado')
         } catch (error) {
             console.error('Error:', error)
-            showAdminNotice('No se pudo deshabilitar el servicio', 'error')
+            showAdminNotice('No pudimos deshabilitar el servicio', 'error')
         }
         return
     }
@@ -573,10 +573,10 @@ async function editBooking(data) {
         });
 
         if (response.ok) {
-            alert('Reserva eliminada con ÃƒÆ’Ã‚Â©xito')
+            alert('Reserva eliminada con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito')
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo eliminar la reserva.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo eliminar la reserva.');
         }
 
     } catch (error) {
@@ -597,13 +597,13 @@ async function cancelBooking(data) {
         });
 
         if (response.ok) {
-            alert('Reserva anulada con ÃƒÆ’Ã‚Â©xito')
+            alert('Reserva anulada con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito')
 
             cancelBookingModal.hide()
             location.reload(true)
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo eliminar la reserva.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo eliminar la reserva.');
         }
 
     } catch (error) {
@@ -631,7 +631,7 @@ async function completePayment(url, data) {
 
                 contentPaymentResult.innerHTML = `
                 <div class="modal-body modalResultPayment d-flex justify-content-center align-items-center flex-column" style="background-color: #157347;">
-                    <h4 class="mb-5">Pago confirmado!</h4>
+                    <h4 class="mb-5">Pago confirmado con éxito con éxito!</h4>
                     <i class="fa-regular fa-circle-check fa-2xl" style="margin-bottom: 20px;"></i>
                 </div>`
 
@@ -655,7 +655,7 @@ async function completePayment(url, data) {
             }
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el pago.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No pudimos registrar el pago.');
         }
 
     } catch (error) {
@@ -675,11 +675,11 @@ async function saveRate(url, data) {
         });
 
         if (response.ok) {
-            alert('Valor ingresado con ÃƒÆ’Ã‚Â©xito')
+            alert('Valor ingresado con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito')
             location.reload(true)
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el valor.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo ingresar el valor.');
         }
 
     } catch (error) {
@@ -701,9 +701,9 @@ async function saveGeneralSettings(url, data) {
         const responseData = await response.json()
 
         if (response.ok) {
-            alert(responseData.message || 'ConfiguraciÃƒÆ’Ã‚Â³n guardada con ÃƒÆ’Ã‚Â©xito')
+            alert(responseData.message || 'ConfiguraciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n guardada con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito')
         } else {
-            alert(responseData.message || 'No se pudo guardar la configuraciÃƒÆ’Ã‚Â³n')
+            alert(responseData.message || 'No se pudo guardar la configuraciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n')
         }
 
     } catch (error) {
@@ -723,11 +723,11 @@ async function saveOfferRate(url, data) {
         });
 
         if (response.ok) {
-            alert('Valor ingresado con ÃƒÆ’Ã‚Â©xito')
+            alert('Valor ingresado con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito')
             location.reload(true)
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo ingresar el valor.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo ingresar el valor.');
         }
 
     } catch (error) {
@@ -748,7 +748,7 @@ async function getBooking(id) {
             return responseData.data
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.');
         }
 
     } catch (error) {
@@ -768,7 +768,7 @@ async function getEditField(id) {
             fillDiv(responseData.data)
 
         } else {
-            alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
+            alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.');
         }
 
     } catch (error) {
@@ -856,7 +856,7 @@ async function saveOfferRate(url, data) {
 //             fillDivValues(responseData.data)
 
 //         } else {
-//             alert('Algo saliÃƒÆ’Ã‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã‚Â³n.');
+//             alert('Algo saliÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ mal. No se pudo obtener la informaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.');
 //         }
 
 //     } catch (error) {
@@ -911,13 +911,13 @@ function fillDiv(field) {
 //                 </div>
 
 //                 <div class="input-group mb-3">
-//                     <span class="input-group-text">Valor sin iluminaciÃƒÆ’Ã‚Â³n</span>
-//                     <input type="text" class="form-control" value="${value.value}" name="valor" placeholder="Ingrese valor por hora sin iluminaciÃƒÆ’Ã‚Â³n" aria-label="Valor">
+//                     <span class="input-group-text">Valor sin iluminaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n</span>
+//                     <input type="text" class="form-control" value="${value.value}" name="valor" placeholder="Ingrese valor por hora sin iluminaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n" aria-label="Valor">
 //                 </div>
 
 //                 <div class="input-group mb-3">
-//                     <span class="input-group-text">Valor con iluminaciÃƒÆ’Ã‚Â³n</span>
-//                     <input type="text" class="form-control" value="${value.ilumination_value}" name="valorIluminacion" placeholder="Ingrese valor por hora con iluminaciÃƒÆ’Ã‚Â³n" aria-label="Valor">
+//                     <span class="input-group-text">Valor con iluminaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n</span>
+//                     <input type="text" class="form-control" value="${value.ilumination_value}" name="valorIluminacion" placeholder="Ingrese valor por hora con iluminaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n" aria-label="Valor">
 //                 </div>
 
 //                 <button type="submit" class="btn btn-success">Guardar</button>
@@ -928,3 +928,5 @@ function fillDiv(field) {
 
 //     editFieldDiv.innerHTML = div
 // }
+
+

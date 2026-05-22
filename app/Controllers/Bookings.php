@@ -287,7 +287,7 @@ class Bookings extends BaseController
             'use_offer'             => $data->oferta,
             'booking_time'          => date("Y-m-d H:i:s"),
             'mp'                    => 0,
-            'annulled'              => 0, // Aseguramos que este nuevo registro no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© anulado
+            'annulled'              => 0, // Aseguramos que este nuevo registro no estÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© anulado
             'id_customer'           => $idCustomer,
             'partial_by_entries'    => $partialByEntries,
             'paid_entries'          => $paidEntries,
@@ -306,7 +306,7 @@ class Bookings extends BaseController
                     ]);
                 }
                 $this->sendBookingNotificationEmail($bookingsModel->find($bookingId), $data);
-                return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+                return $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
             }
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
@@ -368,7 +368,7 @@ class Bookings extends BaseController
                     $indexFrom = array_search($booking['time_from'], $time);
                     $indexUntil = array_search($booking['time_until'], $time);
 
-                    // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Cambio clave: UNTIL ahora es exclusivo
+                    // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Cambio clave: UNTIL ahora es exclusivo
                     for ($currentTime = $indexFrom; $currentTime < $indexUntil; $currentTime++) {
                         $timeBooking['time'][] = $time[$currentTime];
                     }
@@ -388,7 +388,7 @@ class Bookings extends BaseController
                 $indexFrom = array_search($booking['time_from'], $time);
                 $indexUntil = array_search($booking['time_until'], $time);
 
-                // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Cambio clave: UNTIL ahora es exclusivo
+                // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Cambio clave: UNTIL ahora es exclusivo
                 for ($currentTime = $indexFrom; $currentTime < $indexUntil; $currentTime++) {
                     $reserva['time'][] = $time[$currentTime];
                 }
@@ -402,7 +402,7 @@ class Bookings extends BaseController
             return $this->response->setJSON($this->setResponse(200, false, [
                 'reservas' => $timeBookings,
                 'canchas' => $fieldsModel->findAll()
-            ], $occupied ? 'Respuesta exitosa' : 'No hay reservas para la fecha seleccionada'));
+            ], $occupied ? 'Operación completada' : 'No hay reservas para la fecha seleccionada'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -491,7 +491,7 @@ class Bookings extends BaseController
                     'totalPaymentCompleted' => (bool) $pagoTotal,
                     'remainingBalance' => $diferencia,
                     'pendingEntries' => $pendingEntries,
-                ], 'Respuesta exitosa'));
+                ], 'Operación completada'));
             } catch (\Exception $e) {
                 return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
             }
@@ -502,10 +502,10 @@ class Bookings extends BaseController
         $nuevoPago = floatval($data->pago);
         $nuevoAcumulado = $pagoAnterior + $nuevoPago;
 
-        // ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ ValidaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n para evitar pagos duplicados o montos excedidos
+        // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ ValidaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n para evitar pagos duplicados o montos excedidos
         if ($nuevoPago <= 0 || $nuevoAcumulado > $total) {
             return $this->response->setJSON(
-                $this->setResponse(400, true, null, 'El monto es invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido o excede el total de la reserva.')
+                $this->setResponse(400, true, null, 'El monto es invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido o excede el total de la reserva.')
             );
         }
 
@@ -543,7 +543,7 @@ class Bookings extends BaseController
                 'bookingId' => (int) $id,
                 'totalPaymentCompleted' => (bool) $pagoTotal,
                 'remainingBalance' => $diferencia,
-            ], 'Respuesta exitosa'));
+            ], 'Operación completada'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -568,7 +568,7 @@ class Bookings extends BaseController
             $booking['pay_by_entries_enabled'] = $booking['partial_by_entries'] === 1;
 
             try {
-                return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Respuesta exitosa'));
+                return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Operación completada'));
             } catch (\Exception $e) {
                 return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
             }
@@ -683,7 +683,7 @@ class Bookings extends BaseController
         }
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $payments, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $payments, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -711,7 +711,7 @@ class Bookings extends BaseController
                 $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva.');
             }
 
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -767,7 +767,7 @@ class Bookings extends BaseController
                 : 'Modificacion de reserva.';
             $this->logBookingAction($this->ensureBookingOrderId($previousBooking), 'M', $observation);
 
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -1008,7 +1008,7 @@ class Bookings extends BaseController
         }
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $result, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $result, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -1023,10 +1023,10 @@ class Bookings extends BaseController
         try {
             $bookingsModel->update($data->bookingId, ['mp' => $data->confirm]);
             if ($booking) {
-                $this->logBookingAction($this->ensureBookingOrderId($booking), 'M', !empty($data->confirm) ? 'Modificacion de reserva: pago Mercado Pago confirmado.' : 'Modificacion de reserva: pago Mercado Pago marcado como pendiente.');
+                $this->logBookingAction($this->ensureBookingOrderId($booking), 'M', !empty($data->confirm) ? 'Modificacion de reserva: pago Mercado Pago confirmado con éxito.' : 'Modificacion de reserva: pago Mercado Pago marcado como pendiente.');
             }
 
-            return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -1040,7 +1040,7 @@ class Bookings extends BaseController
 
         $data = $this->request->getJSON();
 
-        // Validaciones mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nimas
+        // Validaciones mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nimas
         if (!$data || empty($data->fecha) || empty($data->nombre) || empty($data->monto) || empty($data->total) || empty($data->cancha)) {
             return $this->response->setJSON($this->setResponse(400, true, null, 'Faltan datos obligatorios.'));
         }
@@ -1065,7 +1065,7 @@ class Bookings extends BaseController
             $pagoTotal = $paidEntries >= $visitors ? 1 : 0;
         }
 
-        // Intentar buscar cliente por telÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©fono
+        // Intentar buscar cliente por telÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©fono
         $existingCustomer = $customersModel->where('phone', $data->telefono)->first();
         $idCustomer = $data->idCustomer ?? null;
         $orderId = $this->generateBookingOrderId();
@@ -1165,7 +1165,7 @@ class Bookings extends BaseController
                 ]);
             }
 
-            return $this->response->setJSON($this->setResponse(null, null, null, 'Reserva guardada exitosamente'));
+            return $this->response->setJSON($this->setResponse(null, null, null, 'Reserva guardada con éxito'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, 'Error al guardar la reserva: ' . $e->getMessage()));
         }
@@ -1287,7 +1287,7 @@ class Bookings extends BaseController
 
         if (!$sent) {
             return $this->response->setStatusCode(400)
-                ->setJSON($this->setResponse(400, true, null, 'No se pudo enviar el email.'));
+                ->setJSON($this->setResponse(400, true, null, 'No pudimos enviar el correo.'));
         }
 
         $invoiceEmailSentAt = date('Y-m-d H:i:s');
@@ -1302,8 +1302,8 @@ class Bookings extends BaseController
         }
 
         $responseMessage = $invoiceEmailTracked
-            ? 'Factura enviada correctamente.'
-            : 'Factura enviada correctamente, pero no se pudo registrar la fecha de envio.';
+            ? 'Comprobante enviado con éxito.'
+            : 'Comprobante enviado con éxito, pero no pudimos registrar la fecha de envío.';
 
         return $this->response->setJSON($this->setResponse(null, false, [
             'email' => $customerEmail,
@@ -1746,7 +1746,7 @@ class Bookings extends BaseController
             $field = $fieldsModel->find($booking['id_field']);
             $booking['service_name'] = $field['name'] ?? 'Reserva';
             try {
-                return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Respuesta exitosa'));
+                return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Operación completada'));
             } catch (\Exception $e) {
                 return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
             }
@@ -1777,7 +1777,7 @@ class Bookings extends BaseController
             ->first();
 
         if (!$customer) {
-            return $this->response->setJSON($this->setResponse(404, true, null, 'No se encontraron reservas para ese cliente'));
+            return $this->response->setJSON($this->setResponse(404, true, null, 'No encontramos reservas para ese cliente'));
         }
 
         $bookings = $bookingsModel->groupStart()
@@ -1793,7 +1793,7 @@ class Bookings extends BaseController
             ->findAll();
 
         if (!$bookings) {
-            return $this->response->setJSON($this->setResponse(404, true, null, 'No se encontraron reservas para ese cliente'));
+            return $this->response->setJSON($this->setResponse(404, true, null, 'No encontramos reservas para ese cliente'));
         }
 
         $result = [];
@@ -1803,7 +1803,7 @@ class Bookings extends BaseController
             $result[] = $booking;
         }
 
-        return $this->response->setJSON($this->setResponse(null, null, $result, 'Respuesta exitosa'));
+        return $this->response->setJSON($this->setResponse(null, null, $result, 'Operación completada'));
     }
 
 
@@ -1815,7 +1815,7 @@ class Bookings extends BaseController
         $caracteres_mezclados = str_shuffle($caracteres);
         // 2. Toma una subcadena de la longitud deseada
         $codigo_alfanumerico = substr($caracteres_mezclados, 0, 10);
-        // $codigo_alfanumerico podrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­a ser algo como "aZ3qLp8oTf"
+        // $codigo_alfanumerico podrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­a ser algo como "aZ3qLp8oTf"
         return $codigo_alfanumerico;
     }
 
@@ -1832,3 +1832,4 @@ class Bookings extends BaseController
         return $response;
     }
 }
+

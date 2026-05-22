@@ -84,7 +84,7 @@ class Customers extends BaseController
 
             return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
                 ->withInput()
-                ->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
+                ->with('msg', ['type' => 'danger', 'body' => 'Completá todos los campos']);
         }
 
         if ($existingPhone || $existingEmail) {
@@ -124,19 +124,19 @@ class Customers extends BaseController
 
             return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
                 ->withInput()
-                ->with('msg', ['type' => 'danger', 'body' => 'No se pudo guardar el alta. Intente nuevamente']);
+                ->with('msg', ['type' => 'danger', 'body' => 'No pudimos completar el alta. Intentá nuevamente']);
         }
 
         if ($isEmbedded) {
             return view('customers/embed_result', [
-                'message' => 'Cliente guardado correctamente',
+                'message' => 'Cliente guardado con éxito',
                 'action' => 'created',
                 'customer' => $modelCustomers->find($newId),
             ]);
         }
 
         $redirectUrl = base_url('/?registered=1&phone=' . rawurlencode((string) $phone) . '&email=' . rawurlencode((string) $email));
-        return redirect()->to($redirectUrl)->with('msg', ['type' => 'success', 'body' => 'Usuario registrado correctamente']);
+        return redirect()->to($redirectUrl)->with('msg', ['type' => 'success', 'body' => 'Usuario registrado con éxito']);
     }
 
     public function createOffer()
@@ -199,7 +199,7 @@ class Customers extends BaseController
             $customersModel->update($id, $query);
             if ($isEmbedded) {
                 return view('customers/embed_result', [
-                    'message' => 'Cliente editado correctamente',
+                    'message' => 'Cliente actualizado con éxito',
                     'action' => 'updated',
                     'customer' => $customersModel->find($id),
                 ]);
@@ -233,7 +233,7 @@ class Customers extends BaseController
         $customer = $this->resolvePreferredCustomer($customers);
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -262,7 +262,7 @@ class Customers extends BaseController
         $customer = $this->resolvePreferredCustomer($customers);
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -294,7 +294,7 @@ class Customers extends BaseController
         $customer = $this->resolvePreferredCustomer($customers);
 
         try {
-            return $this->response->setJSON($this->setResponse(null, null, $customer, 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -307,7 +307,7 @@ class Customers extends BaseController
         $customers = $customersModel->where('deleted', 0)->findAll();
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -320,7 +320,7 @@ class Customers extends BaseController
         $customers = $customersModel->where('offer', 1)->findAll();
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -335,7 +335,7 @@ class Customers extends BaseController
 
             $customersModel->set(['offer' => $data])->where('offer', false)->update();
 
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -351,7 +351,7 @@ class Customers extends BaseController
 
             $customersModel->set(['offer' => $data])->where('offer', true)->update();
 
-            return  $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -369,3 +369,4 @@ class Customers extends BaseController
         return $response;
     }
 }
+

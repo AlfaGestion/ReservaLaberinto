@@ -76,7 +76,7 @@ class Time extends BaseController
         $nocturnalTime = $this->request->getVar('horarioNocturno');
 
         if ($from == '' || $until == '') {
-            return redirect()->to('abmAdmin')->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los campos']);
+            return redirect()->to('abmAdmin')->with('msg', ['type' => 'danger', 'body' => 'Completá todos los campos']);
         }
 
         $query = [
@@ -103,7 +103,7 @@ class Time extends BaseController
                 return "Error al insertar datos: " . $e->getMessage();
             }
 
-            return redirect()->to('abmAdmin')->with('msg', ['type' => 'success', 'body' => 'Horarios editados correctamente']);
+            return redirect()->to('abmAdmin')->with('msg', ['type' => 'success', 'body' => 'Horarios actualizados con éxito']);
         }
 
         try {
@@ -112,7 +112,7 @@ class Time extends BaseController
             return "Error al insertar datos: " . $e->getMessage();
         }
 
-        return redirect()->to('abmAdmin')->with('msg', ['type' => 'success', 'body' => 'Horarios guardados correctamente']);
+        return redirect()->to('abmAdmin')->with('msg', ['type' => 'success', 'body' => 'Horarios guardados con éxito']);
     }
 
     public function getTime()
@@ -145,7 +145,7 @@ class Time extends BaseController
         }
 
         try {
-            return $this->response->setJSON($this->setResponse(null, null, $time, 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, null, $time, 'Operación completada'));
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -162,14 +162,14 @@ class Time extends BaseController
         $configuredNocturnalTime = $times['nocturnal_time'] ?? null;
 
         if (!$configuredNocturnalTime) {
-            return $this->response->setJSON($this->setResponse(null, null, [], 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, null, [], 'Operación completada'));
         }
 
         $index = array_search($configuredNocturnalTime, $openingTime, true);
         $nocturnalTime = $index === false ? [] : array_slice($openingTime, (int) $index);
 
         try {
-            return  $this->response->setJSON($this->setResponse(null, null, $nocturnalTime, 'Respuesta exitosa'));
+            return  $this->response->setJSON($this->setResponse(null, null, $nocturnalTime, 'Operación completada'));
         } catch (\Exception $e) {
             return  $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
         }
@@ -187,3 +187,4 @@ class Time extends BaseController
         return $response;
     }
 }
+

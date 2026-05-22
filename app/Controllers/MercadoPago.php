@@ -9,6 +9,7 @@ use App\Models\BookingsModel;
 use App\Models\CustomersModel;
 use App\Models\MercadoPagoModel;
 use App\Models\PaymentsModel;
+use App\Models\RejectedPaymentsModel;
 use App\Models\RateModel;
 use App\Models\UploadModel;
 use App\Models\UsersModel;
@@ -16,6 +17,8 @@ use Config\Services;
 
 class MercadoPago extends BaseController
 {
+    private const PAYMENT_RETRY_MINUTES = 30;
+
     private function releaseBookingSlot(BookingSlotsModel $bookingSlotsModel, int $slotId): void
     {
         $slot = $bookingSlotsModel->find($slotId);
@@ -75,6 +78,11 @@ class MercadoPago extends BaseController
             }
 
             $bookingsModel->update($booking['id'], ['annulled' => 1]);
+            $this->upsertRejectedPaymentRecord($booking, [
+                'status' => 'expired',
+                'status_detail' => 'Reserva pendiente vencida por tiempo de pago',
+                'preference_id' => $booking['id_preference_parcial'] ?? null,
+            ], 'expired', false);
             $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion automatica de reserva pendiente vencida de Mercado Pago.', 'SISTEMA');
         }
     }
@@ -272,6 +280,122 @@ class MercadoPago extends BaseController
         $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
     }
 
+    private function resolveBookingEmailFromData(array $booking): string
+    {
+        $email = trim((string) ($booking['email'] ?? ''));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
+        }
+
+        return $this->resolveCustomerEmail($booking);
+    }
+
+    private function buildRetryPaymentUrl(array $booking): string
+    {
+        $preferenceId = trim((string) ($booking['id_preference_parcial'] ?? ''));
+        if ($preferenceId === '' && !empty($booking['id_preference_total'])) {
+            $preferenceId = trim((string) $booking['id_preference_total']);
+        }
+
+        if ($preferenceId === '') {
+            return '';
+        }
+
+        return 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=' . rawurlencode($preferenceId);
+    }
+
+    private function upsertRejectedPaymentRecord(array $booking, array $paymentData, string $status, bool $notifyCustomer): ?array
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        if ($bookingId <= 0) {
+            return null;
+        }
+
+        $rejectedPaymentsModel = new RejectedPaymentsModel();
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+' . self::PAYMENT_RETRY_MINUTES . ' minutes'));
+        $retryUrl = $this->buildRetryPaymentUrl($booking);
+
+        $recordData = [
+            'booking_id' => $bookingId,
+            'customer_id' => !empty($booking['id_customer']) ? (int) $booking['id_customer'] : null,
+            'name' => $booking['name'] ?? null,
+            'email' => $this->resolveBookingEmailFromData($booking),
+            'phone' => $booking['phone'] ?? null,
+            'booking_date' => $booking['date'] ?? null,
+            'booking_time_from' => $booking['time_from'] ?? null,
+            'booking_time_until' => $booking['time_until'] ?? null,
+            'visitors' => $booking['visitors'] ?? null,
+            'total' => $booking['total'] ?? null,
+            'amount_to_pay' => $booking['parcial'] ?? $booking['payment'] ?? null,
+            'payment_status' => $status,
+            'payment_reason' => trim((string) ($paymentData['status_detail'] ?? $paymentData['collection_status'] ?? $paymentData['status'] ?? '')),
+            'preference_id' => $paymentData['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+            'payment_id' => $paymentData['payment_id'] ?? null,
+            'external_reference' => $paymentData['external_reference'] ?? null,
+            'retry_url' => $retryUrl !== '' ? $retryUrl : null,
+            'expires_at' => $expiresAt,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $existing = $rejectedPaymentsModel->where('booking_id', $bookingId)
+            ->whereIn('payment_status', ['pending_retry', 'rejected', 'expired'])
+            ->orderBy('id', 'DESC')
+            ->first();
+
+        if ($existing) {
+            $rejectedPaymentsModel->update((int) $existing['id'], $recordData);
+            $recordId = (int) $existing['id'];
+        } else {
+            $recordData['created_at'] = date('Y-m-d H:i:s');
+            $recordId = (int) $rejectedPaymentsModel->insert($recordData, true);
+        }
+
+        $saved = $rejectedPaymentsModel->find($recordId);
+
+        if ($notifyCustomer && $saved) {
+            $this->sendRetryPaymentEmail($booking, $saved);
+            $rejectedPaymentsModel->update($recordId, ['notified_at' => date('Y-m-d H:i:s')]);
+            $saved = $rejectedPaymentsModel->find($recordId);
+        }
+
+        return $saved ?: null;
+    }
+
+    private function sendRetryPaymentEmail(array $booking, array $rejectedRecord): void
+    {
+        $to = trim((string) ($rejectedRecord['email'] ?? ''));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $retryUrl = trim((string) ($rejectedRecord['retry_url'] ?? ''));
+        if ($retryUrl === '') {
+            return;
+        }
+
+        $customerName = trim((string) ($booking['name'] ?? 'Cliente'));
+        $subject = 'Tu reserva sigue pendiente de pago';
+        $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
+
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Pago pendiente',
+            'title' => 'Tu reserva aun no fue confirmada',
+            'intro' => 'Detectamos que el pago no se acredito.',
+            'details' => [
+                'Nombre' => $customerName,
+                'Fecha' => $formattedDate,
+                'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                'Visitantes' => (string) ($booking['visitors'] ?? ''),
+                'Total' => '$' . (string) ($booking['total'] ?? '0'),
+            ],
+            'messageHtml' => '<p>Tu reserva todavia no fue confirmada porque el pago no se acredito. Podes completarlo desde el siguiente boton. Si no se registra el pago dentro de los proximos 30 minutos, la reserva quedara como rechazada y no ocupara disponibilidad.</p>',
+            'primaryActionUrl' => $retryUrl,
+            'primaryActionLabel' => 'Completar pago',
+        ]);
+
+        $this->sendEmailWithFallback($to, $subject, $html, true);
+    }
+
     public function setPreference()
     {
         $rateModel = new RateModel();
@@ -330,7 +454,7 @@ class MercadoPago extends BaseController
                 'time_until' => $timeUntil,
                 'status' => 'pending',
                 'active' => 1,
-                'expires_at' => date('Y-m-d H:i:s', strtotime('+5 minutes')),
+                'expires_at' => date('Y-m-d H:i:s', strtotime('+' . self::PAYMENT_RETRY_MINUTES . ' minutes')),
                 'created_at' => date('Y-m-d H:i:s'),
             ], true);
 
@@ -437,13 +561,13 @@ class MercadoPago extends BaseController
                 'payByEntries' => $usePayByEntries,
                 'entriesToPay' => $usePayByEntries ? $requestedEntries : null,
                 'unitPrice' => $unitPrice,
-            ], 'Respuesta exitosa'));
+            ], 'Operación completada'));
         } catch (\Throwable $e) {
             if ($slotId) {
                 $this->releaseBookingSlot($bookingSlotsModel, (int) $slotId);
             }
             log_message('error', 'Error en setPreference: ' . $e->getMessage());
-            $publicMessage = 'No se pudo preparar el pago de la reserva. Intente nuevamente.';
+            $publicMessage = 'No pudimos preparar el pago de la reserva. Intentá nuevamente.';
             if (str_contains($e->getMessage(), 'uniq_booking_slots_active')) {
                 $publicMessage = 'Ese horario sigue ocupado por un intento anterior. Actualiza e intenta nuevamente.';
             }
@@ -496,6 +620,20 @@ class MercadoPago extends BaseController
                 if ($alreadyStoredMpPayment) {
                     $booking = $bookingsModel->find($existingBooking['id']);
                 } else {
+                    $paymentStatus = strtolower(trim((string) ($data['status'] ?? '')));
+                    if ($paymentStatus !== 'approved') {
+                        $bookingsModel->update($existingBooking['id'], [
+                            'approved' => 0,
+                            'annulled' => 1,
+                        ]);
+                        $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
+                        $this->upsertRejectedPaymentRecord($existingBooking, $data, in_array($paymentStatus, ['pending', 'in_process'], true) ? 'pending_retry' : 'rejected', true);
+                        $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Pago no aprobado en retorno de Mercado Pago. Estado: ' . ($paymentStatus ?: 'desconocido') . '.', 'CLIENTE');
+                        $data['id_booking'] = $existingBooking['id'];
+                        $mercadoPagoModel->insert($data);
+                        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($paymentStatus ?: 'rejected')));
+                    }
+
                     $isTotalPreference = $preferenceId === $existingBooking['id_preference_total'];
                     $isEntryPayment = (int) ($existingBooking['partial_by_entries'] ?? 0) === 1;
                     $totalEntries = max(0, (int) ($existingBooking['visitors'] ?? 0));
@@ -617,7 +755,7 @@ class MercadoPago extends BaseController
         }
 
         if (!$existingBooking) {
-            return redirect()->to(base_url('pagoRechazado'));
+            return redirect()->to(base_url('pagoRechazado?status=error'));
         }
 
         return redirect()->to(base_url('pagoAprobado/' . $existingBooking['id']));
@@ -651,18 +789,33 @@ class MercadoPago extends BaseController
                 ->first();
 
             if ($existingBooking) {
-                $bookingsModel->update($existingBooking['id'], [
-                    'approved' => 0,
-                    'annulled' => 1,
-                ]);
-                $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
-                $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Cancelacion de reserva.', 'CLIENTE');
+                $status = strtolower(trim((string) ($data['status'] ?? '')));
+                $statusDetail = strtolower(trim((string) ($data['collection_status'] ?? '')));
+                $isMeaningfulFailure = $status !== '' || $statusDetail !== '';
+
+                if ($isMeaningfulFailure) {
+                    $bookingsModel->update($existingBooking['id'], [
+                        'approved' => 0,
+                        'annulled' => 1,
+                    ]);
+                    $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $existingBooking['id']]);
+                    $this->upsertRejectedPaymentRecord($existingBooking, $data, in_array($status, ['pending', 'in_process'], true) ? 'pending_retry' : 'rejected', true);
+                    $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'C', 'Pago no aprobado en flujo failure de Mercado Pago. Estado: ' . ($status ?: 'desconocido') . '.', 'CLIENTE');
+                } else {
+                    $this->logBookingAction($this->ensureBookingOrderId($existingBooking), 'M', 'El cliente abandono o regreso del checkout sin confirmar pago.', 'CLIENTE');
+                }
+
                 $data['id_booking'] = $existingBooking['id'];
                 $mercadoPagoModel->insert($data);
             }
         }
 
-        return redirect()->to(base_url('pagoRechazado'));
+        $viewStatus = strtolower(trim((string) ($this->request->getVar('status') ?? '')));
+        if ($viewStatus === '') {
+            $viewStatus = 'cancelled';
+        }
+
+        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($viewStatus)));
     }
 
     public function successView($bookingId)
@@ -688,7 +841,8 @@ class MercadoPago extends BaseController
 
     public function failureView()
     {
-        return view('mercadoPago/failure');
+        $status = strtolower(trim((string) ($this->request->getGet('status') ?? 'cancelled')));
+        return view('mercadoPago/failure', ['status' => $status]);
     }
 
     public function cancelPendingMpReservation()
@@ -707,7 +861,12 @@ class MercadoPago extends BaseController
                 if ($booking && (int) ($booking['approved'] ?? 0) !== 1) {
                     $bookingsModel->update($bookingId, ['annulled' => 1]);
                     $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $bookingId]);
-                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago.', 'CLIENTE');
+                    $this->upsertRejectedPaymentRecord($booking, [
+                        'status' => 'abandoned',
+                        'status_detail' => 'Checkout abandonado por el cliente',
+                        'preference_id' => $booking['id_preference_parcial'] ?? null,
+                    ], 'closed', false);
+                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago por abandono del checkout.', 'CLIENTE');
                 }
             } elseif ($preferenceIdParcial || $preferenceIdTotal) {
                 $query = $bookingsModel->groupStart();
@@ -727,11 +886,16 @@ class MercadoPago extends BaseController
 
                     $bookingsModel->update($booking['id'], ['annulled' => 1]);
                     $this->releaseActiveSlots($bookingSlotsModel, ['booking_id' => $booking['id']]);
-                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago.', 'CLIENTE');
+                    $this->upsertRejectedPaymentRecord($booking, [
+                        'status' => 'abandoned',
+                        'status_detail' => 'Checkout abandonado por el cliente',
+                        'preference_id' => $booking['id_preference_parcial'] ?? null,
+                    ], 'closed', false);
+                    $this->logBookingAction($this->ensureBookingOrderId($booking), 'C', 'Cancelacion de reserva pendiente de Mercado Pago por abandono del checkout.', 'CLIENTE');
                 }
             }
 
-            return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+            return $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
         } catch (\Throwable $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, $e->getMessage()));
         }
@@ -739,7 +903,7 @@ class MercadoPago extends BaseController
 
     public function savePreferenceIds()
     {
-        return $this->response->setJSON($this->setResponse(null, null, null, 'Respuesta exitosa'));
+        return $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
     }
 
     public function setResponse($code = 200, $error = false, $data = null, $message = '')
@@ -752,3 +916,4 @@ class MercadoPago extends BaseController
         ];
     }
 }
+

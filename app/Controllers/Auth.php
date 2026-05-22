@@ -42,10 +42,10 @@ class Auth extends BaseController
 
                 return redirect()->to(base_url('abmAdmin'));
             } else {
-                return redirect()->to('auth/login')->with('msg', ['type' => 'danger', 'body' => 'El usuario o la contraseña no son correctos']);
+                return redirect()->to('auth/login')->with('msg', ['type' => 'danger', 'body' => 'El usuario o la contraseÃ±a no son correctos']);
             }
         } else {
-            return redirect()->to('auth/login')->with('msg', ['type' => 'danger', 'body' => 'El usuario o la contraseña no son correctos']);
+            return redirect()->to('auth/login')->with('msg', ['type' => 'danger', 'body' => 'El usuario o la contraseÃ±a no son correctos']);
         }
     }
 
@@ -78,11 +78,11 @@ class Auth extends BaseController
         if ($password == $repeat_password) {
             $hash_password = password_hash($password, PASSWORD_DEFAULT);
         } else {
-            return redirect()->to('auth/register')->with('msg', ['type' => 'danger', 'body' => 'Las contraseñas no coinciden']);
+            return redirect()->to('auth/register')->with('msg', ['type' => 'danger', 'body' => 'Las contraseÃ±as no coinciden']);
         }
 
         if ($user == '' || $name == '' || $password == '') {
-            return redirect()->to('auth/register')->with('msg', ['type' => 'danger', 'body' => 'Debe completar todos los datos']);
+            return redirect()->to('auth/register')->with('msg', ['type' => 'danger', 'body' => 'Completá todos los datos']);
         }
 
         $query = [
@@ -99,6 +99,7 @@ class Auth extends BaseController
             return "Error al insertar datos: " . $e->getMessage();
         }
 
-        return redirect()->to('auth/login')->with('msg', ['type' => 'success', 'body' => 'Usuario creado correctamente']);
+        return redirect()->to('auth/login')->with('msg', ['type' => 'success', 'body' => 'Usuario creado con éxito']);
     }
 }
+

@@ -227,15 +227,15 @@ async function openInvoiceEmailComposer(bookingId, triggerButton = null) {
     } catch (error) {
         console.error('Error:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice('No se pudo preparar el email de la factura', 'error')
+            showAdminNotice('No pudimos preparar el email de factura', 'error')
         } else {
-            alert('No se pudo preparar el email de la factura')
+            alert('No pudimos preparar el email de factura')
         }
         return false
     } finally {
         if (triggerButton) {
             triggerButton.disabled = false
-            triggerButton.innerText = triggerButton.dataset.originalText || 'Enviar factura'
+            triggerButton.innerText = triggerButton.dataset.originalText || 'Enviar comprobante'
             delete triggerButton.dataset.originalText
         }
     }
@@ -749,9 +749,9 @@ async function openSpecialRequestView(requestId) {
     } catch (error) {
         console.error('Error:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice('No se pudo abrir la solicitud', 'error')
+            showAdminNotice('No pudimos abrir la solicitud', 'error')
         } else {
-            alert('No se pudo abrir la solicitud')
+            alert('No pudimos abrir la solicitud')
         }
     }
 }
@@ -782,9 +782,9 @@ async function openSpecialRequestReply(requestId) {
     } catch (error) {
         console.error('Error:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice('No se pudo preparar la respuesta', 'error')
+            showAdminNotice('No pudimos preparar la respuesta', 'error')
         } else {
-            alert('No se pudo preparar la respuesta')
+            alert('No pudimos preparar la respuesta')
         }
     }
 }
@@ -808,23 +808,23 @@ async function cancelSpecialRequestFromAdmin(requestId) {
         const responseData = await response.json()
 
         if (!response.ok || responseData.error) {
-            throw new Error(responseData.message || 'No se pudo cancelar la solicitud')
+            throw new Error(responseData.message || 'No pudimos cancelar la solicitud')
         }
 
         specialRequestReplyModal?.hide()
         fetchSpecialBookingRequests()
 
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(responseData.message || 'Solicitud cancelada correctamente')
+            showAdminNotice(responseData.message || 'Solicitud cancelada con éxito')
         } else {
-            alert(responseData.message || 'Solicitud cancelada correctamente')
+            alert(responseData.message || 'Solicitud cancelada con éxito')
         }
     } catch (error) {
         console.error('Error:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(error.message || 'No se pudo cancelar la solicitud', 'error')
+            showAdminNotice(error.message || 'No pudimos cancelar la solicitud', 'error')
         } else {
-            alert(error.message || 'No se pudo cancelar la solicitud')
+            alert(error.message || 'No pudimos cancelar la solicitud')
         }
     }
 }
@@ -848,7 +848,7 @@ async function deleteSpecialRequestFromAdmin(requestId) {
         const responseData = await response.json()
 
         if (!response.ok || responseData.error) {
-            throw new Error(responseData.message || 'No se pudo eliminar la solicitud')
+            throw new Error(responseData.message || 'No pudimos eliminar la solicitud')
         }
 
         specialRequestViewModal?.hide()
@@ -856,16 +856,16 @@ async function deleteSpecialRequestFromAdmin(requestId) {
         fetchSpecialBookingRequests()
 
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(responseData.message || 'Solicitud eliminada correctamente')
+            showAdminNotice(responseData.message || 'Solicitud eliminada con éxito')
         } else {
-            alert(responseData.message || 'Solicitud eliminada correctamente')
+            alert(responseData.message || 'Solicitud eliminada con éxito')
         }
     } catch (error) {
         console.error('Error:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(error.message || 'No se pudo eliminar la solicitud', 'error')
+            showAdminNotice(error.message || 'No pudimos eliminar la solicitud', 'error')
         } else {
-            alert(error.message || 'No se pudo eliminar la solicitud')
+            alert(error.message || 'No pudimos eliminar la solicitud')
         }
     }
 }
@@ -894,7 +894,7 @@ async function initializeBookingsView() {
     } catch (error) {
         console.error('Error inicializando reservas:', error)
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice('No se pudieron cargar las reservas iniciales', 'error')
+            showAdminNotice('No pudimos cargar las reservas iniciales', 'error')
         }
     }
 
@@ -1024,9 +1024,9 @@ document.addEventListener('click', async (e) => {
             } catch (error) {
                 console.error('Error:', error)
                 if (typeof showAdminNotice === 'function') {
-                    showAdminNotice(error.message || 'No se pudo actualizar el estado de pago', 'error')
+                    showAdminNotice(error.message || 'No pudimos actualizar el estado del pago', 'error')
                 } else {
-                    alert(error.message || 'No se pudo actualizar el estado de pago')
+                    alert(error.message || 'No pudimos actualizar el estado del pago')
                 }
             } finally {
                 confirmButton.disabled = false
@@ -1041,7 +1041,7 @@ document.addEventListener('click', async (e) => {
             const booking = await getBooking(bookingId)
 
             if (medioPagoSelect.value == '' || completarPagoReservaInput.value == '') {
-                return alert('Debe completar todos los campos')
+                return alert('Completá todos los campos para continuar')
             }
 
             // if (completarPagoReservaInput.value > booking.diference) {
@@ -1059,7 +1059,7 @@ document.addEventListener('click', async (e) => {
                 updateCompletePaymentEntriesAmount()
                 const paidEntries = Math.trunc(Number(inputCompletarPagoEntradas?.value || 0))
                 if (!paidEntries || paidEntries > Number(booking.pending_entries || 0)) {
-                    return alert('La cantidad de entradas a abonar es invalida')
+                    return alert('La cantidad de entradas a pagar no es válida')
                 }
                 data.pago = completarPagoReservaInput.value
                 data.paidEntries = paidEntries
@@ -1089,27 +1089,27 @@ document.addEventListener('click', async (e) => {
 
                 if (response.ok && !responseData.error) {
                     if (typeof showAdminNotice === 'function') {
-                        showAdminNotice(responseData.message || 'Se intento reenviar el email')
+                        showAdminNotice(responseData.message || 'Intentamos reenviar el email')
                     } else {
-                        alert(responseData.message || 'Se intento reenviar el email')
+                        alert(responseData.message || 'Intentamos reenviar el email')
                     }
                 } else {
                     if (typeof showAdminNotice === 'function') {
-                        showAdminNotice(responseData.message || 'No se pudo reenviar el email', 'error')
+                        showAdminNotice(responseData.message || 'No pudimos reenviar el email', 'error')
                     } else {
-                        alert(responseData.message || 'No se pudo reenviar el email')
+                        alert(responseData.message || 'No pudimos reenviar el email')
                     }
                 }
             } catch (error) {
                 console.error('Error:', error)
                 if (typeof showAdminNotice === 'function') {
-                    showAdminNotice('No se pudo reenviar el email', 'error')
+                    showAdminNotice('No pudimos reenviar el email', 'error')
                 } else {
-                    alert('No se pudo reenviar el email')
+                    alert('No pudimos reenviar el email')
                 }
             } finally {
                 resendButton.disabled = false
-                resendButton.innerText = 'Reenviar email'
+                resendButton.innerText = 'Reenviar correo'
             }
         } else if (e.target.id == 'sendBookingInvoiceEmail') {
             const invoiceButton = e.target
@@ -1130,7 +1130,7 @@ document.addEventListener('click', async (e) => {
             const invoiceBookingId = invoiceEmailBookingIdInput?.value || ''
 
             if (!invoiceBookingId || !invoiceEmailToInput?.value || !invoiceEmailSubjectInput?.value || !invoiceEmailMessageInput?.value) {
-                return alert('Debe completar destinatario, asunto y mensaje')
+                return alert('Completá destinatario, asunto y mensaje')
             }
 
             confirmButton.disabled = true
@@ -1164,27 +1164,27 @@ document.addEventListener('click', async (e) => {
                         })
                     }
                     if (typeof showAdminNotice === 'function') {
-                        showAdminNotice(responseData.message || 'Factura enviada correctamente')
+                        showAdminNotice(responseData.message || 'Factura enviada con éxito')
                     } else {
-                        alert(responseData.message || 'Factura enviada correctamente')
+                        alert(responseData.message || 'Factura enviada con éxito')
                     }
                 } else {
                     if (typeof showAdminNotice === 'function') {
-                        showAdminNotice(responseData.message || 'No se pudo enviar la factura', 'error')
+                        showAdminNotice(responseData.message || 'No pudimos enviar la factura', 'error')
                     } else {
-                        alert(responseData.message || 'No se pudo enviar la factura')
+                        alert(responseData.message || 'No pudimos enviar la factura')
                     }
                 }
             } catch (error) {
                 console.error('Error:', error)
                 if (typeof showAdminNotice === 'function') {
-                    showAdminNotice('No se pudo enviar la factura', 'error')
+                    showAdminNotice('No pudimos enviar la factura', 'error')
                 } else {
-                    alert('No se pudo enviar la factura')
+                    alert('No pudimos enviar la factura')
                 }
             } finally {
                 confirmButton.disabled = false
-                confirmButton.innerText = 'Enviar factura'
+                confirmButton.innerText = 'Enviar comprobante'
             }
         } else if (e.target.id == 'refreshSpecialRequests') {
             fetchSpecialBookingRequests()
@@ -1205,7 +1205,7 @@ document.addEventListener('click', async (e) => {
             const requestId = specialRequestReplyIdInput?.value || ''
 
             if (!requestId || !specialRequestReplyToInput?.value || !specialRequestReplySubjectInput?.value || !specialRequestReplyMessageInput?.value) {
-                return alert('Debe completar destinatario, asunto y mensaje')
+                return alert('Completá destinatario, asunto y mensaje')
             }
 
             if (confirmButton) {
@@ -1227,28 +1227,28 @@ document.addEventListener('click', async (e) => {
                 const responseData = await response.json()
 
                 if (!response.ok || responseData.error) {
-                    throw new Error(responseData.message || 'No se pudo enviar la respuesta')
+                    throw new Error(responseData.message || 'No pudimos enviar la respuesta')
                 }
 
                 specialRequestReplyModal.hide()
                 fetchSpecialBookingRequests()
 
                 if (typeof showAdminNotice === 'function') {
-                    showAdminNotice(responseData.message || 'Respuesta enviada correctamente')
+                    showAdminNotice(responseData.message || 'Respuesta enviada con éxito')
                 } else {
-                    alert(responseData.message || 'Respuesta enviada correctamente')
+                    alert(responseData.message || 'Respuesta enviada con éxito')
                 }
             } catch (error) {
                 console.error('Error:', error)
                 if (typeof showAdminNotice === 'function') {
-                    showAdminNotice(error.message || 'No se pudo enviar la respuesta', 'error')
+                    showAdminNotice(error.message || 'No pudimos enviar la respuesta', 'error')
                 } else {
-                    alert(error.message || 'No se pudo enviar la respuesta')
+                    alert(error.message || 'No pudimos enviar la respuesta')
                 }
             } finally {
                 if (confirmButton) {
                     confirmButton.disabled = false
-                    confirmButton.innerText = 'Enviar email'
+                    confirmButton.innerText = 'Enviar correo'
                 }
             }
         }
@@ -1295,7 +1295,7 @@ async function completePayment(url, data) {
         }
 
         if (!response.ok || responseData?.error) {
-            throw new Error(responseData?.message || 'No se pudo ingresar el pago.')
+            throw new Error(responseData?.message || 'No pudimos registrar el pago.')
         }
 
         const bookingId = responseData?.data?.bookingId || null
@@ -1313,12 +1313,12 @@ async function completePayment(url, data) {
 
         contentPaymentResults.innerHTML = `
             <div class="modal-body modalResultPayment d-flex justify-content-center align-items-center flex-column text-white" style="background-color: #157347;">
-                <h4 class="mb-4">Pago confirmado!</h4>
+                <h4 class="mb-4">Pago confirmado con éxito con éxito!</h4>
                 <i class="fa-regular fa-circle-check fa-2xl mb-4"></i>
                 ${paymentCompleted ? '<p class="mb-0 text-white text-center">La reserva quedo saldada. Puede enviar la factura desde aqui.</p>' : '<p class="mb-0 text-white text-center">La reserva se actualizo sin recargar la pagina.</p>'}
                 ${!refreshedTable ? '<p class="mt-3 mb-0 text-white text-center">El pago se guardo, pero no se pudo actualizar la tabla automaticamente.</p>' : ''}
                 <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
-                    ${paymentCompleted && bookingId ? `<button type="button" class="btn btn-light" id="sendBookingInvoiceEmail" data-id="${bookingId}">Enviar factura</button>` : ''}
+                    ${paymentCompleted && bookingId ? `<button type="button" class="btn btn-light" id="sendBookingInvoiceEmail" data-id="${bookingId}">Enviar comprobante</button>` : ''}
                     <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
                 </div>
             </div>`
@@ -1327,7 +1327,7 @@ async function completePayment(url, data) {
         modalResultPayment.show()
 
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(responseData?.message || 'Pago confirmado')
+            showAdminNotice(responseData?.message || 'Pago confirmado con éxito con éxito')
         }
     } catch (error) {
         console.error('Error:', error)
@@ -1345,7 +1345,7 @@ async function completePayment(url, data) {
         modalResultPayment.show()
 
         if (typeof showAdminNotice === 'function') {
-            showAdminNotice(error.message || 'No se pudo ingresar el pago', 'error')
+            showAdminNotice(error.message || 'No pudimos registrar el pago', 'error')
         }
     } finally {
         resetCompletePaymentButton()
@@ -1392,7 +1392,7 @@ async function confirmMP(data) {
         }
 
         if (!response.ok || responseData?.error) {
-            throw new Error(responseData?.message || 'No se pudo actualizar el estado de pago.')
+            throw new Error(responseData?.message || 'No pudimos actualizar el estado del pago.')
         }
 
         return responseData
@@ -1505,7 +1505,11 @@ async function fillTableBookings(data, options = {}) {
             if (existPending == false) {
                 existPending = true
                 if (showPendingMpAlert) {
-                    alert('Tiene pagos pendientes ingresantes de Mercado Pago')
+                    if (typeof showAdminNotice === 'function') {
+                        showAdminNotice('Hay pagos pendientes entrantes de Mercado Pago', 'warning', 'Pago pendiente')
+                    } else {
+                        alert('Hay pagos pendientes entrantes de Mercado Pago')
+                    }
                 }
             }
         }
@@ -1547,8 +1551,8 @@ async function fillTableBookings(data, options = {}) {
                         </button>
                         <ul class="dropdown-menu">
                             <input type="text" id="userId" data-id="${sessionUserId}" hidden>                        
-                            <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar email</button></li>
-                            <li><button type="button" class="btn btn-primary dropdown-item" id="sendBookingInvoiceEmail" data-id="${reserva.id}">Enviar factura</button></li>
+                            <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar correo</button></li>
+                            <li><button type="button" class="btn btn-primary dropdown-item" id="sendBookingInvoiceEmail" data-id="${reserva.id}">Enviar comprobante</button></li>
                             ${anular}
     
                             ${edit}
@@ -1585,7 +1589,7 @@ async function fillTableBookings(data, options = {}) {
                 </button>
                 <ul class="dropdown-menu">
                     <input type="text" id="userId" data-id="${sessionUserId}" hidden>
-                    <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar email</button></li>
+                    <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar correo</button></li>
                     ${reserva.diferencia > 0 ? `<li><button type="button" class="btn btn-primary dropdown-item" id="modalCambiarEstado" data-id="${reserva.id}">Cambiar estado de pago</button></li>` : ''
                     }
                     ${reserva.diferencia > 0 ? `<li><button type="button" class="btn btn-primary dropdown-item" id="modalCompletarPago" data-id="${reserva.id}">Completar pago</button></li>` : ''
@@ -1646,3 +1650,5 @@ async function fillTableBookings(data, options = {}) {
     divBookings.innerHTML = tr
 }
 })()
+
+
