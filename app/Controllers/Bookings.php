@@ -794,6 +794,7 @@ class Bookings extends BaseController
             'code' => (string) ($booking['code'] ?? ''),
         ])));
         $isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) !== 1;
+        $unitPrice = $this->resolveCurrentUnitPriceForBooking($booking);
         $messageHtml = $isApprovedBooking
             ? '<p>Se registro una reserva confirmada en el sistema.</p>'
             : '<p>Se registro una reserva pendiente de confirmacion de pago.</p>';
@@ -809,6 +810,7 @@ class Bookings extends BaseController
                 'Fecha' => $formattedDate,
                 'Horario' => trim(((string) ($requestData->horarioDesde ?? '')) . ' a ' . ((string) ($requestData->horarioHasta ?? ''))),
                 'Visitantes' => (string) ($requestData->visitantes ?? ''),
+                'Precio por entrada individual' => $unitPrice > 0 ? $this->formatAuditMoney($unitPrice) : 'No disponible',
                 'Total' => '$' . (string) ($requestData->total ?? ''),
                 'Codigo' => (string) ($booking['code'] ?? ''),
             ],
@@ -844,6 +846,7 @@ class Bookings extends BaseController
             $timeUntil = trim((string) ($requestData->horarioHasta ?? ''));
             $visitors = trim((string) ($requestData->visitantes ?? ''));
             $total = trim((string) ($requestData->total ?? ($booking['total'] ?? '')));
+            $unitPrice = $this->resolveCurrentUnitPriceForBooking($booking);
             $bookingCode = trim((string) ($booking['code'] ?? ''));
             $bookingLink = site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
                 'code' => (string) ($booking['code'] ?? ''),
@@ -860,14 +863,15 @@ class Bookings extends BaseController
                 'intro' => 'Guardamos los datos de tu reserva y te dejamos los accesos rapidos para revisarla cuando quieras.',
                 'details' => [
                     'Nombre' => $customerName,
-                    'Fecha' => $formattedDate,
-                    'Horario' => trim($timeFrom . ' a ' . $timeUntil),
-                    'Cantidad' => $visitors,
-                    'Total' => '$' . $total,
-                    'Pagado' => '$' . trim((string) ($booking['payment'] ?? $requestData->monto ?? '0')),
-                    'Saldo pendiente' => '$' . trim((string) ($booking['diference'] ?? '0')),
-                    'Codigo' => $bookingCode,
-                ],
+                'Fecha' => $formattedDate,
+                'Horario' => trim($timeFrom . ' a ' . $timeUntil),
+                'Cantidad' => $visitors,
+                'Precio por entrada individual' => $unitPrice > 0 ? $this->formatAuditMoney($unitPrice) : 'No disponible',
+                'Total' => '$' . $total,
+                'Pagado' => '$' . trim((string) ($booking['payment'] ?? $requestData->monto ?? '0')),
+                'Saldo pendiente' => '$' . trim((string) ($booking['diference'] ?? '0')),
+                'Codigo' => $bookingCode,
+            ],
                 'messageHtml' => $messageHtml,
                 'primaryActionUrl' => $bookingLink,
                 'primaryActionLabel' => 'Ver reserva',
@@ -925,6 +929,7 @@ class Bookings extends BaseController
         $field = $fieldsModel->getField($booking['id_field']) ?? [];
         $mpPayment = $mpPayment ?? ['payment_id' => 'No corresponde', 'status' => ''];
         $isConfirmed = (int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) !== 1;
+        $unitPrice = $this->resolveCurrentUnitPriceForBooking($booking);
 
         return [
             'nombre' => $booking['name'],
@@ -932,6 +937,7 @@ class Bookings extends BaseController
             'fecha' => $booking['date'],
             'horario' => $booking['time_from'] . 'hs' . ' a ' . $booking['time_until'] . 'hs',
             'servicio' => $field['name'] ?? 'Reserva',
+            'precio_unitario' => $unitPrice > 0 ? $this->formatAuditMoney($unitPrice) : 'No disponible',
             'total_servicio' => '$' . $booking['total'],
             'pagado' => '$' . $booking['payment'],
             'saldo' => '$' . $booking['diference'],
@@ -954,18 +960,20 @@ class Bookings extends BaseController
                 : 'Factura de reserva - Laberinto: {nombre}',
             'message' => trim((string) ($config['invoice_email_message'] ?? '')) !== ''
                 ? trim((string) ($config['invoice_email_message'] ?? ''))
-                : "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.",
+                : "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPrecio por entrada individual: {precio_unitario}\nPagado: {pagado}\n\nGracias.",
         ];
     }
 
     private function applyInvoiceEmailPlaceholders(string $template, array $booking, string $customerEmail): string
     {
+        $unitPrice = $this->resolveCurrentUnitPriceForBooking($booking);
         $replacements = [
             '{nombre}' => trim((string) ($booking['name'] ?? 'Cliente')),
             '{fecha}' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
             '{horario}' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
             '{codigo}' => trim((string) ($booking['code'] ?? '')),
             '{pagado}' => '$' . trim((string) ($booking['payment'] ?? '0')),
+            '{precio_unitario}' => $unitPrice > 0 ? $this->formatAuditMoney($unitPrice) : 'No disponible',
             '{email}' => $customerEmail,
             '{telefono}' => trim((string) ($booking['phone'] ?? '')),
         ];
@@ -1254,6 +1262,15 @@ class Bookings extends BaseController
                 'eyebrow' => 'Factura de reserva',
                 'title' => 'Tu comprobante esta listo',
                 'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'details' => [
+                    'Nombre' => (string) ($booking['name'] ?? ''),
+                    'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
+                    'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                    'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
+                    'Total' => '$' . (string) ($booking['total'] ?? ''),
+                    'Pagado' => '$' . (string) ($booking['payment'] ?? '0'),
+                    'Codigo' => (string) ($booking['code'] ?? ''),
+                ],
                 'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
                 'primaryActionUrl' => site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
                     'code' => (string) ($booking['code'] ?? ''),
@@ -1277,6 +1294,15 @@ class Bookings extends BaseController
                 'eyebrow' => 'Factura de reserva',
                 'title' => 'Tu comprobante esta listo',
                 'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'details' => [
+                    'Nombre' => (string) ($booking['name'] ?? ''),
+                    'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
+                    'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                    'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
+                    'Total' => '$' . (string) ($booking['total'] ?? ''),
+                    'Pagado' => '$' . (string) ($booking['payment'] ?? '0'),
+                    'Codigo' => (string) ($booking['code'] ?? ''),
+                ],
                 'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
                 'primaryActionUrl' => site_url('MisReservas/' . rawurlencode($this->buildReservationAccessToken([
                     'code' => (string) ($booking['code'] ?? ''),
@@ -1293,6 +1319,15 @@ class Bookings extends BaseController
                 'eyebrow' => 'Factura de reserva',
                 'title' => 'Tu comprobante esta listo',
                 'intro' => 'Aca tenes el detalle de tu reserva y el acceso para consultarla cuando quieras.',
+                'details' => [
+                    'Nombre' => (string) ($booking['name'] ?? ''),
+                    'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
+                    'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                    'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
+                    'Total' => '$' . (string) ($booking['total'] ?? ''),
+                    'Pagado' => '$' . (string) ($booking['payment'] ?? '0'),
+                    'Codigo' => (string) ($booking['code'] ?? ''),
+                ],
                 'messageHtml' => '<div>' . nl2br(esc($message)) . '</div>',
                 'primaryActionUrl' => site_url('bookingPdf/' . $bookingId),
                 'primaryActionLabel' => 'Descargar comprobante',
@@ -1760,6 +1795,8 @@ class Bookings extends BaseController
         if ($booking) {
             $field = $fieldsModel->find($booking['id_field']);
             $booking['service_name'] = $field['name'] ?? 'Reserva';
+            $booking['current_unit_price'] = $this->resolveCurrentUnitPriceForBooking($booking);
+            $booking['paid_entries'] = (int) ($booking['paid_entries'] ?? 0);
             try {
                 return  $this->response->setJSON($this->setResponse(null, null, $booking, 'Operación completada'));
             } catch (\Exception $e) {
@@ -1815,6 +1852,7 @@ class Bookings extends BaseController
         foreach ($bookings as $booking) {
             $field = $fieldsModel->find($booking['id_field']);
             $booking['service_name'] = $field['name'] ?? 'Reserva';
+            $booking['current_unit_price'] = $this->resolveCurrentUnitPriceForBooking($booking);
             $result[] = $booking;
         }
 

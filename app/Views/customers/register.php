@@ -220,7 +220,7 @@ $userData = $modelUploads->first();
                         class="register-logo">
                 </a>
                 <h1 class="register-title">Registrate</h1>
-                <p class="register-subtitle">Completa los datos de la institucion para poder avanzar con la validacion y las reservas.</p>
+                <p class="register-subtitle">Completa los datos de la institucion o particular para poder avanzar con la validacion y las reservas.</p>
             </div>
 
             <div class="register-card__body">
@@ -238,7 +238,7 @@ $userData = $modelUploads->first();
 
                     <div class="register-grid">
                         <div class="register-field register-field--full">
-                            <label class="register-label" for="name">Nombre de la institucion</label>
+                            <label class="register-label" for="name">Nombre de la institucion / Particular</label>
                             <input type="text" id="name" name="name" class="form-control register-input" placeholder="Ej. Escuela Rural Marcos Paz" value="<?= esc(old('name')) ?>">
                         </div>
 

@@ -29,6 +29,24 @@ function showBookingMessage(message, type = 'secondary') {
     bookingCardContainer.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
 }
 
+function formatBookingMoney(value) {
+    return `$${new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value) || 0)}`
+}
+
+function getBookingUnitPrice(booking) {
+    const unitPrice = Number(booking?.current_unit_price ?? booking?.unit_price ?? 0)
+    if (Number.isFinite(unitPrice) && unitPrice > 0) {
+        return unitPrice
+    }
+
+    const visitors = Number(booking?.visitors ?? 0)
+    const total = Number(booking?.total ?? 0)
+    return visitors > 0 && total > 0 ? total / visitors : 0
+}
+
 async function parseJsonResponse(response) {
     try {
         return await response.json();
@@ -588,6 +606,7 @@ function renderBookingCard(booking) {
             <div class="card-footer bg-light d-flex flex-wrap justify-content-between align-items-center p-3">
                 
                 <div class="mb-2 mb-md-0">
+                    <p class="mb-1"><strong>Precio por entrada individual:</strong> ${formatBookingMoney(getBookingUnitPrice(booking))}</p>
                     <p class="mb-1"><strong>ðŸ’° Total:</strong> <span class="text-dark fw-bold">$${booking.total}</span></p>
                     <p class="mb-1"><strong>âœ… Pagado:</strong> $${booking.payment} (${booking.payment_method})</p>
                     <p class="mb-0 text-danger fw-bold"><strong>ðŸ’¸ Saldo:</strong> $${booking.diference}</p>
@@ -636,6 +655,7 @@ function renderBookingWithHistory(selectedBooking, bookings) {
             </div>
             <div class="card-footer bg-light d-flex flex-wrap justify-content-between align-items-center p-3">
                 <div class="mb-2 mb-md-0">
+                    <p class="mb-1"><strong>Precio por entrada individual:</strong> ${formatBookingMoney(getBookingUnitPrice(selectedBooking))}</p>
                     <p class="mb-1"><strong>Total:</strong> <span class="text-dark fw-bold">$${selectedBooking.total}</span></p>
                     <p class="mb-1"><strong>Pagado:</strong> $${selectedBooking.payment} (${selectedBooking.payment_method})</p>
                     <p class="mb-0 text-danger fw-bold"><strong>Saldo:</strong> $${selectedBooking.diference}</p>
@@ -730,6 +750,7 @@ function buildBookingAccordionItems(bookings, prefix) {
                                 <p class="mb-0"><strong>Metodo de pago:</strong> ${booking.payment_method}</p>
                             </div>
                             <div class="col-md-6">
+                                <p class="mb-1"><strong>Precio por entrada individual:</strong> ${formatBookingMoney(getBookingUnitPrice(booking))}</p>
                                 <p class="mb-1"><strong>Total:</strong> $${booking.total}</p>
                                 <p class="mb-1"><strong>Pagado:</strong> $${booking.payment}</p>
                                 <p class="mb-0"><strong>Saldo:</strong> $${booking.diference}</p>

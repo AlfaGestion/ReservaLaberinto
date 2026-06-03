@@ -235,6 +235,7 @@ if ($estadoPagoRaw === 'approved') {
                 <li><span class="label">Fecha:</span> <?= esc($fechaReservaFormateada) ?></li>
                 <li><span class="label">Horario:</span> <?= esc((string) ($data['horario'] ?? '')) ?></li>
                 <li><span class="label">Servicio:</span> <?= esc((string) ($data['servicio'] ?? '')) ?></li>
+                <li><span class="label">Precio por entrada individual:</span> <?= esc((string) ($data['precio_unitario'] ?? '')) ?></li>
                 <li><span class="label">Detalle:</span> <?= esc(((string) ($data['detalle'] ?? '')) !== '' ? (string) $data['detalle'] : 'Reserva Estandar') ?></li>
             </ul>
         </div>

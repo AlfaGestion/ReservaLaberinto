@@ -189,5 +189,5 @@ $mpKeys = $mpKeysModel->first();
 </script>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/showCustomerBooking.js?v=20260521-1335") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/showCustomerBooking.js?v=20260603-1") ?>"></script>
 <?= $this->endSection() ?>

@@ -428,6 +428,11 @@ if (!empty($prefill['time_until'])) {
                         <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="inputqtyvisitors" id="inputqtyvisitors" value="0" aria-label="name" disabled>
                         <label for="inputqtyvisitors">Cantidad de personas</label>
                         <small class="booking-coordinator-notice d-none mt-2" id="groupCoordinatorNotice" role="status">1 persona queda como coordinador sin cargo por grupo.</small>
+                        <small class="booking-price-notice mt-2" id="unitPriceNotice" role="status">
+                            <span class="booking-price-notice__line"><strong>Precio por entrada individual:</strong> <span id="unitPriceNoticeValue">Se calculará al seleccionar fecha y horario.</span></span>
+                            <span class="booking-price-notice__line"><strong>Entradas cobradas:</strong> <span id="unitPriceNoticeBillable">0</span></span>
+                            <span class="booking-price-notice__line"><strong>Total estimado:</strong> <span id="unitPriceNoticeTotal">Pendiente</span></span>
+                        </small>
                     </div>
                 </div>
 
@@ -604,7 +609,7 @@ if (!empty($prefill['time_until'])) {
                                             </div>
 
                                             <div class="pay-by-entries-summary__row">
-                                                <span class="pay-by-entries-summary__label">Precio por entrada</span>
+                                                <span class="pay-by-entries-summary__label">Precio por entrada individual</span>
                                                 <strong class="pay-by-entries-summary__value" id="payByEntriesUnitPrice">$0</strong>
                                             </div>
 
@@ -763,6 +768,55 @@ if (!empty($prefill['time_until'])) {
         color: #556a5d;
     }
 
+    .booking-price-notice {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid #bde2c8;
+        background: #edf8f0;
+        color: #14532d;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .booking-price-notice__line {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 2px 0;
+    }
+
+    .booking-price-notice__line:first-child {
+        margin-bottom: 4px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(20, 83, 45, 0.12);
+    }
+
+    .booking-price-notice__line strong {
+        flex: 1;
+        text-align: left;
+        font-weight: 800;
+    }
+
+    .booking-price-notice__line span {
+        flex: 0 0 auto;
+        text-align: right;
+        white-space: nowrap;
+        font-weight: 800;
+    }
+
+    .booking-price-notice__line:first-child span:last-child {
+        font-size: 1.1em;
+        color: #0f5132;
+        background: #d6f3df;
+        border: 1px solid #93d3aa;
+        border-radius: 999px;
+        padding: 4px 10px;
+    }
+
     .public-notice-modal__button {
         min-width: 220px;
         min-height: 52px;
@@ -781,7 +835,7 @@ if (!empty($prefill['time_until'])) {
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js?v=20260428-1810") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js?v=20260603-1") ?>"></script>
 
 
 <?php echo $this->endSection() ?>

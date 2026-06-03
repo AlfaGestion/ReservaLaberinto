@@ -524,6 +524,45 @@ class MercadoPagoReservationService
         return '';
     }
 
+    private function resolveCurrentUnitPriceForBooking(array $booking): float
+    {
+        $customer = null;
+        $customerId = (int) ($booking['id_customer'] ?? 0);
+
+        if ($customerId > 0) {
+            $customer = $this->customersModel->find($customerId);
+        }
+
+        if (!$customer && !empty($booking['phone'])) {
+            $customer = $this->customersModel->groupStart()
+                ->where('phone', $booking['phone'])
+                ->orWhere('complete_phone', $booking['phone'])
+                ->groupEnd()
+                ->first();
+        }
+
+        $institutionType = trim((string) ($customer['type_institution'] ?? ''));
+        if ($institutionType !== '') {
+            $value = (new \App\Models\ValuesModel())->where('value', $institutionType)->where('disabled', 0)->first();
+            $amount = (float) ($value['amount'] ?? 0);
+            $discount = (float) ($value['discount_percentage'] ?? 0);
+
+            if ($amount > 0) {
+                return max(0, $amount - (($amount * $discount) / 100));
+            }
+        }
+
+        $visitors = (int) ($booking['visitors'] ?? 0);
+        $total = (float) ($booking['total'] ?? 0);
+
+        return $visitors > 0 && $total > 0 ? $total / $visitors : 0.0;
+    }
+
+    private function formatAuditMoney(float $amount): string
+    {
+        return '$' . number_format($amount, 2, ',', '.');
+    }
+
     private function ensureCustomerForBooking(array $booking): ?int
     {
         if (!empty($booking['id_customer'])) {
@@ -602,6 +641,7 @@ class MercadoPagoReservationService
                 'Nombre' => (string) ($booking['name'] ?? ''),
                 'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
                 'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
                 'Total' => '$' . (string) ($booking['total'] ?? '0'),
             ],
             'messageHtml' => '<p>La reserva quedo sin confirmar por falta de aprobacion del pago. Si queres, podes iniciar nuevamente el pago desde el enlace.</p>',
@@ -644,6 +684,7 @@ class MercadoPagoReservationService
                     'Fecha' => $formattedDate,
                     'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
                     'Visitantes' => (string) ($booking['visitors'] ?? ''),
+                    'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
                     'Total' => '$' . (string) ($booking['total'] ?? ''),
                     'Codigo' => (string) ($booking['code'] ?? ''),
                 ],
@@ -681,6 +722,7 @@ class MercadoPagoReservationService
                 'Fecha' => $formattedDate,
                 'Horario' => trim(($booking['time_from'] ?? '') . ' a ' . ($booking['time_until'] ?? '')),
                 'Cantidad' => (string) ($booking['visitors'] ?? ''),
+                'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
                 'Total' => '$' . (string) ($booking['total'] ?? ''),
                 'Pagado' => '$' . (string) ($booking['payment'] ?? '0'),
                 'Saldo pendiente' => '$' . (string) ($booking['diference'] ?? '0'),
