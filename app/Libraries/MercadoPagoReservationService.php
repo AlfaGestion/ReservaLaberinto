@@ -241,6 +241,35 @@ class MercadoPagoReservationService
             return $result + ['status' => 'approved'];
         }
 
+        if (in_array($status, ['pending', 'in_process'], true)) {
+            $record = $this->upsertRejectedPaymentRecord($booking, [
+                'payment_id' => $paymentId,
+                'status' => $status,
+                'status_detail' => $statusDetail,
+                'preference_id' => $hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+                'external_reference' => $hints['external_reference'] ?? null,
+            ], 'pending_retry', false);
+
+            if ($record && empty($record['processing_notified_at']) && empty($booking['mp_pending_email_sent_at'])) {
+                $this->sendProcessingPaymentEmailOnce($booking, $record);
+            }
+
+            $this->storeMercadoPagoLog($bookingId, [
+                'payment_id' => $paymentId,
+                'status' => $status,
+                'collection_status' => $statusDetail,
+                'external_reference' => $hints['external_reference'] ?? null,
+                'payment_type' => $hints['payment_type'] ?? null,
+                'merchant_order_id' => $hints['merchant_order_id'] ?? null,
+                'preference_id' => $hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+                'site_id' => $hints['site_id'] ?? null,
+                'processing_mode' => $hints['processing_mode'] ?? null,
+                'merchant_account_id' => $hints['merchant_account_id'] ?? null,
+            ]);
+
+            return ['status' => $status, 'booking_id' => $bookingId];
+        }
+
         $this->storeMercadoPagoLog($bookingId, [
             'payment_id' => $paymentId,
             'status' => $status,
@@ -338,22 +367,44 @@ class MercadoPagoReservationService
         ]);
 
         if ($paymentId !== '') {
+            $existingPaymentRecord = $this->paymentsModel
+                ->where('id_mercado_pago', $paymentId)
+                ->orderBy('id', 'DESC')
+                ->first();
+
+            if ($existingPaymentRecord) {
+                $releasedSlots = $this->releaseBookingSlots($bookingId);
+                $this->markRejectedAsApproved($bookingId, $paymentId);
+                $this->sendBookingConfirmedEmailsOnce($bookingId);
+                log_message('info', 'Booking ' . $bookingId . ' approved from MP [' . $source . '] payment_id=' . $paymentId . ' (existing payment record)');
+
+                return ['booking_id' => $bookingId, 'idempotent' => true, 'released_slots' => $releasedSlots];
+            }
+
             $paymentUserId = $this->resolvePaymentUserId();
-            $this->paymentsModel->insert([
-                'id_user' => $paymentUserId > 0 ? $paymentUserId : 1,
-                'id_booking' => $bookingId,
-                'id_customer' => $customerId,
-                'id_mercado_pago' => $paymentId,
-                'amount' => $paid,
-                'payment_method' => 'mercado_pago',
-                'date' => date('Y-m-d'),
-                'created_at' => date('Y-m-d H:i:s'),
-                'paid_entries' => $paidEntries,
-                'unit_price' => $unitPriceAtBooking > 0 ? $unitPriceAtBooking : null,
-                'payment_type' => $paymentType,
-                'created_by_admin' => 0,
-                'admin_user_id' => null,
-            ]);
+            try {
+                $this->paymentsModel->insert([
+                    'id_user' => $paymentUserId > 0 ? $paymentUserId : 1,
+                    'id_booking' => $bookingId,
+                    'id_customer' => $customerId,
+                    'id_mercado_pago' => $paymentId,
+                    'amount' => $paid,
+                    'payment_method' => 'mercado_pago',
+                    'date' => date('Y-m-d'),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'paid_entries' => $paidEntries,
+                    'unit_price' => $unitPriceAtBooking > 0 ? $unitPriceAtBooking : null,
+                    'payment_type' => $paymentType,
+                    'created_by_admin' => 0,
+                    'admin_user_id' => null,
+                ]);
+            } catch (\Throwable $e) {
+                if (!str_contains($e->getMessage(), 'uniq_payments_mp_payment_id') && !str_contains($e->getMessage(), 'Duplicate entry')) {
+                    throw $e;
+                }
+
+                log_message('warning', 'Skipping duplicate payment insert for mp_payment_id=' . $paymentId . ' booking_id=' . $bookingId);
+            }
         }
 
         $releasedSlots = $this->releaseBookingSlots($bookingId);
@@ -372,7 +423,7 @@ class MercadoPagoReservationService
         ]);
 
         $this->markRejectedAsApproved($bookingId, $paymentId);
-        $this->sendBookingConfirmedEmails($this->bookingsModel->find($bookingId));
+        $this->sendBookingConfirmedEmailsOnce($bookingId);
         log_message('info', 'Booking ' . $bookingId . ' approved from MP [' . $source . '] payment_id=' . $paymentId);
 
         return ['booking_id' => $bookingId, 'idempotent' => false, 'released_slots' => $releasedSlots];
@@ -391,10 +442,10 @@ class MercadoPagoReservationService
         ]);
         $releasedSlots = $this->releaseBookingSlots($bookingId);
         $this->upsertRejectedPaymentRecord($booking, [
-            'status' => 'expired',
+            'status' => 'rejected',
             'status_detail' => 'Reserva pendiente vencida por tiempo de pago',
             'preference_id' => $booking['id_preference_parcial'] ?? null,
-        ], 'expired', true);
+        ], 'rejected', true);
         log_message('info', 'Booking ' . $bookingId . ' expired by policy [' . $source . ']');
         return $releasedSlots;
     }
@@ -413,20 +464,26 @@ class MercadoPagoReservationService
     private function storeMercadoPagoLog(?int $bookingId, array $payload): void
     {
         $this->mercadoPagoModel->insert([
-            'collection_id' => $payload['collection_id'] ?? null,
-            'collection_status' => $payload['collection_status'] ?? null,
-            'payment_id' => $payload['payment_id'] ?? null,
-            'status' => $payload['status'] ?? null,
+            'collection_id' => $this->normalizeMercadoPagoString($payload['collection_id'] ?? ($payload['payment_id'] ?? '')),
+            'collection_status' => $this->normalizeMercadoPagoString($payload['collection_status'] ?? ($payload['status'] ?? '')),
+            'payment_id' => $this->normalizeMercadoPagoString($payload['payment_id'] ?? ''),
+            'status' => $this->normalizeMercadoPagoString($payload['status'] ?? ''),
             'external_reference' => $payload['external_reference'] ?? null,
-            'payment_type' => $payload['payment_type'] ?? null,
-            'merchant_order_id' => $payload['merchant_order_id'] ?? null,
-            'preference_id' => $payload['preference_id'] ?? null,
-            'site_id' => $payload['site_id'] ?? null,
-            'processing_mode' => $payload['processing_mode'] ?? null,
+            'payment_type' => $this->normalizeMercadoPagoString($payload['payment_type'] ?? ''),
+            'merchant_order_id' => $this->normalizeMercadoPagoString($payload['merchant_order_id'] ?? ''),
+            'preference_id' => $this->normalizeMercadoPagoString($payload['preference_id'] ?? ''),
+            'site_id' => $this->normalizeMercadoPagoString($payload['site_id'] ?? ''),
+            'processing_mode' => $this->normalizeMercadoPagoString($payload['processing_mode'] ?? ''),
             'merchant_account_id' => $payload['merchant_account_id'] ?? null,
             'id_booking' => $bookingId,
             'annulled' => 0,
         ]);
+    }
+
+    private function normalizeMercadoPagoString(mixed $value): string
+    {
+        $normalized = trim((string) $value);
+        return $normalized !== '' ? $normalized : '-';
     }
 
     private function upsertRejectedPaymentRecord(array $booking, array $paymentData, string $status, bool $notifyCustomer): ?array
@@ -633,10 +690,28 @@ class MercadoPagoReservationService
             return;
         }
 
+        $paymentStatus = strtolower(trim((string) ($rejectedRecord['payment_status'] ?? 'rejected')));
+        $supportContact = $this->getPaymentSupportContact();
+        $supportText = $this->buildPaymentSupportText($supportContact);
+        $isExpired = $paymentStatus === 'expired';
+        $isRejected = in_array($paymentStatus, ['rejected', 'cancelled'], true);
+
+        $subject = $isRejected ? 'Pago no aprobado - Tu reserva no fue confirmada' : 'Tu reserva sigue pendiente de pago';
+        $eyebrow = $isRejected ? 'Pago no aprobado' : 'Pago pendiente';
+        $title = $isRejected ? 'Tu pago no fue aprobado' : 'Tu reserva no fue confirmada';
+        $intro = $isRejected
+            ? 'Detectamos que Mercado Pago no aprobó el pago de la reserva.'
+            : ($isExpired
+                ? 'No pudimos acreditar el pago dentro del tiempo permitido.'
+                : 'No pudimos acreditar el pago dentro del tiempo permitido.');
+        $messageHtml = $isRejected
+            ? '<p>El pago quedo rechazado o cancelado. Si queres continuar con la reserva, volve a intentar el pago desde el enlace o contactate con soporte.</p>'
+            : '<p>La reserva quedo sin confirmar porque el pago no se acredito. Podes completar el pago desde el enlace.</p>';
+
         $html = $this->renderEmailCard([
-            'eyebrow' => 'Pago pendiente',
-            'title' => 'Tu reserva no fue confirmada',
-            'intro' => 'No pudimos acreditar el pago dentro del tiempo permitido.',
+            'eyebrow' => $eyebrow,
+            'title' => $title,
+            'intro' => $intro,
             'details' => [
                 'Nombre' => (string) ($booking['name'] ?? ''),
                 'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
@@ -644,18 +719,108 @@ class MercadoPagoReservationService
                 'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
                 'Total' => '$' . (string) ($booking['total'] ?? '0'),
             ],
-            'messageHtml' => '<p>La reserva quedo sin confirmar por falta de aprobacion del pago. Si queres, podes iniciar nuevamente el pago desde el enlace.</p>',
+            'messageHtml' => $messageHtml,
             'primaryActionUrl' => $retryUrl,
             'primaryActionLabel' => 'Intentar pago de nuevo',
+            'supportText' => $supportText,
         ]);
 
-        $subject = 'Tu reserva no fue confirmada';
         $sent = $this->sendEmailWithFallback($to, $subject, $html, true);
         if ($sent) {
-            log_message('info', 'email_non_confirmed_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $to . ' subject="' . $subject . '"');
+            log_message('info', 'email_non_confirmed_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $to . ' subject="' . $subject . '" status=' . $paymentStatus);
             return;
         }
         log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $to . ' subject="' . $subject . '" context=non_confirmed');
+    }
+
+    private function sendProcessingPaymentEmail(array $booking, array $rejectedRecord): void
+    {
+        $to = trim((string) ($rejectedRecord['email'] ?? ''));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $supportText = $this->buildPaymentSupportText($this->getPaymentSupportContact());
+        $customerName = trim((string) ($booking['name'] ?? 'Cliente'));
+        $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
+        $subject = 'Estamos procesando tu pago - Laberinto';
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Pago en proceso',
+            'title' => 'Estamos procesando tu pago',
+            'intro' => 'Mercado Pago aun no termino de confirmar la operacion.',
+            'details' => [
+                'Nombre' => $customerName,
+                'Fecha' => $formattedDate,
+                'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
+                'Total' => '$' . (string) ($booking['total'] ?? '0'),
+            ],
+            'messageHtml' => '<p>Tu pago quedo en proceso. Cuando Mercado Pago lo apruebe vas a recibir un segundo correo con la confirmacion de la reserva.</p>',
+            'supportText' => $supportText,
+        ]);
+
+        $sent = $this->sendEmailWithFallback($to, $subject, $html, true);
+        if ($sent) {
+            log_message('info', 'email_processing_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $to . ' subject="' . $subject . '"');
+            return;
+        }
+        log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $to . ' subject="' . $subject . '" context=processing');
+    }
+
+    private function sendProcessingPaymentEmailOnce(array $booking, array $rejectedRecord): void
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        $recordId = (int) ($rejectedRecord['id'] ?? 0);
+        if ($bookingId <= 0 || !empty($booking['mp_pending_email_sent_at'])) {
+            return;
+        }
+
+        $this->sendProcessingPaymentEmail($booking, $rejectedRecord);
+        $db = db_connect();
+        if ($db->fieldExists('mp_pending_email_sent_at', 'bookings')) {
+            $this->bookingsModel->update($bookingId, [
+                'mp_pending_email_sent_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        if ($recordId > 0) {
+            $this->rejectedPaymentsModel->update($recordId, [
+                'processing_notified_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    private function getPaymentSupportContact(): array
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first() ?: [];
+
+        return [
+            'email' => trim((string) ($config['payment_support_email'] ?? '')),
+            'phone' => trim((string) ($config['payment_support_phone'] ?? '')),
+        ];
+    }
+
+    private function buildPaymentSupportText(array $contact): string
+    {
+        $email = trim((string) ($contact['email'] ?? ''));
+        $phone = trim((string) ($contact['phone'] ?? ''));
+        $parts = [];
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $parts[] = $email;
+        }
+
+        if ($phone !== '') {
+            $parts[] = $phone;
+        }
+
+        if ($parts === []) {
+            return 'Si necesitas ayuda con tu pago, respondenos a este correo.';
+        }
+
+        return 'Si necesitas ayuda con tu pago, contactate con ' . implode(' o ', $parts) . '.';
     }
 
     private function sendBookingConfirmedEmails(array $booking): void
@@ -740,6 +905,26 @@ class MercadoPagoReservationService
             return;
         }
         log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $customerEmail . ' subject="' . $customerSubject . '" context=confirmation_customer');
+    }
+
+    private function sendBookingConfirmedEmailsOnce(int $bookingId): void
+    {
+        if ($bookingId <= 0) {
+            return;
+        }
+
+        $booking = $this->bookingsModel->find($bookingId);
+        if (!is_array($booking) || !empty($booking['mp_confirmed_email_sent_at'])) {
+            return;
+        }
+
+        $this->sendBookingConfirmedEmails($booking);
+        $db = db_connect();
+        if ($db->fieldExists('mp_confirmed_email_sent_at', 'bookings')) {
+            $this->bookingsModel->update($bookingId, [
+                'mp_confirmed_email_sent_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 
     private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool

@@ -317,6 +317,12 @@ class Superadmin extends BaseController
 
     public function index()
     {
+        try {
+            $this->expireStaleMercadoPagoBookings();
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo ejecutar la limpieza de reservas MP en admin: ' . $e->getMessage());
+        }
+
         $bookingsModel = new BookingsModel();
         $fieldsModel = new FieldsModel();
         $rateModel = new RateModel();
@@ -1045,6 +1051,8 @@ class Superadmin extends BaseController
         $qtyVisitors = $data->qty_visitors ?? null;
         $allowGroupCoordinator = !empty($data->allow_group_coordinator) ? 1 : 0;
         $notificationEmail = trim($data->notification_email ?? '');
+        $paymentSupportEmail = trim($data->payment_support_email ?? '');
+        $paymentSupportPhone = trim($data->payment_support_phone ?? '');
         $invoiceEmailSubject = trim($data->invoice_email_subject ?? '');
         $invoiceEmailMessage = trim($data->invoice_email_message ?? '');
         $enablePayByEntries = !empty($data->enable_pay_by_entries) ? 1 : 0;
@@ -1071,6 +1079,11 @@ class Superadmin extends BaseController
             }
         }
 
+        if ($paymentSupportEmail !== '' && !filter_var($paymentSupportEmail, FILTER_VALIDATE_EMAIL)) {
+            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
+                ->setJSON(['error' => true, 'message' => 'El email de soporte de pagos no es valido']);
+        }
+
         try {
             $existingRate = $rateModel->first();
             $ratePayload = [
@@ -1091,6 +1104,8 @@ class Superadmin extends BaseController
             $existingUpload = $uploadModel->first();
             $uploadPayload = [
                 'notification_email' => $notificationEmail,
+                'payment_support_email' => $paymentSupportEmail,
+                'payment_support_phone' => $paymentSupportPhone,
                 'invoice_email_subject' => $invoiceEmailSubject,
                 'invoice_email_message' => $invoiceEmailMessage,
                 'enable_pay_by_entries' => $enablePayByEntries,
@@ -1124,8 +1139,11 @@ class Superadmin extends BaseController
 
     public function getRejectedBookings()
     {
+        $this->expireStaleMercadoPagoBookings();
         $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $items = $rejectedPaymentsModel->orderBy('created_at', 'DESC')->findAll();
+        $items = $rejectedPaymentsModel->where('payment_status', 'rejected')
+            ->orderBy('created_at', 'DESC')
+            ->findAll();
 
         return $this->response->setJSON([
             'error' => false,

@@ -273,6 +273,7 @@ class Bookings extends BaseController
             'name'                  => $data->nombre,
             'visitors'              => $data->visitantes,
             'phone'                 => $data->telefono,
+            'email'                 => $data->email ?? '',
             'payment'               => $data->monto,
             'approved'              => 0,
             'total'                 => $data->total,

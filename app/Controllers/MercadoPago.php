@@ -354,13 +354,19 @@ class MercadoPago extends BaseController
         }
 
         $customerName = trim((string) ($booking['name'] ?? 'Cliente'));
-        $subject = 'Tu reserva sigue pendiente de pago';
         $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
+        $paymentStatus = strtolower(trim((string) ($rejectedRecord['payment_status'] ?? 'rejected')));
+        $isRejected = in_array($paymentStatus, ['rejected', 'cancelled'], true);
+        $isExpired = $paymentStatus === 'expired';
+        $subject = $isRejected ? 'Pago no aprobado - Tu reserva no fue confirmada' : 'Tu reserva sigue pendiente de pago';
+        $supportText = $this->buildPaymentSupportText($this->getPaymentSupportContact());
 
         $html = $this->renderEmailCard([
-            'eyebrow' => 'Pago pendiente',
-            'title' => 'Tu reserva aun no fue confirmada',
-            'intro' => 'Detectamos que el pago no se acredito.',
+            'eyebrow' => $isRejected ? 'Pago no aprobado' : 'Pago pendiente',
+            'title' => $isRejected ? 'Tu pago no fue aprobado' : 'Tu reserva aun no fue confirmada',
+            'intro' => $isRejected
+                ? 'Detectamos que Mercado Pago rechazo o cancelo el pago.'
+                : 'Detectamos que el pago no se acredito.',
             'details' => [
                 'Nombre' => $customerName,
                 'Fecha' => $formattedDate,
@@ -368,12 +374,84 @@ class MercadoPago extends BaseController
                 'Visitantes' => (string) ($booking['visitors'] ?? ''),
                 'Total' => '$' . (string) ($booking['total'] ?? '0'),
             ],
-            'messageHtml' => '<p>Tu reserva todavia no fue confirmada porque el pago no se acredito. Podes completarlo desde el siguiente boton. Si no se registra el pago dentro de los proximos 30 minutos, la reserva quedara como rechazada y no ocupara disponibilidad.</p>',
+            'messageHtml' => $isRejected
+                ? '<p>El pago quedo rechazado o cancelado. Si queres continuar, volve a intentar el pago o contactate con soporte.</p>'
+                : '<p>Tu reserva todavia no fue confirmada porque el pago no se acredito. Podes completarlo desde el siguiente boton. Si no se registra el pago dentro de los proximos 30 minutos, la reserva quedara como rechazada y no ocupara disponibilidad.</p>',
             'primaryActionUrl' => $retryUrl,
-            'primaryActionLabel' => 'Completar pago',
+            'primaryActionLabel' => $isRejected ? 'Reintentar pago' : 'Completar pago',
+            'supportText' => $supportText . ($isExpired ? ' La reserva expiro por tiempo de pago.' : ''),
         ]);
 
         $this->sendEmailWithFallback($to, $subject, $html, true);
+    }
+
+    private function getPaymentSupportContact(): array
+    {
+        $uploadModel = new UploadModel();
+        $config = $uploadModel->first() ?: [];
+
+        return [
+            'email' => trim((string) ($config['payment_support_email'] ?? '')),
+            'phone' => trim((string) ($config['payment_support_phone'] ?? '')),
+        ];
+    }
+
+    private function buildPaymentSupportText(array $contact): string
+    {
+        $email = trim((string) ($contact['email'] ?? ''));
+        $phone = trim((string) ($contact['phone'] ?? ''));
+        $parts = [];
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $parts[] = $email;
+        }
+
+        if ($phone !== '') {
+            $parts[] = $phone;
+        }
+
+        if ($parts === []) {
+            return 'Si necesitas ayuda con tu pago, respondenos a este correo.';
+        }
+
+        return 'Si necesitas ayuda con tu pago, contactate con ' . implode(' o ', $parts) . '.';
+    }
+
+    private function sendPendingReservationEmail(array $booking, array $bookingData): bool
+    {
+        $customerEmail = trim((string) ($bookingData['email'] ?? ''));
+        if ($customerEmail === '' || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+            $customerEmail = $this->resolveCustomerEmail($booking);
+        }
+
+        if ($customerEmail === '') {
+            return false;
+        }
+
+        $supportText = $this->buildPaymentSupportText($this->getPaymentSupportContact());
+        $retryUrl = $this->buildRetryPaymentUrl($booking);
+        $customerName = trim((string) ($bookingData['nombre'] ?? ($booking['name'] ?? 'Cliente')));
+        $subject = 'Reserva pendiente de pago - Laberinto';
+
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Reserva pendiente',
+            'title' => 'Tu reserva quedo registrada, pero falta confirmar el pago',
+            'intro' => 'La disponibilidad quedo reservada temporalmente hasta que Mercado Pago apruebe el pago.',
+            'details' => [
+                'Nombre' => $customerName,
+                'Fecha' => $this->formatBookingDate((string) ($bookingData['fecha'] ?? ($booking['date'] ?? ''))),
+                'Horario' => trim(((string) ($bookingData['horarioDesde'] ?? ($booking['time_from'] ?? ''))) . ' a ' . ((string) ($bookingData['horarioHasta'] ?? ($booking['time_until'] ?? '')))),
+                'Visitantes' => (string) ($bookingData['visitantes'] ?? ($booking['visitors'] ?? '')),
+                'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
+                'Total' => '$' . (string) ($bookingData['total'] ?? ($booking['total'] ?? '0')),
+            ],
+            'messageHtml' => '<p>Tu reserva quedo iniciada correctamente. Completá el pago para que quede confirmada y no pierdas el horario elegido.</p>',
+            'primaryActionUrl' => $retryUrl,
+            'primaryActionLabel' => 'Continuar con el pago',
+            'supportText' => $supportText,
+        ]);
+
+        return $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
     }
 
     public function setPreference()
@@ -506,6 +584,7 @@ class MercadoPago extends BaseController
                     'time_until' => $timeUntil,
                     'name' => $bookingArr['nombre'] ?? null,
                     'phone' => $bookingArr['telefono'] ?? null,
+                    'email' => $bookingArr['email'] ?? null,
                     'visitors' => $bookingArr['visitantes'] ?? null,
                     'code' => $this->codeGenerate(),
                     'payment' => 0,
@@ -529,9 +608,36 @@ class MercadoPago extends BaseController
                 $bookingId = $bookingsModel->getInsertID();
                 $bookingSlotsModel->update($slotId, ['booking_id' => $bookingId]);
                 $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $totalEntries . ' entradas.', 'CLIENTE');
+
+                $createdBooking = $bookingsModel->find($bookingId);
+                if (is_array($createdBooking) && empty($createdBooking['mp_pending_email_sent_at'])) {
+                    if ($this->sendPendingReservationEmail($createdBooking, $bookingArr)) {
+                        $db = db_connect();
+                        if ($db->fieldExists('mp_pending_email_sent_at', 'bookings')) {
+                            $bookingsModel->update($bookingId, [
+                                'mp_pending_email_sent_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
+                }
             } else {
                 $bookingId = $existingPendingBooking['id'];
                 $orderId = $this->ensureBookingOrderId($existingPendingBooking);
+                if (!empty($bookingArr['email']) && empty($existingPendingBooking['email'])) {
+                    $bookingsModel->update($bookingId, ['email' => $bookingArr['email']]);
+                }
+
+                $currentBooking = $bookingsModel->find($bookingId);
+                if (is_array($currentBooking) && empty($currentBooking['mp_pending_email_sent_at'])) {
+                    if ($this->sendPendingReservationEmail($currentBooking, $bookingArr)) {
+                        $db = db_connect();
+                        if ($db->fieldExists('mp_pending_email_sent_at', 'bookings')) {
+                            $bookingsModel->update($bookingId, [
+                                'mp_pending_email_sent_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
+                }
             }
 
             return $this->response->setJSON($this->setResponse(null, null, [

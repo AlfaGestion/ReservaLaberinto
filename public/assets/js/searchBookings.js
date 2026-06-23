@@ -1481,7 +1481,7 @@ async function fillTableBookings(data, options = {}) {
     const bookings = Array.isArray(data) ? [...data] : []
 
     let existPending = false
-    let stateMP = ''
+    let paymentState = ''
     let tr = ''
     let actions = ''
     let edit = ''
@@ -1517,9 +1517,11 @@ async function fillTableBookings(data, options = {}) {
         reserva.anulada == 1 ? state = 'Anulada' : state = 'Activa'
 
         if (reserva.metodo_pago == 'mercado_pago') {
-            reserva.mp == 0 ? stateMP = 'Pendiente' : stateMP = 'Confirmado'
+            paymentState = reserva.mp == 0
+                ? '<span class="badge booking-payment-badge booking-payment-badge--pending">En proceso</span>'
+                : '<span class="badge booking-payment-badge booking-payment-badge--approved">Aprobada</span>'
         } else {
-            stateMP = 'No aplica'
+            paymentState = '<span class="badge booking-payment-badge booking-payment-badge--na">No aplica</span>'
         }
 
         if (sessionUserSuperadmin == 1) {
@@ -1616,7 +1618,11 @@ async function fillTableBookings(data, options = {}) {
             ? `<div class="d-flex flex-column"><span class="badge text-bg-success align-self-start">${escapeHtml(reserva.factura_enviada || 'Enviada')}</span><small class="text-muted mt-1">${escapeHtml(reserva.factura_enviada_fecha)}</small></div>`
             : `<span class="badge text-bg-secondary">${escapeHtml(reserva.factura_enviada || 'Pendiente')}</span>`
 
-        const rowClass = reserva.pago_total === 'Si' ? 'admin-booking-row admin-booking-row--paid' : 'admin-booking-row'
+        const rowClass = [
+            'admin-booking-row',
+            reserva.pago_total === 'Si' ? 'admin-booking-row--paid' : '',
+            reserva.metodo_pago == 'mercado_pago' && Number(reserva.mp || 0) === 0 ? 'admin-booking-row--pending-mp' : '',
+        ].filter(Boolean).join(' ')
         const isEntryPayment = Number(reserva.partial_by_entries || 0) === 1
         const paidAmountDisplay = isEntryPayment
             ? `${formatBookingMoney(reserva.monto_reserva)}<small class="d-block text-muted">${Number(reserva.paid_entries || 0)} entradas abonadas</small>`
@@ -1627,6 +1633,7 @@ async function fillTableBookings(data, options = {}) {
 
         tr += `
         <tr class="${rowClass}">
+            <td>${paymentState}</td>
             <td>${reserva.fecha}</th>
             <td>${reserva.cancha}</td>
             <td>${reserva.horario}</td>
@@ -1638,7 +1645,6 @@ async function fillTableBookings(data, options = {}) {
             <td>${pendingAmountDisplay}</td>
             <td>${reserva.metodo_pago}</td>
             <td>${descripcion}</td>
-            <td>${stateMP}</td>
             <td>${state}</td>
             <td>${reserva.code}</td>
             <td>${invoiceStatus}</td>

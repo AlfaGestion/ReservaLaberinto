@@ -8,6 +8,8 @@ const inputRate = document.getElementById('rate')
 const inputQtyVisitors = document.getElementById('visitors')
 const inputAllowGroupCoordinator = document.getElementById('allowGroupCoordinator')
 const inputNotificationEmail = document.getElementById('notificationEmail')
+const inputPaymentSupportEmail = document.getElementById('paymentSupportEmail')
+const inputPaymentSupportPhone = document.getElementById('paymentSupportPhone')
 const inputInvoiceEmailSubject = document.getElementById('invoiceEmailSubject')
 const inputInvoiceEmailMessage = document.getElementById('invoiceEmailMessage')
 const inputEnablePayByEntries = document.getElementById('enablePayByEntries')
@@ -509,6 +511,8 @@ document.addEventListener('click', async (e) => {
                 qty_visitors: inputQtyVisitors.value,
                 allow_group_coordinator: inputAllowGroupCoordinator?.checked ? 1 : 0,
                 notification_email: inputNotificationEmail?.value || '',
+                payment_support_email: inputPaymentSupportEmail?.value || '',
+                payment_support_phone: inputPaymentSupportPhone?.value || '',
                 invoice_email_subject: inputInvoiceEmailSubject?.value || '',
                 invoice_email_message: inputInvoiceEmailMessage?.value || '',
                 enable_pay_by_entries: inputEnablePayByEntries?.checked ? 1 : 0,

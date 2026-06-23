@@ -35,6 +35,21 @@ function formatMoney(value) {
     return `$${new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`
 }
 
+function renderStatusBadge(status) {
+    const normalized = `${status || ''}`.toLowerCase()
+    const map = {
+        pending_retry: ['warning', 'En proceso'],
+        rejected: ['danger', 'Rechazada'],
+        expired: ['danger', 'Rechazada'],
+        approved: ['success', 'Aprobada'],
+        closed: ['secondary', 'Cerrada'],
+        moved_to_bookings: ['primary', 'Movida'],
+    }
+
+    const [tone, label] = map[normalized] || ['secondary', status || '']
+    return `<span class="badge text-bg-${tone}">${escapeHtml(label)}</span>`
+}
+
 async function loadRejectedBookings() {
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Cargando...</td></tr>'
 
@@ -61,7 +76,7 @@ async function loadRejectedBookings() {
                 <td>${escapeHtml(item.email)}</td>
                 <td>${escapeHtml(item.visitors)}</td>
                 <td>${escapeHtml(formatMoney(item.total))}</td>
-                <td><span class="badge text-bg-secondary">${escapeHtml(item.payment_status)}</span></td>
+                <td>${renderStatusBadge(item.payment_status)}</td>
                 <td>${escapeHtml(item.payment_reason || '')}</td>
                 <td>${escapeHtml(formatDateTime(item.created_at))}</td>
                 <td>${item.notified_at ? '<span class="badge text-bg-success">Si</span>' : '<span class="badge text-bg-warning">No</span>'}</td>

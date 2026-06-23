@@ -67,6 +67,13 @@ class Home extends BaseController
 
     private function renderBookingLanding(array $prefill = [], string $prefillToken = '')
     {
+        try {
+            $reservationService = new MercadoPagoReservationService();
+            $reservationService->expirePendingReservations([], 'home_renderBookingLanding');
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo ejecutar la limpieza web de reservas MP: ' . $e->getMessage());
+        }
+
         $offersModel = new OffersModel();
 
         $currentDate = date("Y-m-d");

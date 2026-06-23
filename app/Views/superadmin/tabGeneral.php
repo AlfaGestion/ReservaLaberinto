@@ -180,6 +180,22 @@ $uploadData = $uploadModel->first();
                         </div>
                         <small class="text-muted d-block">Podes cargar uno o varios emails separados por ;</small>
 
+                        <div class="row g-3 mt-2" style="max-width: 720px;">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="paymentSupportEmail" placeholder="soporte@dominio.com" value="<?= esc($uploadData['payment_support_email'] ?? '') ?>">
+                                    <label for="paymentSupportEmail">Email de soporte de pagos</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="paymentSupportPhone" placeholder="+54 9 11 1234-5678" value="<?= esc($uploadData['payment_support_phone'] ?? '') ?>">
+                                    <label for="paymentSupportPhone">Telefono de soporte de pagos</label>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">Estos datos se insertan en los correos de reserva pendiente y pago rechazado.</small>
+
                         <div class="border rounded-3 bg-white p-3 mt-4">
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" role="switch" id="enablePayByEntries" <?= !empty($uploadData['enable_pay_by_entries']) ? 'checked' : '' ?>>

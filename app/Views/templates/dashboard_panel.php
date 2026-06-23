@@ -258,6 +258,49 @@
             background: #dcefe1 !important;
         }
 
+        .admin-pane .table tbody tr.admin-booking-row--pending-mp > * {
+            background: #f3f4f6 !important;
+            color: #4b5563;
+            border-color: #e5e7eb;
+        }
+
+        .admin-pane .table tbody tr.admin-booking-row--pending-mp:hover > * {
+            background: #eceff3 !important;
+        }
+
+        .admin-pane .booking-payment-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 108px;
+            padding: 0.5rem 0.7rem;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.78rem;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .admin-pane .booking-payment-badge--pending {
+            background: #eef2f7;
+            color: #546170;
+            border-color: #d5dce4;
+        }
+
+        .admin-pane .booking-payment-badge--approved {
+            background: #e6f6eb;
+            color: #17663a;
+            border-color: #bfe6cb;
+        }
+
+        .admin-pane .booking-payment-badge--na {
+            background: #f7f7f8;
+            color: #6b7280;
+            border-color: #e1e4e8;
+        }
+
         .admin-pane .btn {
             border-radius: 14px;
             font-weight: 700;

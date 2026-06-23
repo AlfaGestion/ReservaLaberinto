@@ -278,6 +278,7 @@ $uploadData = $uploadModel->first();
     <table class="table align-middle table-striped-columns mt-2">
         <thead>
             <tr>
+                <th scope="col">Estado de pago</th>
                 <th scope="col">Fecha</th>
                 <th scope="col">Servicio</th>
                 <th scope="col">Horario</th>
@@ -289,7 +290,6 @@ $uploadData = $uploadModel->first();
                 <th scope="col">Saldo</th>
                 <th scope="col">M&eacute;todo de pago</th>
                 <th scope="col">Descripci&oacute;n</th>
-                <th scope="col">Estado de MP</th>
                 <th scope="col">Estado</th>
                 <th scope="col">C&oacute;digo</th>
                 <th scope="col">Factura cliente</th>

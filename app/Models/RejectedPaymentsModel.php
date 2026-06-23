@@ -31,6 +31,7 @@ class RejectedPaymentsModel extends Model
         'payment_id',
         'external_reference',
         'retry_url',
+        'processing_notified_at',
         'notified_at',
         'expires_at',
         'closed_at',
