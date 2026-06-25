@@ -569,7 +569,6 @@ if (!empty($prefill['time_until'])) {
                                     <label for="adminBookingDescription">Descripcion</label>
                                 </div>
                             </div>
-
                         <?php else : ?>
                             <div class="payment-entry-panel">
                                 <div class="alert alert-warning payment-entry-note" role="alert">
@@ -638,12 +637,14 @@ if (!empty($prefill['time_until'])) {
 
                     </div>
                     <div class="modal-footer d-flex justify-contente-center align-items-center payment-entry-modal__footer">
-                        <div id="checkout-btn-parcial"></div>
-                        <div id="checkout-btn-total" style="display:none;"></div>
                         <?php if (session()->logueado) : ?>
                             <button type="button" class="btn btn-primary" id="confirmBooking">Reservar</button>
+                            <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
+                        <?php else : ?>
+                            <div id="checkout-btn-parcial"></div>
+                            <div id="checkout-btn-total" style="display:none;"></div>
+                            <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" id="" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
                         <?php endif; ?>
-                        <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" id="" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
                     </div>
                 </div>
             </div>

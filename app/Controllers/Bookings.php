@@ -1178,7 +1178,7 @@ class Bookings extends BaseController
                 }
 
                 $savedBooking = $bookingsModel->find($bookingId);
-                $this->sendBookingNotificationEmail($savedBooking, (object) [
+                $this->sendAdminBookingConfirmationEmail($savedBooking, (object) [
                     'nombre' => $data->nombre ?? '',
                     'telefono' => $data->telefono ?? '',
                     'fecha' => $data->fecha ?? '',
@@ -1674,6 +1674,15 @@ class Bookings extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, 'Error al procesar la disponibilidad: ' . $e->getMessage()));
         }
+    }
+
+    private function sendAdminBookingConfirmationEmail(array $booking, object $requestData): void
+    {
+        if ((int) ($booking['approved'] ?? 0) !== 1 || (int) ($booking['annulled'] ?? 0) === 1) {
+            return;
+        }
+
+        $this->sendBookingNotificationEmail($booking, $requestData);
     }
 
     public function viewBookings($token = null)

@@ -31,7 +31,10 @@ $uploadData = $uploadModel->first();
         </div>
     </div>
 
-    <div>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+        <a href="<?= site_url('/') ?>#formBooking" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Nueva reserva
+        </a>
         <button type="button" id="searchBooking" class="btn btn-success">Buscar activas</button>
         <button type="button" id="searchAnnulledBooking" class="btn btn-danger">Buscar anuladas</button>
     </div>
