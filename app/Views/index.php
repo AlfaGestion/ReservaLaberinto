@@ -545,11 +545,6 @@ if (!empty($prefill['time_until'])) {
                         <?php if (session()->logueado) : ?>
                             <div class="mb-3">
                                 <div class="form-floating flex-nowrap mb-3">
-                                    <input type="text" class="form-control" name="adminBookingTotalAmount" id="adminBookingTotalAmount" placeholder="Ingrese el monto" aria-label="Amount" required>
-                                    <label for="adminBookingTotalAmount">Ingresar total de la reserva</label>
-                                </div>
-
-                                <div class="form-floating flex-nowrap mb-3">
                                     <input type="text" class="form-control" name="adminBookingAmount" id="adminBookingAmount" placeholder="Ingrese el monto" aria-label="Amount" required>
                                     <label for="adminBookingAmount">Ingresar monto a abonar de la reserva</label>
                                 </div>
@@ -567,6 +562,12 @@ if (!empty($prefill['time_until'])) {
                                 <div class="form-floating">
                                     <textarea class="form-control" placeholder="Ingrese el motivo de la reserva" id="adminBookingDescription"></textarea>
                                     <label for="adminBookingDescription">Descripcion</label>
+                                </div>
+
+                                <div class="mt-3 pt-3 border-top">
+                                    <label for="adminBookingTotalAmount" class="form-label mb-1">Total de la reserva</label>
+                                    <input type="text" class="form-control bg-light" name="adminBookingTotalAmount" id="adminBookingTotalAmount" placeholder="Total calculado" aria-label="Amount" required readonly>
+                                    <small class="text-muted d-block mt-2">El total se calcula automáticamente y queda bloqueado para evitar confusiones.</small>
                                 </div>
                             </div>
                         <?php else : ?>
