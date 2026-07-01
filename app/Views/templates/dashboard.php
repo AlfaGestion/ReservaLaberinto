@@ -30,11 +30,11 @@
     </script>
 
     <link rel="icon" href="<?= base_url(PUBLIC_FOLDER . "assets/images/favicon.ico") ?>" type="image/x-icon">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/flatpickr/css/flatpickr.min.css?v=4.6.13') ?>">
+    <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=5.2.3') ?>"></script>
+    
+    <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/flatpickr/js/flatpickr.min.js?v=4.6.13') ?>"></script>
     <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260701-4") ?>">
     <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/admin-theme.css?v=20260630-7") ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>

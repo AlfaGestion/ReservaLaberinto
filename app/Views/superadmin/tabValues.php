@@ -6,6 +6,23 @@
 
 <div class="valuesList mt-3">
     <h4>Tipos de valores</h4>
+    <?php
+    $formatMoney = static function ($value, string $fallback = 'No calculado'): string {
+        if (is_string($value)) {
+            $normalized = trim(str_replace(['$', ' '], '', $value));
+            $normalized = str_replace(['.', ','], ['', '.'], $normalized);
+            $value = is_numeric($normalized) ? (float) $normalized : $value;
+        }
+
+        if (! is_numeric($value)) {
+            return $fallback;
+        }
+
+        $rounded = (int) round((float) $value, 0, PHP_ROUND_HALF_UP);
+
+        return '$' . number_format($rounded, 0, ',', '.');
+    };
+    ?>
     <div class="table-responsive-sm">
         <table class="table table-striped">
             <thead>
@@ -26,9 +43,9 @@
                     ?>
                     <tr id="value-row-<?= $value['id'] ?>">
                         <td><?= isset($value['name']) ? $value['name'] : 'No indicado' ?></td>
-                        <td><?= isset($value['amount']) ? esc(format_price_ar($value['amount'])) : 'No indicado' ?></td>
+                        <td><?= isset($value['amount']) ? esc($formatMoney($value['amount'])) : 'No indicado' ?></td>
                         <td><?= isset($value['discount_percentage']) ? $value['discount_percentage'] : '0' ?>%</td>
-                        <td><?= esc(format_price_ar($finalAmount)) ?></td>
+                        <td><?= esc($formatMoney($finalAmount)) ?></td>
                         <td>
                             <button
                                 type="button"

@@ -20,14 +20,14 @@ $uploadData = $uploadModel->first();
 
 
     <div class="d-flex justify-content-center align-items-center flex-row admin-bookings-dates">
-        <div class="form-floating mb-3 mt-3 me-2">
-            <input type="date" name="fechaDesdeBooking" id="fechaDesdeBooking" class="form-control" value="" aria-label="date">
+        <div class="admin-bookings-date-field me-2">
             <label for="fechaDesdeBooking">Desde</label>
+            <input type="date" name="fechaDesdeBooking" id="fechaDesdeBooking" class="form-control" value="" aria-label="date">
         </div>
 
-        <div class="form-floating mb-3 mt-3 me-2">
-            <input type="date" name="fechaHastaBooking" id="fechaHastaBooking" class="form-control" value="" aria-label="date">
+        <div class="admin-bookings-date-field me-2">
             <label for="fechaHastaBooking">Hasta</label>
+            <input type="date" name="fechaHastaBooking" id="fechaHastaBooking" class="form-control" value="" aria-label="date">
         </div>
     </div>
 

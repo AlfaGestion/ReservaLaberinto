@@ -65,24 +65,64 @@ class Superadmin extends BaseController
         return $parsedDateTime->format('d/m/Y H:i');
     }
 
-    private function resolveCreatedByLabel(array $booking): string
+    private function resolveCreatedByLabel(array $booking, ?UsersModel $usersModel = null): string
     {
         $createdByType = strtoupper(trim((string) ($booking['created_by_type'] ?? '')));
         $createdByName = trim((string) ($booking['created_by_name'] ?? ''));
+        $createdByUserId = (int) ($booking['created_by_user_id'] ?? 0);
 
         if ($createdByType === 'CLIENTE') {
             return 'Cliente';
         }
 
         if ($createdByType === 'ADMIN') {
-            return $createdByName !== '' ? $createdByName : 'Admin';
+            if ($createdByName !== '') {
+                return $createdByName;
+            }
+
+            if ($createdByUserId > 0 && $usersModel instanceof UsersModel) {
+                $user = $usersModel->find($createdByUserId);
+                if (is_array($user)) {
+                    $userName = trim((string) ($user['name'] ?? ''));
+                    if ($userName !== '') {
+                        return $userName;
+                    }
+                }
+            }
+
+            return 'Admin';
         }
 
         if ($createdByName !== '') {
             return $createdByName;
         }
 
+        if ($createdByUserId > 0 && $usersModel instanceof UsersModel) {
+            $user = $usersModel->find($createdByUserId);
+            if (is_array($user)) {
+                $userName = trim((string) ($user['name'] ?? ''));
+                if ($userName !== '') {
+                    return $userName;
+                }
+            }
+        }
+
         return '-';
+    }
+
+    private function resolveFieldName(?int $fieldId, FieldsModel $fieldsModel, string $fallback = 'Reserva'): string
+    {
+        if ($fieldId === null || $fieldId <= 0) {
+            return $fallback;
+        }
+
+        $field = $fieldsModel->getField($fieldId);
+        if (!is_array($field)) {
+            return $fallback;
+        }
+
+        $fieldName = trim((string) ($field['name'] ?? ''));
+        return $fieldName !== '' ? $fieldName : $fallback;
     }
 
     private function resolvePendingMercadoPagoExpiresAt(array $booking, ?BookingSlotsModel $bookingSlotsModel = null): string
@@ -351,9 +391,10 @@ class Superadmin extends BaseController
         $bookings = [];
 
         foreach ($bookingsModel->getBookings() as $booking) {
+            $fieldId = isset($booking['id_field']) ? (int) $booking['id_field'] : null;
             $reserva = [
                 'id' => $booking['id'],
-                'cancha' => $fieldsModel->getField($booking['id_field'])['name'],
+                'cancha' => $this->resolveFieldName($fieldId, $fieldsModel),
                 'fecha' => date("d/m/Y", strtotime($booking['date'])),
                 'horario' => $booking['time_from'] . ' a ' . $booking['time_until'],
                 'nombre' => $booking['name'],
@@ -415,7 +456,7 @@ class Superadmin extends BaseController
 
         $weekStart = date('Y-m-d', strtotime('monday this week'));
 
-        return view('superadmin/index', [
+        return view('superadmin/index_v2', [
             'bookings' => $bookings,
             'rate' => $rate,
             'customers' => $customers,
@@ -659,15 +700,16 @@ class Superadmin extends BaseController
 
         foreach ($getBookings as $booking) {
             $entrySummary = $this->getBookingEntryPaymentSummary($booking);
+            $fieldId = isset($booking['id_field']) ? (int) $booking['id_field'] : null;
             $reserva = [
                 'id' => $booking['id'],
-                'cancha' => $fieldsModel->getField($booking['id_field'])['name'],
+                'cancha' => $this->resolveFieldName($fieldId, $fieldsModel),
                 'fecha' => date("d/m/Y", strtotime($booking['date'])),
                 // 'horario' => $booking['time_from'] . ' a ' . $booking['time_until'],
                 'horario' => $booking['time_from'],
                 'nombre' => $booking['name'],
                 'telefono' => $booking['phone'],
-                'creado_por' => $this->resolveCreatedByLabel($booking),
+                'creado_por' => $this->resolveCreatedByLabel($booking, $usersModel),
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
                 'total_payment' => (int) ($booking['total_payment'] ?? 0),
                 'total_reserva' => $booking['total'],
@@ -719,14 +761,15 @@ class Superadmin extends BaseController
 
         foreach ($getBookings as $booking) {
             $entrySummary = $this->getBookingEntryPaymentSummary($booking);
+            $fieldId = isset($booking['id_field']) ? (int) $booking['id_field'] : null;
             $reserva = [
                 'id' => $booking['id'],
-                'cancha' => $fieldsModel->getField($booking['id_field'])['name'],
+                'cancha' => $this->resolveFieldName($fieldId, $fieldsModel),
                 'fecha' => date("d/m/Y", strtotime($booking['date'])),
                 'horario' => $booking['time_from'] . ' a ' . $booking['time_until'],
                 'nombre' => $booking['name'],
                 'telefono' => $booking['phone'],
-                'creado_por' => $this->resolveCreatedByLabel($booking),
+                'creado_por' => $this->resolveCreatedByLabel($booking, $usersModel),
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
                 'total_payment' => (int) ($booking['total_payment'] ?? 0),
                 'total_reserva' => $booking['total'],

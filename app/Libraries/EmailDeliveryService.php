@@ -14,7 +14,7 @@ class EmailDeliveryService
         return $email;
     }
 
-    private function normalizeRecipients(mixed $to): array
+    private function normalizeRecipients($to): array
     {
         if (is_array($to)) {
             $rawList = $to;
@@ -35,7 +35,7 @@ class EmailDeliveryService
         return array_values($recipients);
     }
 
-    public function send(mixed $to, string $subject, string $message, bool $isHtml = false, array $attachments = [], array $context = []): bool
+    public function send($to, string $subject, string $message, bool $isHtml = false, array $attachments = [], array $context = []): bool
     {
         $recipients = $this->normalizeRecipients($to);
         if ($recipients === []) {

@@ -56,6 +56,6 @@ class FieldsModel extends Model
     public function getName($id){
         $field = $this->find($id);
 
-        return $field['name'];
+        return is_array($field) && isset($field['name']) ? $field['name'] : '';
     }
 }

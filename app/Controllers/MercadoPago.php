@@ -103,7 +103,7 @@ class MercadoPago extends BaseController
             : base_url(PUBLIC_FOLDER . 'assets/images/sinlogo2.png');
     }
 
-    private function normalizeMpStatus(mixed $status): string
+    private function normalizeMpStatus($status): string
     {
         return strtolower(trim((string) $status));
     }
@@ -915,7 +915,7 @@ class MercadoPago extends BaseController
             }
             log_message('error', 'Error en setPreference: ' . $e->getMessage());
             $publicMessage = 'No pudimos preparar el pago de la reserva. Intentá nuevamente.';
-            if (str_contains($e->getMessage(), 'uniq_booking_slots_active')) {
+            if (strpos($e->getMessage(), 'uniq_booking_slots_active') !== false) {
                 $publicMessage = 'Ese horario sigue ocupado por un intento anterior. Actualiza e intenta nuevamente.';
             }
 

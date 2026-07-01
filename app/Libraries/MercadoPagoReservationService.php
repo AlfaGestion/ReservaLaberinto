@@ -616,7 +616,10 @@ class MercadoPagoReservationService
                     'admin_user_id' => null,
                 ]);
             } catch (\Throwable $e) {
-                if (!str_contains($e->getMessage(), 'uniq_payments_mp_payment_id') && !str_contains($e->getMessage(), 'Duplicate entry')) {
+                $errorMessage = $e->getMessage();
+                $isDuplicatePayment = strpos($errorMessage, 'uniq_payments_mp_payment_id') !== false
+                    || strpos($errorMessage, 'Duplicate entry') !== false;
+                if (! $isDuplicatePayment) {
                     throw $e;
                 }
 
@@ -704,7 +707,7 @@ class MercadoPagoReservationService
         ]);
     }
 
-    private function normalizeMercadoPagoString(mixed $value): string
+    private function normalizeMercadoPagoString($value): string
     {
         $normalized = trim((string) $value);
         return $normalized !== '' ? $normalized : '-';
@@ -841,7 +844,8 @@ class MercadoPagoReservationService
 
     private function formatAuditMoney(float $amount): string
     {
-        return format_price_ar($amount, '$0');
+        $rounded = (int) round($amount, 0, PHP_ROUND_HALF_UP);
+        return '$' . number_format($rounded, 0, ',', '.');
     }
 
     private function ensureCustomerForBooking(array $booking): ?int
