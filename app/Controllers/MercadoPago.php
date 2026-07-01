@@ -8,6 +8,7 @@ use App\Libraries\MercadoPagoReservationService;
 use App\Models\BookingSlotsModel;
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
+use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
 use App\Models\PaymentsModel;
 use App\Models\RejectedPaymentsModel;
@@ -89,6 +90,257 @@ class MercadoPago extends BaseController
         }
 
         return $parsedDate->format('d/m/Y');
+    }
+
+    private function resolveBrandLogoPath(): string
+    {
+        $uploadModel = new UploadModel();
+        $branding = $uploadModel->first();
+        $logoFile = trim((string) ($branding['name'] ?? ''));
+
+        return $logoFile !== ''
+            ? base_url(PUBLIC_FOLDER . 'assets/images/uploads/' . $logoFile)
+            : base_url(PUBLIC_FOLDER . 'assets/images/sinlogo2.png');
+    }
+
+    private function normalizeMpStatus(mixed $status): string
+    {
+        return strtolower(trim((string) $status));
+    }
+
+    private function buildRetryPaymentUrlFromBooking(array $booking): string
+    {
+        $preferenceId = trim((string) ($booking['id_preference_parcial'] ?? ''));
+        if ($preferenceId === '') {
+            $preferenceId = trim((string) ($booking['id_preference_total'] ?? ''));
+        }
+
+        if ($preferenceId === '') {
+            return '';
+        }
+
+        return 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=' . rawurlencode($preferenceId);
+    }
+
+    private function findBookingForMpCallback(array $payload, array $result = []): ?array
+    {
+        $bookingsModel = new BookingsModel();
+        $mercadoPagoModel = new MercadoPagoModel();
+        $rejectedPaymentsModel = new RejectedPaymentsModel();
+
+        $bookingId = (int) ($result['booking_id'] ?? $payload['booking_id'] ?? 0);
+        if ($bookingId > 0) {
+            $booking = $bookingsModel->find($bookingId);
+            if (is_array($booking)) {
+                return $booking;
+            }
+        }
+
+        $preferenceId = trim((string) ($payload['preference_id'] ?? ''));
+        $paymentId = trim((string) ($payload['payment_id'] ?? ''));
+        $externalReference = trim((string) ($payload['external_reference'] ?? ''));
+        $identifiers = array_values(array_filter([$preferenceId, $paymentId, $externalReference], static fn ($value) => $value !== ''));
+
+        foreach ($identifiers as $identifier) {
+            $booking = $bookingsModel->groupStart()
+                ->where('id_preference_parcial', $identifier)
+                ->orWhere('id_preference_total', $identifier)
+                ->groupEnd()
+                ->orderBy('id', 'DESC')
+                ->first();
+
+            if (is_array($booking)) {
+                return $booking;
+            }
+        }
+
+        if ($paymentId !== '') {
+            $mpLog = $mercadoPagoModel->where('payment_id', $paymentId)->orderBy('id', 'DESC')->first();
+            if (!empty($mpLog['id_booking'])) {
+                $booking = $bookingsModel->find((int) $mpLog['id_booking']);
+                if (is_array($booking)) {
+                    return $booking;
+                }
+            }
+        }
+
+        foreach ([$preferenceId, $paymentId] as $identifier) {
+            if ($identifier === '') {
+                continue;
+            }
+
+            $rejectedRecord = $rejectedPaymentsModel->groupStart()
+                ->where('preference_id', $identifier)
+                ->orWhere('payment_id', $identifier)
+                ->groupEnd()
+                ->orderBy('id', 'DESC')
+                ->first();
+
+            if (!empty($rejectedRecord['booking_id'])) {
+                $booking = $bookingsModel->find((int) $rejectedRecord['booking_id']);
+                if (is_array($booking)) {
+                    return $booking;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function findRejectedPaymentForBooking(?array $booking, array $payload = []): ?array
+    {
+        $rejectedPaymentsModel = new RejectedPaymentsModel();
+        $preferenceId = trim((string) ($payload['preference_id'] ?? ''));
+        $paymentId = trim((string) ($payload['payment_id'] ?? ''));
+
+        if (empty($booking['id']) && $preferenceId === '' && $paymentId === '') {
+            return null;
+        }
+
+        $query = $rejectedPaymentsModel;
+
+        if (!empty($booking['id'])) {
+            $query = $query->where('booking_id', (int) $booking['id']);
+        }
+
+        if ($preferenceId !== '' || $paymentId !== '') {
+            $query = $query->groupStart();
+            $hasCondition = false;
+
+            if ($preferenceId !== '') {
+                $query->where('preference_id', $preferenceId);
+                $hasCondition = true;
+            }
+
+            if ($paymentId !== '') {
+                if ($hasCondition) {
+                    $query->orWhere('payment_id', $paymentId);
+                } else {
+                    $query->where('payment_id', $paymentId);
+                }
+            }
+
+            $query = $query->groupEnd();
+        }
+
+        $record = $query->orderBy('id', 'DESC')->first();
+        return is_array($record) ? $record : null;
+    }
+
+    private function buildMpFailureViewData(array $payload, array $result = []): array
+    {
+        $booking = $this->findBookingForMpCallback($payload, $result);
+        $rejectedRecord = $this->findRejectedPaymentForBooking($booking, $payload);
+        $status = $this->normalizeMpStatus($payload['status'] ?? ($result['status'] ?? 'cancelled'));
+
+        if ($status === '' || in_array($status, ['not_found', 'missing_payment_id', 'unknown'], true)) {
+            $status = 'cancelled';
+        }
+
+        $statusMap = [
+            'cancelled' => [
+                'title' => 'Pago cancelado',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver a iniciar la reserva o intentar nuevamente si querés conservar el horario.',
+                'icon' => 'fa-circle-pause',
+                'tone' => 'secondary',
+            ],
+            'rejected' => [
+                'title' => 'Pago rechazado',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver a intentar el pago desde el enlace disponible o iniciar una nueva reserva.',
+                'icon' => 'fa-circle-xmark',
+                'tone' => 'danger',
+            ],
+            'failed' => [
+                'title' => 'Pago rechazado',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver a intentar el pago desde el enlace disponible o iniciar una nueva reserva.',
+                'icon' => 'fa-circle-xmark',
+                'tone' => 'danger',
+            ],
+            'failure' => [
+                'title' => 'Pago cancelado',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver a iniciar la reserva o intentar nuevamente si querés conservar el horario.',
+                'icon' => 'fa-circle-pause',
+                'tone' => 'secondary',
+            ],
+            'not_approved' => [
+                'title' => 'Pago no aprobado',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver a intentar el pago o iniciar una nueva reserva.',
+                'icon' => 'fa-circle-xmark',
+                'tone' => 'danger',
+            ],
+            'pending' => [
+                'title' => 'Pago pendiente',
+                'subtitle' => 'Todavía no se acreditó ningún cobro.',
+                'message' => 'Cuando Mercado Pago confirme la operación, la reserva se validará automáticamente.',
+                'icon' => 'fa-hourglass-half',
+                'tone' => 'warning',
+            ],
+            'in_process' => [
+                'title' => 'Pago en revisión',
+                'subtitle' => 'Todavía no se acreditó ningún cobro.',
+                'message' => 'Mercado Pago está verificando la operación. No se confirmó la reserva todavía.',
+                'icon' => 'fa-clock',
+                'tone' => 'warning',
+            ],
+            'error' => [
+                'title' => 'No pudimos confirmar el pago',
+                'subtitle' => 'No se registró ningún cobro y tu reserva no fue confirmada.',
+                'message' => 'Podés volver al inicio o intentar nuevamente si el horario sigue disponible.',
+                'icon' => 'fa-triangle-exclamation',
+                'tone' => 'danger',
+            ],
+        ];
+
+        $data = $statusMap[$status] ?? $statusMap['rejected'];
+        $retryUrl = trim((string) ($rejectedRecord['retry_url'] ?? ''));
+        if ($retryUrl === '' && $booking) {
+            $retryUrl = $this->buildRetryPaymentUrlFromBooking($booking);
+        }
+
+        $bookingDetails = null;
+        if (is_array($booking)) {
+            $fieldName = trim((string) ($booking['id_field'] ?? '-'));
+            if ($fieldName !== '' && is_numeric($fieldName)) {
+                $fieldsModel = new FieldsModel();
+                $field = $fieldsModel->find((int) $fieldName);
+                $fieldName = trim((string) ($field['name'] ?? $fieldName));
+            }
+
+            $bookingDetails = [
+                'id' => (int) ($booking['id'] ?? 0),
+                'name' => trim((string) ($booking['name'] ?? '')),
+                'phone' => trim((string) ($booking['phone'] ?? '')),
+                'date' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
+                'time' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                'field' => $fieldName !== '' ? $fieldName : '-',
+                'code' => trim((string) ($booking['code'] ?? '')),
+                'total' => format_price_ar($booking['total'] ?? 0),
+                'payment' => format_price_ar($booking['payment'] ?? 0),
+                'difference' => format_price_ar($booking['diference'] ?? 0),
+                'approved' => (int) ($booking['approved'] ?? 0),
+                'annulled' => (int) ($booking['annulled'] ?? 0),
+            ];
+        }
+
+        return [
+            'status' => $status,
+            'title' => $data['title'],
+            'subtitle' => $data['subtitle'],
+            'message' => $data['message'],
+            'icon' => $data['icon'],
+            'tone' => $data['tone'],
+            'retryUrl' => $retryUrl,
+            'homeUrl' => base_url(),
+            'booking' => $bookingDetails,
+            'logoPath' => $this->resolveBrandLogoPath(),
+            'hasRetryUrl' => $retryUrl !== '',
+            'isApprovedBooking' => is_array($booking) && (int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) !== 1,
+        ];
     }
 
     private function resolveCustomerEmail(array $booking): string
@@ -577,7 +829,7 @@ class MercadoPago extends BaseController
 
             if (!$existingPendingBooking) {
                 $orderId = $this->generateBookingOrderId();
-                $bookingsModel->insert([
+                $bookingData = [
                     'date' => $bookingDate,
                     'id_field' => $bookingField,
                     'time_from' => $timeFrom,
@@ -604,7 +856,16 @@ class MercadoPago extends BaseController
                     'partial_by_entries' => $usePayByEntries ? 1 : 0,
                     'paid_entries' => 0,
                     'IdPedido' => $orderId,
-                ]);
+                ];
+
+                $bookingDb = db_connect();
+                if ($bookingDb->fieldExists('created_by_type', 'bookings')) {
+                    $bookingData['created_by_type'] = 'CLIENTE';
+                    $bookingData['created_by_name'] = 'CLIENTE';
+                    $bookingData['created_by_user_id'] = null;
+                }
+
+                $bookingsModel->insert($bookingData);
                 $bookingId = $bookingsModel->getInsertID();
                 $bookingSlotsModel->update($slotId, ['booking_id' => $bookingId]);
                 $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $totalEntries . ' entradas.', 'CLIENTE');
@@ -713,9 +974,31 @@ class MercadoPago extends BaseController
         ];
 
         $result = $this->reservationService()->processCheckoutCallback($payload, 'redirect_failure');
-        $status = strtolower(trim((string) ($result['status'] ?? $payload['status'] ?? 'cancelled')));
+        $status = $this->normalizeMpStatus($result['status'] ?? $payload['status'] ?? 'cancelled');
 
-        return redirect()->to(base_url('pagoRechazado?status=' . rawurlencode($status !== '' ? $status : 'cancelled')));
+        if (in_array($status, ['approved', 'already_approved'], true) && !empty($result['booking_id'])) {
+            return redirect()->to(base_url('pagoAprobado/' . $result['booking_id']));
+        }
+
+        if (empty($result['booking_id'])) {
+            $fallbackFilters = array_filter([
+                'bookingId' => $this->request->getVar('booking_id'),
+                'preferenceIdParcial' => $payload['preference_id'] ?? null,
+                'preferenceIdTotal' => $payload['preference_id'] ?? null,
+            ], static fn ($value) => $value !== null && $value !== '');
+
+            if ($fallbackFilters !== []) {
+                $this->reservationService()->cancelPendingReservations($fallbackFilters, 'redirect_failure_fallback');
+            }
+        }
+
+        $html = view('mercadoPago/failure', $this->buildMpFailureViewData($payload, $result));
+
+        return $this->response
+            ->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->setHeader('Pragma', 'no-cache')
+            ->setHeader('Expires', '0')
+            ->setBody($html);
     }
 
     public function successView($bookingId)
@@ -741,42 +1024,67 @@ class MercadoPago extends BaseController
 
     public function failureView()
     {
-        $status = strtolower(trim((string) ($this->request->getGet('status') ?? 'cancelled')));
-        return view('mercadoPago/failure', ['status' => $status]);
+        $payload = [
+            'status' => $this->request->getGet('status'),
+            'payment_id' => $this->request->getGet('payment_id'),
+            'preference_id' => $this->request->getGet('preference_id'),
+            'external_reference' => $this->request->getGet('external_reference'),
+            'booking_id' => $this->request->getGet('booking_id'),
+        ];
+
+        $result = $this->reservationService()->processCheckoutCallback($payload, 'redirect_failure_view');
+        $status = $this->normalizeMpStatus($result['status'] ?? $payload['status'] ?? 'cancelled');
+
+        if (in_array($status, ['approved', 'already_approved'], true) && !empty($result['booking_id'])) {
+            return redirect()->to(base_url('pagoAprobado/' . $result['booking_id']));
+        }
+
+        if (empty($result['booking_id'])) {
+            $fallbackFilters = array_filter([
+                'bookingId' => $this->request->getGet('booking_id'),
+                'preferenceIdParcial' => $payload['preference_id'] ?? null,
+                'preferenceIdTotal' => $payload['preference_id'] ?? null,
+            ], static fn ($value) => $value !== null && $value !== '');
+
+            if ($fallbackFilters !== []) {
+                $this->reservationService()->cancelPendingReservations($fallbackFilters, 'redirect_failure_view_fallback');
+            }
+        }
+
+        $html = view('mercadoPago/failure', $this->buildMpFailureViewData($payload, $result));
+
+        return $this->response
+            ->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->setHeader('Pragma', 'no-cache')
+            ->setHeader('Expires', '0')
+            ->setBody($html);
     }
 
     public function cancelPendingMpReservation()
     {
-        $bookingsModel = new BookingsModel();
-        $data = $this->request->getJSON();
-
-        $bookingId = $data->bookingId ?? null;
-        $preferenceIdParcial = $data->preferenceIdParcial ?? null;
-        $preferenceIdTotal = $data->preferenceIdTotal ?? null;
+        $data = (array) ($this->request->getJSON(true) ?? []);
+        $bookingId = $data['bookingId'] ?? null;
+        $preferenceIdParcial = $data['preferenceIdParcial'] ?? null;
+        $preferenceIdTotal = $data['preferenceIdTotal'] ?? null;
+        $date = $data['date'] ?? $data['fecha'] ?? null;
+        $fieldId = $data['id_field'] ?? $data['cancha'] ?? null;
+        $timeFrom = $data['time_from'] ?? $data['horarioDesde'] ?? null;
+        $timeUntil = $data['time_until'] ?? $data['horarioHasta'] ?? null;
 
         try {
-            if ($bookingId) {
-                $booking = $bookingsModel->find($bookingId);
-                if ($booking) {
-                    $this->reservationService()->markBookingAsAbandoned($booking, 'frontend_cancel_booking_id');
-                }
-            } elseif ($preferenceIdParcial || $preferenceIdTotal) {
-                $query = $bookingsModel->groupStart();
-                if ($preferenceIdParcial) {
-                    $query->where('id_preference_parcial', $preferenceIdParcial);
-                }
-                if ($preferenceIdTotal) {
-                    $query->orWhere('id_preference_total', $preferenceIdTotal);
-                }
-                $query->groupEnd();
+            $filters = [
+                'bookingId' => $bookingId,
+                'preferenceIdParcial' => $preferenceIdParcial,
+                'preferenceIdTotal' => $preferenceIdTotal,
+                'date' => $date,
+                'id_field' => $fieldId,
+                'time_from' => $timeFrom,
+                'time_until' => $timeUntil,
+            ];
 
-                $bookings = $query->findAll();
-                foreach ($bookings as $booking) {
-                    $this->reservationService()->markBookingAsAbandoned($booking, 'frontend_cancel_preference');
-                }
-            }
+            $result = $this->reservationService()->cancelPendingReservations($filters, 'frontend_cancel_pending_mp');
 
-            return $this->response->setJSON($this->setResponse(null, null, null, 'Operación completada'));
+            return $this->response->setJSON($this->setResponse(null, null, $result, 'Operación completada'));
         } catch (\Throwable $e) {
             return $this->response->setJSON($this->setResponse(500, true, null, $e->getMessage()));
         }

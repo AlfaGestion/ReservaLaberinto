@@ -36,9 +36,9 @@ if ($rawDate !== '') {
 $timeFrom = trim((string) ($booking['time_from'] ?? ''));
 $timeUntil = trim((string) ($booking['time_until'] ?? ''));
 $schedule = trim($timeFrom . ' a ' . $timeUntil);
-$total = number_format((float) ($booking['total'] ?? 0), 0, ',', '.');
-$payment = number_format((float) ($booking['payment'] ?? 0), 0, ',', '.');
-$difference = number_format((float) ($booking['diference'] ?? 0), 0, ',', '.');
+$total = format_price_ar($booking['total'] ?? 0);
+$payment = format_price_ar($booking['payment'] ?? 0);
+$difference = format_price_ar($booking['diference'] ?? 0);
 $isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && $paymentStatus === 'approved' && (int) ($booking['annulled'] ?? 0) !== 1;
 ?>
 <!DOCTYPE html>
@@ -49,6 +49,15 @@ $isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && $paymentStatus =
     <title><?= esc($currentStatus['title']) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            try {
+                sessionStorage.setItem('bookingMercadoPagoReturnStatus', 'approved');
+            } catch (error) {
+                // ignore storage errors
+            }
+        })();
+    </script>
 </head>
 <body class="bg-light">
 <div class="container py-5">

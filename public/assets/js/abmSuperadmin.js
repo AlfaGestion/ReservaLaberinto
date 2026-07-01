@@ -64,10 +64,7 @@ let idBooking
 let currentFieldId = null
 
 function formatAdminMoney(value) {
-    return new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(value)
+    return formatPriceAR(value, '$0')
 }
 
 function showAdminNotice(message, type = 'success', title = '') {
@@ -817,6 +814,9 @@ async function saveGeneralSettings(url, data) {
 
         if (response.ok) {
             showAdminNotice(responseData.message || 'Configuracion guardada correctamente')
+            if (responseData.warning) {
+                showAdminNotice(responseData.warning, 'info', 'Aviso')
+            }
         } else {
             showAdminNotice(responseData.message || 'No se pudo guardar la configuracion', 'error')
         }

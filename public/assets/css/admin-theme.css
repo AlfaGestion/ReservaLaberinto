@@ -1,0 +1,1088 @@
+html.theme-light {
+    --theme-page-bg: radial-gradient(circle at top, rgba(233, 133, 33, 0.12), transparent 24%), linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
+    --theme-text: #243127;
+    --theme-text-muted: #6b7d71;
+    --theme-surface: rgba(255, 255, 255, 0.96);
+    --theme-surface-strong: #fff;
+    --theme-surface-soft: #f8fbf8;
+    --theme-border: rgba(13, 106, 58, 0.1);
+    --theme-border-soft: #e0e7e0;
+    --theme-input-bg: rgba(255, 255, 255, 0.96);
+    --theme-input-bg-strong: #fff;
+    --theme-input-text: #1f2937;
+    --theme-input-placeholder: #6a7d70;
+    --theme-accent: #0d6a3a;
+    --theme-accent-contrast: #fff;
+    --theme-accent-2: #f39323;
+    --theme-shadow: 0 24px 60px rgba(21, 36, 24, 0.12);
+    --theme-shadow-soft: 0 14px 30px rgba(21, 36, 24, 0.08);
+    --theme-badge-muted-bg: #f7f7f8;
+    --theme-badge-muted-text: #6b7280;
+    --theme-badge-muted-border: #e1e4e8;
+    --theme-table-head: #486255;
+    --theme-table-row-paid: #e7f5ea;
+    --theme-table-row-pending: #f3f4f6;
+    --theme-modal-scroll-bg: #f8f9fa;
+}
+
+html.theme-dark {
+    --theme-page-bg: radial-gradient(circle at top, rgba(102, 156, 255, 0.14), transparent 28%), linear-gradient(180deg, #081726 0%, #0e243d 100%);
+    --theme-text: #eef4fb;
+    --theme-text-muted: #a9bfd7;
+    --theme-surface: rgba(11, 28, 49, 0.98);
+    --theme-surface-strong: #0d243d;
+    --theme-surface-soft: #143456;
+    --theme-border: rgba(142, 182, 229, 0.16);
+    --theme-border-soft: rgba(142, 182, 229, 0.12);
+    --theme-input-bg: #102843;
+    --theme-input-bg-strong: #133357;
+    --theme-input-text: #f2f7fc;
+    --theme-input-placeholder: #8ea7c3;
+    --theme-accent: #f39323;
+    --theme-accent-contrast: #102945;
+    --theme-accent-2: #76d39a;
+    --theme-shadow: 0 24px 56px rgba(2, 10, 20, 0.46);
+    --theme-shadow-soft: 0 16px 32px rgba(2, 10, 20, 0.30);
+    --theme-badge-muted-bg: #18324f;
+    --theme-badge-muted-text: #d6e5f4;
+    --theme-badge-muted-border: rgba(142, 182, 229, 0.12);
+    --theme-table-head: #c8d7e7;
+    --theme-table-row-paid: #173854;
+    --theme-table-row-pending: #1a3552;
+    --theme-modal-scroll-bg: #102945;
+}
+
+html.theme-dark body.admin-page,
+html.theme-light body.admin-page {
+    background: var(--theme-page-bg);
+    color: var(--theme-text);
+}
+
+body.admin-page .admin-card,
+body.admin-page .admin-pane,
+body.admin-page .admin-section-card,
+body.admin-page .admin-notice,
+body.admin-page .modal-content,
+body.admin-page .booking-stage,
+body.admin-page .booking-availability-inline,
+body.admin-page .payment-entry-modal,
+body.admin-page .payment-entry-card,
+body.admin-page .customer-notice,
+body.admin-page .public-notice-modal,
+body.admin-page .dropdown-menu {
+    background: var(--theme-surface);
+    color: var(--theme-text);
+    border-color: var(--theme-border);
+    box-shadow: var(--theme-shadow);
+}
+
+body.admin-page .admin-section-card,
+body.admin-page .booking-stage,
+body.admin-page .booking-availability-inline,
+body.admin-page .payment-entry-card,
+body.admin-page .customer-notice,
+body.admin-page .public-notice-modal {
+    border: 1px solid var(--theme-border-soft);
+}
+
+body.admin-page .form-control,
+body.admin-page .form-select,
+body.admin-page textarea,
+body.admin-page .input-group-text,
+body.admin-page .flatpickr-input {
+    background-color: var(--theme-input-bg);
+    color: var(--theme-input-text);
+    border-color: var(--theme-border-soft);
+}
+
+body.admin-page .form-control::placeholder,
+body.admin-page textarea::placeholder {
+    color: var(--theme-input-placeholder);
+}
+
+body.admin-page .form-control:focus,
+body.admin-page .form-select:focus,
+body.admin-page textarea:focus,
+body.admin-page .flatpickr-input:focus {
+    background-color: var(--theme-input-bg-strong);
+    color: var(--theme-input-text);
+    border-color: var(--theme-accent);
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--theme-accent) 20%, transparent);
+}
+
+body.admin-page .text-muted,
+body.admin-page .small.text-muted,
+body.admin-page .form-text,
+body.admin-page .booking-stage__subtitle,
+body.admin-page .booking-price-notice,
+body.admin-page .booking-coordinator-notice,
+body.admin-page .pay-by-entries-summary__label,
+body.admin-page .pay-by-entries-summary__footer-label,
+body.admin-page .admin-notice__message {
+    color: var(--theme-text-muted) !important;
+}
+
+body.admin-page .booking-stage__title,
+body.admin-page .admin-notice__title,
+body.admin-page .customer-notice__title,
+body.admin-page .public-notice-inline__title,
+body.admin-page .modal-title,
+body.admin-page .form-label,
+body.admin-page .booking-stage__step {
+    color: var(--theme-text);
+}
+
+body.admin-page .booking-stage__button,
+body.admin-page .admin-userbar__logout,
+body.admin-page .btn {
+    box-shadow: 0 16px 30px rgba(21, 36, 24, 0.10);
+}
+
+body.admin-page .btn-primary,
+body.admin-page .btn-success,
+body.admin-page .btn-danger {
+    color: var(--theme-accent-contrast);
+}
+
+body.admin-page .btn-outline-secondary,
+body.admin-page .btn-outline-dark,
+body.admin-page .btn-outline-light {
+    color: var(--theme-text);
+    border-color: var(--theme-border-soft);
+}
+
+body.admin-page .btn-outline-secondary:hover,
+body.admin-page .btn-outline-dark:hover,
+body.admin-page .btn-outline-light:hover {
+    background: var(--theme-text);
+    color: var(--theme-surface-strong);
+}
+
+body.admin-page .table {
+    color: var(--theme-text);
+    --bs-table-bg: var(--theme-surface);
+    --bs-table-color: var(--theme-text);
+    --bs-table-striped-bg: color-mix(in srgb, var(--theme-surface) 84%, var(--theme-text) 16%);
+    --bs-table-striped-color: var(--theme-text);
+    --bs-table-hover-bg: color-mix(in srgb, var(--theme-surface) 76%, var(--theme-text) 24%);
+    --bs-table-hover-color: var(--theme-text);
+    --bs-table-border-color: var(--theme-border-soft);
+}
+
+body.admin-page .table thead th {
+    color: var(--theme-table-head);
+}
+
+body.admin-page .badge {
+    color: inherit;
+}
+
+body.admin-page .booking-payment-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+body.admin-page .booking-payment-badge__note {
+    color: var(--theme-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.25;
+    max-width: 18rem;
+}
+
+body.admin-page .booking-payment-badge--na {
+    background: var(--theme-badge-muted-bg);
+    color: var(--theme-badge-muted-text);
+    border-color: var(--theme-badge-muted-border);
+}
+
+body.admin-page .booking-payment-badge--pending-mp {
+    background: var(--theme-warning-soft-bg, color-mix(in srgb, var(--theme-accent-2) 18%, var(--theme-surface) 82%));
+    color: var(--theme-warning-text, var(--theme-text));
+    border-color: var(--theme-warning-border, color-mix(in srgb, var(--theme-accent-2) 22%, var(--theme-border-soft) 78%));
+}
+
+body.admin-page .booking-payment-badge--partial {
+    background: color-mix(in srgb, var(--theme-accent-2) 14%, var(--theme-surface) 86%);
+    color: color-mix(in srgb, var(--theme-text) 88%, var(--theme-accent-2) 12%);
+    border-color: color-mix(in srgb, var(--theme-accent-2) 28%, var(--theme-border-soft) 72%);
+}
+
+body.admin-page .booking-payment-badge--registered {
+    background: color-mix(in srgb, var(--theme-accent) 12%, var(--theme-surface) 88%);
+    color: var(--theme-text);
+    border-color: var(--theme-border-soft);
+}
+
+body.admin-page .booking-payment-badge--cancelled {
+    background: color-mix(in srgb, #d95f5f 14%, var(--theme-surface) 86%);
+    color: color-mix(in srgb, #d95f5f 26%, var(--theme-text) 74%);
+    border-color: color-mix(in srgb, #d95f5f 24%, var(--theme-border-soft) 76%);
+}
+
+body.admin-page .modal-header,
+body.admin-page .modal-footer {
+    border-color: var(--theme-border-soft);
+}
+
+body.admin-page .modal-body {
+    color: var(--theme-text);
+}
+
+body.admin-page .dropdown-item {
+    color: var(--theme-text);
+}
+
+body.admin-page .dropdown-item:hover,
+body.admin-page .dropdown-item:focus {
+    background: color-mix(in srgb, var(--theme-accent) 16%, transparent);
+    color: var(--theme-text);
+}
+
+body.admin-page .booking-stage__button--secondary,
+body.admin-page .booking-stage__button--ghost,
+body.admin-page .payment-entry-switch,
+body.admin-page .pay-by-entries-summary__card,
+body.admin-page .pay-by-entries-summary__row,
+body.admin-page .pay-by-entries-summary__footer,
+body.admin-page #ingresarPago .payment-entry-note,
+body.admin-page #ingresarPago .payment-entry-note--strong {
+    background: var(--theme-surface-soft);
+    border-color: var(--theme-border-soft);
+    color: var(--theme-text);
+}
+
+body.admin-page .public-notice-modal__button,
+body.admin-page .booking-stage__button--secondary,
+body.admin-page .booking-stage__button--ghost {
+    background: var(--theme-surface-strong);
+    color: var(--theme-text);
+}
+
+body.admin-page #availabilityResult,
+body.admin-page .terms-container {
+    background: var(--theme-modal-scroll-bg);
+    color: var(--theme-text);
+}
+
+body.admin-page .flatpickr-calendar {
+    background: var(--theme-surface-strong);
+    color: var(--theme-text);
+    border-color: var(--theme-border-soft);
+    box-shadow: var(--theme-shadow);
+}
+
+body.admin-page .flatpickr-months,
+body.admin-page .flatpickr-weekdays,
+body.admin-page .flatpickr-days {
+    background: var(--theme-surface-strong);
+}
+
+body.admin-page .flatpickr-day {
+    color: var(--theme-text);
+}
+
+body.admin-page .flatpickr-day:hover,
+body.admin-page .flatpickr-day.selected,
+body.admin-page .flatpickr-day.startRange,
+body.admin-page .flatpickr-day.endRange {
+    background: var(--theme-accent);
+    border-color: var(--theme-accent);
+    color: var(--theme-accent-contrast);
+}
+
+html.theme-dark body.admin-page {
+    background:
+        radial-gradient(circle at top, rgba(102, 156, 255, 0.18), transparent 28%),
+        linear-gradient(180deg, #0b1c34 0%, #102945 100%);
+    color: #eef4fb;
+}
+
+html.theme-dark body.admin-page .admin-topbar {
+    background: rgba(7, 19, 35, 0.98);
+    border-bottom-color: rgba(142, 182, 229, 0.14);
+    box-shadow: 0 16px 36px rgba(2, 10, 20, 0.38);
+}
+
+html.theme-dark body.admin-page .admin-topbar .navbar-brand {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+html.theme-dark body.admin-page .admin-card,
+html.theme-dark body.admin-page .admin-pane,
+html.theme-dark body.admin-page .admin-section-card,
+html.theme-dark body.admin-page .admin-notice,
+html.theme-dark body.admin-page .modal-content {
+    background: rgba(16, 40, 68, 0.98);
+    border-color: rgba(142, 182, 229, 0.14);
+    color: #eef4fb;
+    box-shadow: 0 18px 44px rgba(4, 14, 28, 0.30);
+}
+
+html.theme-dark body.admin-page .admin-alert {
+    box-shadow: 0 14px 30px rgba(4, 14, 28, 0.22);
+}
+
+html.theme-dark body.admin-page .admin-userbar__name,
+html.theme-dark body.admin-page .admin-notice__message,
+html.theme-dark body.admin-page .admin-section-card .text-muted,
+html.theme-dark body.admin-page .admin-pane .text-muted,
+html.theme-dark body.admin-page .table,
+html.theme-dark body.admin-page .modal-title,
+html.theme-dark body.admin-page .modal-body,
+html.theme-dark body.admin-page .form-label,
+html.theme-dark body.admin-page .form-text {
+    color: #dbe9f8 !important;
+}
+
+html.theme-dark body.admin-page .admin-notice__icon {
+    background: rgba(102, 156, 255, 0.18);
+    color: #d8e7ff;
+}
+
+html.theme-dark body.admin-page .admin-notice--success .admin-notice__icon {
+    background: rgba(24, 119, 95, 0.24);
+    color: #93efcb;
+}
+
+html.theme-dark body.admin-page .admin-notice--error .admin-notice__icon {
+    background: rgba(232, 92, 112, 0.22);
+    color: #ff9fa8;
+}
+
+html.theme-dark body.admin-page .admin-notice--info .admin-notice__icon {
+    background: rgba(102, 156, 255, 0.18);
+    color: #9dc1ff;
+}
+
+html.theme-dark body.admin-page .admin-tabs .nav-link,
+html.theme-dark body.admin-page .admin-subtabs .nav-link {
+    background: #153253;
+    color: #dbe9f8;
+}
+
+html.theme-dark body.admin-page .admin-tabs .nav-link.active {
+    background: #f39323;
+    color: #102945;
+    box-shadow: 0 16px 30px rgba(243, 147, 35, 0.2);
+}
+
+html.theme-dark body.admin-page .admin-subtabs .nav-link.active {
+    background: #1d4066;
+    color: #f5f9fd;
+}
+
+html.theme-dark body.admin-page .admin-pane .table thead th {
+    color: #c8d7e7;
+    border-bottom-color: rgba(142, 182, 229, 0.14);
+}
+
+html.theme-dark body.admin-page .admin-pane .table {
+    --bs-table-bg: #102945;
+    --bs-table-color: #eef4fb;
+    --bs-table-striped-bg: #173554;
+    --bs-table-striped-color: #eef4fb;
+    --bs-table-hover-bg: #1a4063;
+    --bs-table-hover-color: #eef4fb;
+    --bs-table-border-color: rgba(142, 182, 229, 0.12);
+}
+
+html.theme-dark body.admin-page .admin-pane .table > :not(caption) > * > * {
+    background-color: #102945;
+    color: #eef4fb;
+    border-color: rgba(142, 182, 229, 0.12);
+}
+
+html.theme-dark body.admin-page .admin-pane .table tbody tr:hover > * {
+    background-color: #1a4063 !important;
+}
+
+html.theme-dark body.admin-page .admin-pane .table tbody tr.admin-booking-row--paid > * {
+    background: #173854 !important;
+    color: #eef4fb;
+    border-color: rgba(142, 182, 229, 0.14);
+}
+
+html.theme-dark body.admin-page .admin-pane .table tbody tr.admin-booking-row--paid:hover > * {
+    background: #1b4468 !important;
+}
+
+html.theme-dark body.admin-page .admin-pane .table tbody tr.admin-booking-row--pending-mp > * {
+    background: #153253 !important;
+    color: #d7e4f1;
+    border-color: rgba(142, 182, 229, 0.12);
+}
+
+html.theme-dark body.admin-page .admin-pane .table tbody tr.admin-booking-row--pending-mp:hover > * {
+    background: #1b4468 !important;
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--pending {
+    background: #203d61;
+    color: #dfe9f5;
+    border-color: rgba(142, 182, 229, 0.14);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--pending-mp {
+    background: #5a4210;
+    color: #ffe9b3;
+    border-color: rgba(255, 212, 122, 0.22);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--approved {
+    background: rgba(24, 119, 95, 0.22);
+    color: #baf7dc;
+    border-color: rgba(24, 119, 95, 0.28);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--partial {
+    background: #5f4310;
+    color: #ffe2aa;
+    border-color: rgba(255, 207, 102, 0.24);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--registered {
+    background: #1d3b5d;
+    color: #ecf4fb;
+    border-color: rgba(142, 182, 229, 0.14);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--cancelled {
+    background: #5d2325;
+    color: #ffd0cf;
+    border-color: rgba(245, 140, 140, 0.24);
+}
+
+html.theme-dark body.admin-page .booking-payment-badge--na {
+    background: #1b3554;
+    color: #c6d6e8;
+    border-color: rgba(142, 182, 229, 0.12);
+}
+
+html.theme-dark body.admin-page .form-control,
+html.theme-dark body.admin-page .form-select,
+html.theme-dark body.admin-page textarea,
+html.theme-dark body.admin-page .input-group-text {
+    background-color: #112b49;
+    color: #f2f7fc;
+    border-color: rgba(142, 182, 229, 0.14);
+}
+
+html.theme-dark body.admin-page .form-control::placeholder,
+html.theme-dark body.admin-page textarea::placeholder {
+    color: #8ea7c3;
+}
+
+html.theme-dark body.admin-page .form-control:focus,
+html.theme-dark body.admin-page .form-select:focus,
+html.theme-dark body.admin-page textarea:focus {
+    background-color: #133255;
+    color: #f2f7fc;
+    border-color: #f39323;
+    box-shadow: 0 0 0 0.25rem rgba(243, 147, 35, 0.2);
+}
+
+html.theme-dark body.admin-page .modal-header,
+html.theme-dark body.admin-page .modal-footer {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+html.theme-dark body.admin-page .dropdown-menu {
+    background: #133253;
+    border-color: rgba(142, 182, 229, 0.14);
+    box-shadow: 0 16px 34px rgba(4, 14, 28, 0.28);
+}
+
+html.theme-dark body.admin-page .dropdown-item {
+    color: #dbe9f8;
+}
+
+html.theme-dark body.admin-page .dropdown-item:hover,
+html.theme-dark body.admin-page .dropdown-item:focus {
+    background: rgba(102, 156, 255, 0.16);
+    color: #fff;
+}
+
+html.theme-dark body.admin-page .btn-outline-dark,
+html.theme-dark body.admin-page .btn-outline-secondary,
+html.theme-dark body.admin-page .btn-outline-light {
+    color: #dbe9f8;
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+html.theme-dark body.admin-page .btn-outline-dark:hover,
+html.theme-dark body.admin-page .btn-outline-secondary:hover,
+html.theme-dark body.admin-page .btn-outline-light:hover {
+    background: #dbe9f8;
+    color: #102945;
+}
+
+html.theme-dark body.admin-page .bg-light {
+    background-color: #133253 !important;
+    color: #dbe9f8 !important;
+}
+
+html.theme-dark body.admin-page .text-dark {
+    color: #dbe9f8 !important;
+}
+
+html.theme-dark body.admin-page .border {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.theme-dark body.admin-page #selectDateBooking,
+html.theme-dark body.admin-page #selectDateReport {
+    background:
+        radial-gradient(circle at top, rgba(102, 156, 255, 0.14), transparent 28%),
+        linear-gradient(180deg, rgba(16, 40, 68, 0.98) 0%, rgba(19, 50, 83, 0.98) 100%);
+    border-color: rgba(142, 182, 229, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html.theme-dark body.admin-page #selectDateBooking strong,
+html.theme-dark body.admin-page #selectDateReport .form-check-label {
+    color: #e9f1eb;
+}
+
+html.theme-dark body.admin-page .booking-stage,
+html.theme-dark body.admin-page .booking-availability-inline,
+html.theme-dark body.admin-page .booking-stage__header,
+html.theme-dark body.admin-page .payment-entry-modal,
+html.theme-dark body.admin-page .payment-entry-card,
+html.theme-dark body.admin-page .public-notice-modal,
+html.theme-dark body.admin-page .customer-notice,
+html.theme-dark body.admin-page .modal-content,
+html.theme-dark body.admin-page .dropdown-menu {
+    background: var(--theme-surface);
+    color: var(--theme-text);
+    border-color: var(--theme-border);
+}
+
+html.theme-dark body.admin-page .booking-stage__title,
+html.theme-dark body.admin-page .booking-stage__subtitle,
+html.theme-dark body.admin-page .booking-stage__step,
+html.theme-dark body.admin-page .booking-price-notice,
+html.theme-dark body.admin-page .booking-coordinator-notice,
+html.theme-dark body.admin-page .payment-entry-switch .form-check-label,
+html.theme-dark body.admin-page .pay-by-entries-summary__label,
+html.theme-dark body.admin-page .pay-by-entries-summary__footer-label,
+html.theme-dark body.admin-page .public-notice-inline__title,
+html.theme-dark body.admin-page .public-notice-inline__message,
+html.theme-dark body.admin-page .customer-notice__title,
+html.theme-dark body.admin-page .customer-notice__message {
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page #bookingForm .form-control,
+html.theme-dark body.admin-page #bookingForm .form-select,
+html.theme-dark body.admin-page #bookingForm textarea,
+html.theme-dark body.admin-page #bookingForm .input-group-text,
+html.theme-dark body.admin-page #ingresarPago .form-control,
+html.theme-dark body.admin-page #ingresarPago .form-select,
+html.theme-dark body.admin-page #ingresarPago textarea,
+html.theme-dark body.admin-page #modalConfirmarReserva .form-control,
+html.theme-dark body.admin-page #modalConfirmarReserva .form-select,
+html.theme-dark body.admin-page #modalConfirmarReserva textarea,
+html.theme-dark body.admin-page #editarReservaModal .form-control,
+html.theme-dark body.admin-page #editarReservaModal .form-select,
+html.theme-dark body.admin-page #editarReservaModal textarea,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .form-control,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .form-select,
+html.theme-dark body.admin-page #sendInvoiceEmailModal textarea,
+html.theme-dark body.admin-page .flatpickr-input {
+    background-color: var(--theme-input-bg);
+    color: var(--theme-input-text);
+    border-color: var(--theme-border-soft);
+}
+
+html.theme-dark body.admin-page #bookingForm .form-control::placeholder,
+html.theme-dark body.admin-page #ingresarPago .form-control::placeholder,
+html.theme-dark body.admin-page #modalConfirmarReserva .form-control::placeholder,
+html.theme-dark body.admin-page #editarReservaModal .form-control::placeholder,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .form-control::placeholder,
+html.theme-dark body.admin-page .flatpickr-input::placeholder {
+    color: var(--theme-input-placeholder);
+}
+
+html.theme-dark body.admin-page .booking-stage__button--secondary,
+html.theme-dark body.admin-page .booking-stage__button--ghost,
+html.theme-dark body.admin-page .public-notice-modal__button,
+html.theme-dark body.admin-page .payment-entry-switch,
+html.theme-dark body.admin-page .pay-by-entries-summary__card,
+html.theme-dark body.admin-page .pay-by-entries-summary__row,
+html.theme-dark body.admin-page .pay-by-entries-summary__footer,
+html.theme-dark body.admin-page #ingresarPago .payment-entry-note,
+html.theme-dark body.admin-page #ingresarPago .payment-entry-note--strong {
+    background: var(--theme-surface-soft);
+    color: var(--theme-text);
+    border-color: var(--theme-border-soft);
+}
+
+html.theme-dark body.admin-page .payment-entry-note,
+html.theme-dark body.admin-page .payment-entry-note--strong {
+    background: color-mix(in srgb, var(--theme-accent) 16%, var(--theme-surface));
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page #bookingForm .form-control,
+html.theme-dark body.admin-page #bookingForm .form-select,
+html.theme-dark body.admin-page #bookingForm textarea,
+html.theme-dark body.admin-page #bookingForm .flatpickr-input,
+html.theme-dark body.admin-page #bookingForm #div-monto .form-control,
+html.theme-dark body.admin-page #bookingForm #inputqtyvisitors,
+html.theme-dark body.admin-page #bookingForm #inputMonto,
+html.theme-dark body.admin-page #bookingForm #telefono,
+html.theme-dark body.admin-page #bookingForm #nombre,
+html.theme-dark body.admin-page #bookingForm #email {
+    background: var(--theme-input-bg);
+    color: var(--theme-input-text);
+    border-color: var(--theme-border-soft);
+}
+
+html.theme-dark body.admin-page #bookingForm .form-control::placeholder,
+html.theme-dark body.admin-page #bookingForm textarea::placeholder {
+    color: var(--theme-input-placeholder);
+}
+
+html.theme-dark body.admin-page #bookingForm .booking-stage,
+html.theme-dark body.admin-page #bookingForm .booking-stage__header,
+html.theme-dark body.admin-page #bookingForm .booking-stage__title,
+html.theme-dark body.admin-page #bookingForm .booking-stage__subtitle,
+html.theme-dark body.admin-page #bookingForm .booking-availability-inline,
+html.theme-dark body.admin-page #bookingForm .booking-availability-inline__header,
+html.theme-dark body.admin-page #bookingForm .booking-availability-inline__title,
+html.theme-dark body.admin-page #bookingForm .booking-availability-inline__subtitle,
+html.theme-dark body.admin-page #bookingForm .booking-price-notice,
+html.theme-dark body.admin-page #bookingForm .booking-coordinator-notice {
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page #bookingForm .booking-stage,
+html.theme-dark body.admin-page #bookingForm .booking-stage__header,
+html.theme-dark body.admin-page #bookingForm .booking-availability-inline,
+html.theme-dark body.admin-page #bookingForm .booking-stage__actions {
+    background: transparent;
+}
+
+html.theme-dark body.admin-page #modalConfirmarReserva .modal-title,
+html.theme-dark body.admin-page #ingresarPago .payment-entry-modal__header .modal-title,
+html.theme-dark body.admin-page #editarReservaModal .modal-title,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .modal-title,
+html.theme-dark body.admin-page #completarPagoModal .modal-title,
+html.theme-dark body.admin-page #modalCambiarEstado .modal-title,
+html.theme-dark body.admin-page #anularReservaModal .modal-title {
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page #modalConfirmarReserva .btn-close,
+html.theme-dark body.admin-page #ingresarPago .payment-entry-modal__header .btn-close,
+html.theme-dark body.admin-page #editarReservaModal .btn-close,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .btn-close,
+html.theme-dark body.admin-page #completarPagoModal .btn-close,
+html.theme-dark body.admin-page #modalCambiarEstado .btn-close,
+html.theme-dark body.admin-page #anularReservaModal .btn-close {
+    filter: invert(1) grayscale(1);
+}
+
+html.theme-dark body.admin-page #ingresarPago .payment-entry-amount,
+html.theme-dark body.admin-page #ingresarPago .payment-entry-amount:disabled,
+html.theme-dark body.admin-page #div-monto .form-control {
+    background: var(--theme-input-bg);
+    color: var(--theme-input-text);
+    -webkit-text-fill-color: var(--theme-input-text);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.03);
+}
+
+html.theme-dark body.admin-page #ingresarPago .payment-entry-modal__footer > .btn,
+html.theme-dark body.admin-page #modalConfirmarReserva .modal-footer .btn,
+html.theme-dark body.admin-page #editarReservaModal .modal-footer .btn,
+html.theme-dark body.admin-page #sendInvoiceEmailModal .modal-footer .btn,
+html.theme-dark body.admin-page #completarPagoModal .modal-footer .btn,
+html.theme-dark body.admin-page #modalCambiarEstado .modal-footer .btn,
+html.theme-dark body.admin-page #anularReservaModal .modal-footer .btn {
+    color: var(--theme-accent-contrast);
+}
+
+html.theme-dark body.admin-page .pay-by-entries-summary__card--primary {
+    background: color-mix(in srgb, var(--theme-accent) 14%, var(--theme-surface));
+    border-color: color-mix(in srgb, var(--theme-accent) 30%, var(--theme-border-soft));
+}
+
+html.theme-dark body.admin-page .pay-by-entries-summary__highlight {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 65%, #0b6cc4), color-mix(in srgb, var(--theme-accent) 78%, #0f4c81));
+    box-shadow: 0 12px 26px rgba(11, 108, 196, 0.22);
+}
+
+html.theme-dark body.admin-page .pay-by-entries-summary__highlight-label,
+html.theme-dark body.admin-page .pay-by-entries-summary__highlight-value {
+    color: #fff;
+}
+
+html.theme-dark body.admin-page .flatpickr-calendar {
+    background: var(--theme-surface-strong);
+}
+
+html.theme-dark body.admin-page .flatpickr-day.today {
+    border-color: var(--theme-accent);
+}
+
+html.theme-dark body.admin-page #availabilityResult,
+html.theme-dark body.admin-page .terms-container {
+    background: var(--theme-modal-scroll-bg);
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page .flatpickr-calendar {
+    background: var(--theme-surface-strong);
+    color: var(--theme-text);
+    border-color: var(--theme-border-soft);
+    box-shadow: var(--theme-shadow);
+}
+
+html.theme-dark body.admin-page .flatpickr-months,
+html.theme-dark body.admin-page .flatpickr-weekdays,
+html.theme-dark body.admin-page .flatpickr-days {
+    background: var(--theme-surface-strong);
+}
+
+html.theme-dark body.admin-page .flatpickr-day {
+    color: var(--theme-text);
+}
+
+html.theme-dark body.admin-page .flatpickr-day:hover,
+html.theme-dark body.admin-page .flatpickr-day.selected,
+html.theme-dark body.admin-page .flatpickr-day.startRange,
+html.theme-dark body.admin-page .flatpickr-day.endRange {
+    background: var(--theme-accent);
+    border-color: var(--theme-accent);
+    color: var(--theme-accent-contrast);
+}
+
+.admin-theme-toggle {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--theme-text);
+    font-size: 1.05rem;
+    line-height: 1;
+    box-shadow: none;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.admin-theme-toggle [data-theme-icon] {
+    display: inline-block;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.admin-theme-toggle:hover,
+.admin-theme-toggle:focus-visible {
+    background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+    color: var(--theme-accent);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.admin-theme-toggle:active {
+    transform: translateY(0);
+}
+
+body:not(.admin-page) .site-theme-toggle {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 1090;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 999px;
+    background: rgba(11, 28, 49, 0.12);
+    border: 1px solid rgba(142, 182, 229, 0.18);
+    box-shadow: 0 10px 22px rgba(4, 14, 28, 0.18);
+    backdrop-filter: blur(8px);
+    color: #eef4fb;
+}
+
+body:not(.admin-page) .site-theme-toggle [data-theme-icon] {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+body:not(.admin-page) .site-theme-toggle:hover,
+body:not(.admin-page) .site-theme-toggle:focus-visible {
+    background: rgba(17, 43, 73, 0.28);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .admin-theme-toggle {
+        width: 32px;
+        height: 32px;
+    }
+
+    body:not(.admin-page) .site-theme-toggle {
+        right: 14px;
+        bottom: 14px;
+        width: 34px;
+        height: 34px;
+    }
+
+    body.admin-page .admin-shell {
+        width: calc(100% - 16px);
+        padding: 16px 0 28px;
+    }
+
+    body.admin-page .admin-card {
+        padding: 14px;
+        border-radius: 20px;
+    }
+
+    body.admin-page .admin-topbar-inner {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px 14px 12px;
+        text-align: center;
+    }
+
+    body.admin-page .admin-topbar .navbar-brand {
+        justify-self: center;
+    }
+
+    body.admin-page .admin-topbar .navbar-brand img {
+        max-height: 46px;
+        max-width: min(150px, 48vw);
+    }
+
+    body.admin-page .admin-userbar {
+        justify-self: center;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    body.admin-page .admin-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        margin-bottom: 14px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.admin-page .admin-tabs .nav-link {
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+    body.admin-page .admin-pane {
+        padding: 14px;
+    }
+
+    body.admin-page .admin-toolbar,
+    body.admin-page .admin-toolbar__actions,
+    body.admin-page .admin-toolbar__search,
+    body.admin-page #generalButtons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.admin-page .admin-toolbar__search .form-floating {
+        min-width: 100%;
+    }
+
+    body.admin-page #selectDateBooking,
+    body.admin-page #selectDateReport {
+        padding: 16px 14px;
+        border-radius: 18px;
+    }
+
+    body.admin-page #selectDateBooking .admin-bookings-summary,
+    body.admin-page #selectDateBooking .admin-bookings-dates,
+    body.admin-page #selectDateBooking .admin-bookings-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.admin-page #selectDateBooking .form-floating,
+    body.admin-page #selectDateBooking .btn {
+        width: 100%;
+    }
+
+    body.admin-page #selectDateBooking .form-floating + .form-floating {
+        margin-left: 0 !important;
+        margin-top: 10px;
+    }
+
+    body.admin-page #selectDateBooking .admin-bookings-actions {
+        width: 100%;
+    }
+
+    body.admin-page #selectDateBooking .admin-bookings-actions .btn {
+        width: 100%;
+    }
+
+    body.admin-page .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.admin-page .admin-pane .table {
+        min-width: 1260px;
+    }
+
+    body.admin-page .admin-pane .table > :not(caption) > * > * {
+        padding: 0.7rem 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    body.admin-page .booking-payment-badge {
+        min-width: 92px;
+        font-size: 0.72rem;
+    }
+
+    body.admin-page .admin-pane .btn-group,
+    body.admin-page .admin-pane .dropdown-menu {
+        width: 100%;
+    }
+
+    body.admin-page .modal-dialog {
+        max-width: calc(100vw - 1rem) !important;
+        margin: 0.5rem auto;
+    }
+
+    body.admin-page .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    body.admin-page .modal-body {
+        overflow-y: auto;
+    }
+
+    body.admin-page #editarReservaModal .modal-body,
+    body.admin-page #ingresarPago .modal-body,
+    body.admin-page #modalConfirmarReserva .modal-body,
+    body.admin-page #sendInvoiceEmailModal .modal-body,
+    body.admin-page #completarPagoModal .modal-body {
+        max-height: calc(100vh - 9rem);
+    }
+
+    body.admin-page #editarReservaModal .horario,
+    body.admin-page #editarReservaModal .modal-body > .d-flex.flex-row,
+    body.admin-page #modalConfirmarReserva .modal-footer,
+    body.admin-page #ingresarPago .payment-entry-modal__footer {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    body.admin-page #editarReservaModal .horario > div,
+    body.admin-page #editarReservaModal .modal-body > .d-flex.flex-row > div {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+
+    body.admin-page #editarReservaModal .horario > div + div,
+    body.admin-page #editarReservaModal .modal-body > .d-flex.flex-row > div + div {
+        margin-top: 10px;
+    }
+
+    body.admin-page #editarReservaModal .modal-footer,
+    body.admin-page #modalConfirmarReserva .modal-footer,
+    body.admin-page #ingresarPago .payment-entry-modal__footer,
+    body.admin-page #sendInvoiceEmailModal .modal-footer,
+    body.admin-page #completarPagoModal .modal-footer,
+    body.admin-page #anularReservaModal .modal-footer,
+    body.admin-page #modalCambiarEstado .modal-footer {
+        gap: 10px;
+    }
+
+    body.admin-page #editarReservaModal .modal-footer .btn,
+    body.admin-page #modalConfirmarReserva .modal-footer .btn,
+    body.admin-page #ingresarPago .payment-entry-modal__footer .btn,
+    body.admin-page #sendInvoiceEmailModal .modal-footer .btn,
+    body.admin-page #completarPagoModal .modal-footer .btn,
+    body.admin-page #anularReservaModal .modal-footer .btn,
+    body.admin-page #modalCambiarEstado .modal-footer .btn {
+        width: 100%;
+    }
+
+    body.admin-page #ingresarPago .payment-entry-modal__header {
+        padding: 18px 16px 8px;
+    }
+
+    body.admin-page #ingresarPago .payment-entry-modal__body {
+        padding: 4px 16px 8px;
+    }
+
+    body.admin-page #ingresarPago .payment-entry-modal__footer {
+        padding: 10px 16px 16px;
+    }
+
+    body.admin-page #ingresarPago .payment-entry-amount {
+        font-size: 1.65rem;
+        min-height: 64px;
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    body.admin-page .admin-shell {
+        width: calc(100% - 10px);
+    }
+
+    body.admin-page .admin-card,
+    body.admin-page .admin-pane {
+        border-radius: 18px;
+    }
+
+    body.admin-page .admin-tabs .nav-link {
+        padding: 9px 12px;
+        font-size: 0.92rem;
+    }
+
+    body.admin-page #selectDateBooking,
+    body.admin-page #selectDateReport {
+        padding: 14px 12px;
+    }
+
+    body.admin-page .admin-pane .table {
+        min-width: 1180px;
+    }
+
+    body.admin-page .admin-pane .table > :not(caption) > * > * {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.86rem;
+    }
+
+    body.admin-page .admin-pane .booking-payment-badge {
+        min-width: 84px;
+    }
+
+    body.admin-page #editarReservaModal .modal-body,
+    body.admin-page #ingresarPago .modal-body,
+    body.admin-page #modalConfirmarReserva .modal-body,
+    body.admin-page #sendInvoiceEmailModal .modal-body,
+    body.admin-page #completarPagoModal .modal-body {
+        max-height: calc(100vh - 8.5rem);
+    }
+
+    body.admin-page #ingresarPago .payment-entry-note,
+    body.admin-page #ingresarPago .payment-entry-note--strong {
+        padding: 14px 14px;
+    }
+
+    body.admin-page #ingresarPago .payment-entry-switch,
+    body.admin-page #payByEntriesToggleWrapper.payment-entry-card {
+        padding: 12px !important;
+    }
+}

@@ -2,7 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Libraries\EmailDeliveryService;
 use App\Libraries\MercadoPagoReservationService;
+use App\Libraries\NotificationSettingsService;
 use App\Models\BookingsModel;
 use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
@@ -11,16 +13,13 @@ use App\Models\FieldsModel;
 use App\Models\MercadoPagoModel;
 use App\Models\MercadoPagoKeysModel;
 use App\Models\OffersModel;
-use App\Models\PaymentsModel;
 use App\Models\RateModel;
-use App\Models\RejectedPaymentsModel;
 use App\Models\SpecialBookingRequestsModel;
 use App\Models\TimeModel;
 use App\Models\UsersModel;
 use App\Models\UploadModel;
 use App\Models\ValuesModel;
 use CodeIgniter\HTTP\ResponseInterface;
-use Config\Services;
 
 class Superadmin extends BaseController
 {
@@ -66,52 +65,52 @@ class Superadmin extends BaseController
         return $parsedDateTime->format('d/m/Y H:i');
     }
 
-    private function createEmailService()
+    private function resolveCreatedByLabel(array $booking): string
     {
-        $email = Services::email();
-        $email->SMTPTimeout = 8;
+        $createdByType = strtoupper(trim((string) ($booking['created_by_type'] ?? '')));
+        $createdByName = trim((string) ($booking['created_by_name'] ?? ''));
 
-        return $email;
+        if ($createdByType === 'CLIENTE') {
+            return 'Cliente';
+        }
+
+        if ($createdByType === 'ADMIN') {
+            return $createdByName !== '' ? $createdByName : 'Admin';
+        }
+
+        if ($createdByName !== '') {
+            return $createdByName;
+        }
+
+        return '-';
+    }
+
+    private function resolvePendingMercadoPagoExpiresAt(array $booking, ?BookingSlotsModel $bookingSlotsModel = null): string
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        if ($bookingId <= 0) {
+            return '';
+        }
+
+        $bookingSlotsModel ??= new BookingSlotsModel();
+        $slot = $bookingSlotsModel->where('booking_id', $bookingId)
+            ->where('active', 1)
+            ->orderBy('id', 'DESC')
+            ->first();
+
+        $expiresAt = trim((string) ($slot['expires_at'] ?? ''));
+        if ($expiresAt !== '') {
+            return $expiresAt;
+        }
+
+        return '';
     }
 
     private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        foreach ($accounts as $account) {
-            try {
-                $email = $this->createEmailService();
-                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                $email->setFrom($email->fromEmail, $email->fromName);
-                $email->setTo($to);
-                $email->setSubject($subject);
-                $email->setMailType($isHtml ? 'html' : 'text');
-                $email->setMessage($message);
-
-                if ($email->send()) {
-                    return true;
-                }
-
-                log_message('error', 'Fallo envio SMTP con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
-            } catch (\Throwable $e) {
-                log_message('error', 'Fallo envio SMTP con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [], [
+            'context' => 'superadmin',
+        ]);
     }
 
     private function resolveCustomerEmail(array $booking): string
@@ -238,12 +237,12 @@ class Superadmin extends BaseController
 
     private function sendBookingEmails(array $booking): void
     {
-        $uploadModel = new UploadModel();
-        $config = $uploadModel->first();
-        $notificationEmail = trim((string) ($config['notification_email'] ?? ''));
-        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+        $settings = new NotificationSettingsService();
+        $notificationEmailList = $settings->getNotificationRecipients();
 
-        if ($notificationEmailList !== []) {
+        if ($notificationEmailList === []) {
+            log_message('warning', 'No hay emails administrativos configurados para recibir reservas booking_id=' . (int) ($booking['id'] ?? 0));
+        } else {
             $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
             $subjectName = trim((string) ($booking['name'] ?? ''));
             $subjectTimeFrom = trim((string) ($booking['time_from'] ?? ''));
@@ -271,7 +270,12 @@ class Superadmin extends BaseController
                 'primaryActionLabel' => 'Ver reserva',
             ]);
 
-            $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
+            $sentInternal = $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
+            if ($sentInternal) {
+                log_message('info', 'email_confirmation_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . implode(';', $notificationEmailList) . ' subject="' . $subject . '" target=internal');
+            } else {
+                log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . implode(';', $notificationEmailList) . ' subject="' . $subject . '" context=confirmation_internal');
+            }
         }
 
         $customerEmail = $this->resolveCustomerEmail($booking);
@@ -312,7 +316,13 @@ class Superadmin extends BaseController
             'supportText' => 'Se asume el compromiso y la responsabilidad de asistir en el dia y horario acordados. En caso de inasistencia, no se realizaran devoluciones y la reprogramacion queda sujeta a disponibilidad.',
         ]);
 
-        $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
+        $sentCustomer = $this->sendEmailWithFallback($customerEmail, $subject, $html, true);
+        if ($sentCustomer) {
+            log_message('info', 'email_confirmation_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $customerEmail . ' subject="' . $subject . '" target=customer');
+            return;
+        }
+
+        log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . $customerEmail . ' subject="' . $subject . '" context=confirmation_customer');
     }
 
     public function index()
@@ -349,10 +359,12 @@ class Superadmin extends BaseController
                 'nombre' => $booking['name'],
                 'telefono' => $booking['phone'],
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
+                'total_payment' => (int) ($booking['total_payment'] ?? 0),
                 'total_reserva' => $booking['total'],
                 'diferencia' => $booking['diference'],
                 'monto_reserva' => $booking['payment'],
-                'metodo_pago' => $booking['payment_method']
+                'metodo_pago' => $booking['payment_method'],
+                'approved' => (int) ($booking['approved'] ?? 0)
             ];
 
             array_push($bookings, $reserva);
@@ -633,6 +645,7 @@ class Superadmin extends BaseController
     {
         $fieldsModel = new FieldsModel();
         $bookingsModel = new BookingsModel();
+        $bookingSlotsModel = new BookingSlotsModel();
         $data = $this->request->getJSON();
         $this->expireStaleMercadoPagoBookings();
 
@@ -654,7 +667,9 @@ class Superadmin extends BaseController
                 'horario' => $booking['time_from'],
                 'nombre' => $booking['name'],
                 'telefono' => $booking['phone'],
+                'creado_por' => $this->resolveCreatedByLabel($booking),
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
+                'total_payment' => (int) ($booking['total_payment'] ?? 0),
                 'total_reserva' => $booking['total'],
                 'diferencia' => $booking['diference'],
                 'visitantes' => $booking['visitors'],
@@ -662,6 +677,7 @@ class Superadmin extends BaseController
                 'descripcion' => $booking['description'],
                 'metodo_pago' => $booking['payment_method'],
                 'anulada'     => $booking['annulled'],
+                'approved'    => (int) ($booking['approved'] ?? 0),
                 'factura_enviada' => !empty($booking['invoice_email_sent_at']) ? 'Enviada' : 'Pendiente',
                 'factura_enviada_fecha' => !empty($booking['invoice_email_sent_at']) ? $this->formatBookingDateTime((string) $booking['invoice_email_sent_at']) : '',
                 'mp'        => $booking['mp'],
@@ -672,6 +688,7 @@ class Superadmin extends BaseController
                 'pending_entries' => $entrySummary['pending_entries'],
                 'current_unit_price' => $entrySummary['unit_price'],
                 'pending_entries_amount' => $entrySummary['pending_amount'],
+                'mp_expires_at' => $this->resolvePendingMercadoPagoExpiresAt($booking, $bookingSlotsModel),
             ];
 
             array_push($bookings, $reserva);
@@ -688,6 +705,7 @@ class Superadmin extends BaseController
     {
         $fieldsModel = new FieldsModel();
         $bookingsModel = new BookingsModel();
+        $bookingSlotsModel = new BookingSlotsModel();
         $data = $this->request->getJSON();
         $this->expireStaleMercadoPagoBookings();
 
@@ -708,7 +726,9 @@ class Superadmin extends BaseController
                 'horario' => $booking['time_from'] . ' a ' . $booking['time_until'],
                 'nombre' => $booking['name'],
                 'telefono' => $booking['phone'],
+                'creado_por' => $this->resolveCreatedByLabel($booking),
                 'pago_total' => $booking['total_payment'] == 1 ? 'Si' : 'No',
+                'total_payment' => (int) ($booking['total_payment'] ?? 0),
                 'total_reserva' => $booking['total'],
                 'diferencia' => $booking['diference'],
                 'visitantes' => $booking['visitors'],
@@ -716,6 +736,7 @@ class Superadmin extends BaseController
                 'descripcion' => $booking['description'],
                 'metodo_pago' => $booking['payment_method'],
                 'anulada'     => $booking['annulled'],
+                'approved'    => (int) ($booking['approved'] ?? 0),
                 'factura_enviada' => !empty($booking['invoice_email_sent_at']) ? 'Enviada' : 'Pendiente',
                 'factura_enviada_fecha' => !empty($booking['invoice_email_sent_at']) ? $this->formatBookingDateTime((string) $booking['invoice_email_sent_at']) : '',
                 'IdPedido' => $this->ensureBookingOrderId($booking),
@@ -724,6 +745,7 @@ class Superadmin extends BaseController
                 'pending_entries' => $entrySummary['pending_entries'],
                 'current_unit_price' => $entrySummary['unit_price'],
                 'pending_entries_amount' => $entrySummary['pending_amount'],
+                'mp_expires_at' => $this->resolvePendingMercadoPagoExpiresAt($booking, $bookingSlotsModel),
             ];
 
             array_push($bookings, $reserva);
@@ -1046,11 +1068,12 @@ class Superadmin extends BaseController
     {
         $uploadModel = new UploadModel();
         $rateModel = new RateModel();
+        $settings = new NotificationSettingsService();
 
         $data = $this->request->getJSON();
         $qtyVisitors = $data->qty_visitors ?? null;
         $allowGroupCoordinator = !empty($data->allow_group_coordinator) ? 1 : 0;
-        $notificationEmail = trim($data->notification_email ?? '');
+        $notificationEmail = trim((string) ($data->notification_email ?? ''));
         $paymentSupportEmail = trim($data->payment_support_email ?? '');
         $paymentSupportPhone = trim($data->payment_support_phone ?? '');
         $invoiceEmailSubject = trim($data->invoice_email_subject ?? '');
@@ -1060,7 +1083,17 @@ class Superadmin extends BaseController
         $payByEntriesMinDays = (int) ($data->pay_by_entries_min_days_before_booking ?? 0);
         $payByEntriesDefaultPercentage = (int) ($data->pay_by_entries_default_percentage ?? 50);
         $qtyVisitors = ($qtyVisitors === null || $qtyVisitors === '') ? null : (int) $qtyVisitors;
-        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+        $notificationEmailList = $settings->parseEmailList($notificationEmail);
+        $invalidNotificationEmails = [];
+
+        foreach (preg_split('/[;,\n]+/', $notificationEmail) ?: [] as $chunk) {
+            $candidate = strtolower(trim((string) $chunk));
+            if ($candidate === '' || filter_var($candidate, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $invalidNotificationEmails[] = $candidate;
+        }
 
         if ($payByEntriesMinEntries < 0 || $payByEntriesMinDays < 0) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
@@ -1070,13 +1103,6 @@ class Superadmin extends BaseController
         if ($payByEntriesDefaultPercentage < 1 || $payByEntriesDefaultPercentage > 100) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
                 ->setJSON(['error' => true, 'message' => 'El porcentaje por defecto de pago por entradas debe estar entre 1 y 100']);
-        }
-
-        foreach ($notificationEmailList as $email) {
-            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                    ->setJSON(['error' => true, 'message' => 'Uno de los emails no es valido']);
-            }
         }
 
         if ($paymentSupportEmail !== '' && !filter_var($paymentSupportEmail, FILTER_VALIDATE_EMAIL)) {
@@ -1103,7 +1129,7 @@ class Superadmin extends BaseController
 
             $existingUpload = $uploadModel->first();
             $uploadPayload = [
-                'notification_email' => $notificationEmail,
+                'notification_email' => implode(';', $notificationEmailList),
                 'payment_support_email' => $paymentSupportEmail,
                 'payment_support_phone' => $paymentSupportPhone,
                 'invoice_email_subject' => $invoiceEmailSubject,
@@ -1120,10 +1146,25 @@ class Superadmin extends BaseController
                 $uploadModel->insert($uploadPayload);
             }
 
-            return $this->response->setJSON([
+            $responsePayload = [
                 'error' => false,
                 'message' => 'Configuración general guardada con éxito',
-            ]);
+            ];
+
+            if ($notificationEmailList === []) {
+                $responsePayload['warning'] = 'No configuraste emails para recibir reservas. Los avisos internos no se enviaran hasta completar ese campo.';
+                log_message('warning', 'Configuracion guardada sin emails administrativos de reservas');
+            }
+
+            if ($invalidNotificationEmails !== []) {
+                $invalidList = implode(', ', array_values(array_unique($invalidNotificationEmails)));
+                $existingWarning = $responsePayload['warning'] ?? '';
+                $extraWarning = 'Se ignoraron emails invalidos: ' . $invalidList . '.';
+                $responsePayload['warning'] = trim($existingWarning . ' ' . $extraWarning);
+                log_message('warning', 'Configuracion de emails administrativos con valores invalidos: ' . $invalidList);
+            }
+
+            return $this->response->setJSON($responsePayload);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
                 ->setJSON(['error' => true, 'message' => 'No pudimos guardar la configuración general']);
@@ -1135,229 +1176,6 @@ class Superadmin extends BaseController
         $customerNoticeModel = new CustomerNoticeModel();
 
         return $this->response->setJSON($this->setResponse(null, false, $customerNoticeModel->getHistoryWithStatus(), 'Operación completada'));
-    }
-
-    public function getRejectedBookings()
-    {
-        $this->expireStaleMercadoPagoBookings();
-        $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $items = $rejectedPaymentsModel->where('payment_status', 'rejected')
-            ->orderBy('created_at', 'DESC')
-            ->findAll();
-
-        return $this->response->setJSON([
-            'error' => false,
-            'data' => $items,
-        ]);
-    }
-
-    private function buildRetryPaymentUrlFromBooking(array $booking): string
-    {
-        $preferenceId = trim((string) ($booking['id_preference_parcial'] ?? ''));
-        if ($preferenceId === '' && !empty($booking['id_preference_total'])) {
-            $preferenceId = trim((string) $booking['id_preference_total']);
-        }
-
-        if ($preferenceId === '') {
-            return '';
-        }
-
-        return 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=' . rawurlencode($preferenceId);
-    }
-
-    private function sendRetryPaymentEmail(array $booking, array $rejected): bool
-    {
-        $to = trim((string) ($rejected['email'] ?? ''));
-        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-
-        $retryUrl = trim((string) ($rejected['retry_url'] ?? ''));
-        if ($retryUrl === '') {
-            return false;
-        }
-
-        $html = $this->renderEmailCard([
-            'eyebrow' => 'Pago pendiente',
-            'title' => 'Tu reserva aun no fue confirmada',
-            'intro' => 'Detectamos que el pago no se acredito.',
-            'details' => [
-                'Nombre' => (string) ($booking['name'] ?? ''),
-                'Fecha' => $this->formatBookingDate((string) ($booking['date'] ?? '')),
-                'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
-                'Visitantes' => (string) ($booking['visitors'] ?? ''),
-                'Precio por entrada individual' => $this->formatAuditMoney($this->resolveCurrentUnitPriceForBooking($booking)),
-                'Total' => '$' . (string) ($booking['total'] ?? '0'),
-            ],
-            'messageHtml' => '<p>Tu reserva todavia no fue confirmada porque el pago no se acredito. Podes completarlo desde el siguiente boton. Si no se registra el pago dentro de los proximos 30 minutos, la reserva quedara como rechazada y no ocupara disponibilidad.</p>',
-            'primaryActionUrl' => $retryUrl,
-            'primaryActionLabel' => 'Completar pago',
-        ]);
-
-        return $this->sendEmailWithFallback($to, 'Tu reserva sigue pendiente de pago', $html, true);
-    }
-
-    public function resendRejectedPaymentLink($id)
-    {
-        $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $bookingsModel = new BookingsModel();
-        $rejected = $rejectedPaymentsModel->find((int) $id);
-        if (!$rejected) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro el caso rechazado']);
-        }
-
-        $booking = $bookingsModel->find((int) ($rejected['booking_id'] ?? 0));
-        if (!$booking) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro la reserva original']);
-        }
-
-        $retryUrl = $this->buildRetryPaymentUrlFromBooking($booking);
-        if ($retryUrl === '') {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
-                ->setJSON(['error' => true, 'message' => 'No hay preference de Mercado Pago para reenviar']);
-        }
-
-        $service = new MercadoPagoReservationService();
-        $expiresAt = $service->getExpiresAtFromNow();
-        $rejectedPaymentsModel->update((int) $id, [
-            'retry_url' => $retryUrl,
-            'payment_status' => 'pending_retry',
-            'expires_at' => $expiresAt,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        $updated = $rejectedPaymentsModel->find((int) $id);
-        $sent = $updated ? $this->sendRetryPaymentEmail($booking, $updated) : false;
-        if ($sent) {
-            $rejectedPaymentsModel->update((int) $id, ['notified_at' => date('Y-m-d H:i:s')]);
-        }
-
-        return $this->response->setJSON([
-            'error' => false,
-            'message' => $sent ? 'Link reenviado al cliente' : 'Se actualizo el link, pero no se pudo enviar email',
-        ]);
-    }
-
-    public function approveRejectedPayment($id)
-    {
-        $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $bookingsModel = new BookingsModel();
-        $paymentsModel = new PaymentsModel();
-
-        $item = $rejectedPaymentsModel->find((int) $id);
-        if (!$item) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro el caso']);
-        }
-
-        $booking = $bookingsModel->find((int) ($item['booking_id'] ?? 0));
-        if (!$booking) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro la reserva']);
-        }
-
-        $paidAmount = (float) ($item['amount_to_pay'] ?? $booking['parcial'] ?? 0);
-        $newPayment = min((float) ($booking['total'] ?? 0), max((float) ($booking['payment'] ?? 0), $paidAmount));
-        $difference = max(0, (float) ($booking['total'] ?? 0) - $newPayment);
-        $isTotal = $difference <= 0.01 ? 1 : 0;
-
-        $bookingsModel->update((int) $booking['id'], [
-            'approved' => 1,
-            'annulled' => 0,
-            'mp' => 1,
-            'payment' => $newPayment,
-            'reservation' => $newPayment,
-            'diference' => $difference,
-            'total_payment' => $isTotal,
-            'payment_method' => 'Mercado Pago',
-        ]);
-
-        $paymentsModel->insert([
-            'id_user' => (int) (session()->get('id_user') ?? 1),
-            'id_booking' => (int) $booking['id'],
-            'id_customer' => !empty($booking['id_customer']) ? (int) $booking['id_customer'] : null,
-            'id_mercado_pago' => $item['payment_id'] ?? null,
-            'amount' => $newPayment,
-            'payment_method' => 'mercado_pago',
-            'payment_type' => $isTotal ? 'total' : 'partial_amount',
-            'created_by_admin' => 1,
-            'admin_user_id' => (int) (session()->get('id_user') ?? 0),
-            'date' => date('Y-m-d'),
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        $rejectedPaymentsModel->update((int) $id, [
-            'payment_status' => 'approved',
-            'closed_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        $this->logBookingAction($this->ensureBookingOrderId($booking), 'P', 'Aprobacion manual de pago desde Reservas Rechazadas.');
-
-        return $this->response->setJSON(['error' => false, 'message' => 'Pago aprobado manualmente']);
-    }
-
-    public function moveRejectedToBookings($id)
-    {
-        $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $bookingsModel = new BookingsModel();
-        $bookingSlotsModel = new \App\Models\BookingSlotsModel();
-
-        $item = $rejectedPaymentsModel->find((int) $id);
-        if (!$item) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro el caso']);
-        }
-
-        $booking = $bookingsModel->find((int) ($item['booking_id'] ?? 0));
-        if (!$booking) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro la reserva']);
-        }
-
-        $exists = $bookingsModel->where('date', $booking['date'])
-            ->where('id_field', $booking['id_field'])
-            ->where('time_from', $booking['time_from'])
-            ->where('time_until', $booking['time_until'])
-            ->where('annulled', 0)
-            ->where('id !=', $booking['id'])
-            ->first();
-
-        if ($exists) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_CONFLICT)
-                ->setJSON(['error' => true, 'message' => 'Ese horario ya fue ocupado por otra reserva']);
-        }
-
-        $bookingsModel->update((int) $booking['id'], ['annulled' => 0]);
-        $bookingSlotsModel->where('booking_id', (int) $booking['id'])->delete();
-        $rejectedPaymentsModel->update((int) $id, [
-            'payment_status' => 'moved_to_bookings',
-            'closed_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-        $this->logBookingAction($this->ensureBookingOrderId($booking), 'M', 'Reserva vuelta a activas desde Reservas Rechazadas.');
-
-        return $this->response->setJSON(['error' => false, 'message' => 'Reserva pasada a activas']);
-    }
-
-    public function closeRejectedPayment($id)
-    {
-        $rejectedPaymentsModel = new RejectedPaymentsModel();
-        $item = $rejectedPaymentsModel->find((int) $id);
-        if (!$item) {
-            return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['error' => true, 'message' => 'No se encontro el caso']);
-        }
-
-        $rejectedPaymentsModel->update((int) $id, [
-            'payment_status' => 'closed',
-            'closed_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->response->setJSON(['error' => false, 'message' => 'Caso marcado como cerrado']);
     }
 
     public function saveCustomerNotice()

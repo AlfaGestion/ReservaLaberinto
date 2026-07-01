@@ -30,10 +30,7 @@ function showBookingMessage(message, type = 'secondary') {
 }
 
 function formatBookingMoney(value) {
-    return `$${new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(Number(value) || 0)}`
+    return formatPriceAR(value, '$0')
 }
 
 function getBookingUnitPrice(booking) {
@@ -360,10 +357,10 @@ async function initializeEditBookingModal() {
     fechaMananaObj.setDate(fechaSistema.getDate() + 1);
 
     // 2. Formatear la fecha de maÃ±ana al formato 'YYYY-MM-DD' requerido por el input.
-    const aÃ±oManana = fechaMananaObj.getFullYear();
+    const anioManana = fechaMananaObj.getFullYear();
     const mesManana = String(fechaMananaObj.getMonth() + 1).padStart(2, '0');
     const diaManana = String(fechaMananaObj.getDate()).padStart(2, '0');
-    const fechaManana = `${aÃ±oManana}-${mesManana}-${diaManana}`;
+    const fechaManana = `${anioManana}-${mesManana}-${diaManana}`;
 
     // 3. Establecer la fecha mÃ­nima y el valor por defecto en el input de fecha.
     // (Asumiendo que la variable de tu input de fecha es 'fechaInput').

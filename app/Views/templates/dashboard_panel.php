@@ -7,26 +7,37 @@
     <?php echo $this->renderSection('title') ?>
     <title>Home</title>
 
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('reservas_theme');
+                document.documentElement.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+            } catch (error) {
+                document.documentElement.classList.add('theme-light');
+            }
+        })();
+    </script>
+
     <link rel="icon" href="<?= base_url(PUBLIC_FOLDER . "assets/images/favicon.ico") ?>" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3" crossorigin="anonymous"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script> -->
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260520-1200") ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260701-4") ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/admin-theme.css?v=20260630-7") ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
     <style>
         body.admin-page {
             min-height: 100vh;
-            background:
-                radial-gradient(circle at top, rgba(233, 133, 33, 0.12), transparent 24%),
-                linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
-            color: #243127;
+            background: var(--theme-page-bg);
+            color: var(--theme-text);
         }
 
         .admin-topbar {
-            background: rgba(255, 255, 255, 0.94);
-            border-bottom: 1px solid rgba(13, 106, 58, 0.1);
-            box-shadow: 0 12px 30px rgba(21, 36, 24, 0.08);
+            background:
+                linear-gradient(180deg, color-mix(in srgb, var(--theme-surface-strong) 84%, #081726 16%) 0%, var(--theme-surface-strong) 100%);
+            border-bottom: 1px solid var(--theme-border-soft);
+            box-shadow: var(--theme-shadow-soft);
         }
 
         .admin-topbar .container-fluid {
@@ -35,11 +46,11 @@
         }
 
         .admin-topbar-inner {
-            min-height: 112px;
+            min-height: 84px;
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            padding: 12px 20px;
+            padding: 10px 20px;
             width: 100%;
         }
 
@@ -50,11 +61,27 @@
         .admin-topbar .navbar-brand {
             justify-self: center;
             margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border-radius: 0;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            position: relative;
+            overflow: visible;
         }
 
         .admin-topbar .navbar-brand img {
-            max-height: 118px;
+            max-height: 60px;
+            max-width: min(180px, 42vw);
             width: auto;
+            object-fit: contain;
+            display: block;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
         }
 
         .admin-shell {
@@ -65,18 +92,19 @@
         }
 
         .admin-card {
-            background: rgba(255, 255, 255, 0.96);
-            border: 1px solid rgba(13, 106, 58, 0.1);
+            background: var(--theme-surface);
+            border: 1px solid var(--theme-border);
             border-radius: 28px;
-            box-shadow: 0 24px 60px rgba(21, 36, 24, 0.12);
+            box-shadow: var(--theme-shadow);
             padding: 24px;
+            color: var(--theme-text);
         }
 
         .admin-alert {
             border-radius: 16px;
             padding: 14px 16px;
             border: 0;
-            box-shadow: 0 14px 30px rgba(21, 36, 24, 0.08);
+            box-shadow: var(--theme-shadow-soft);
         }
 
         .admin-notice-container {
@@ -97,10 +125,10 @@
             gap: 12px;
             padding: 14px 16px;
             border-radius: 18px;
-            background: rgba(255, 255, 255, 0.98);
-            border: 1px solid rgba(13, 106, 58, 0.12);
-            box-shadow: 0 18px 36px rgba(21, 36, 24, 0.12);
-            color: #243127;
+            background: var(--theme-surface);
+            border: 1px solid var(--theme-border);
+            box-shadow: var(--theme-shadow-soft);
+            color: var(--theme-text);
             pointer-events: auto;
         }
 
@@ -150,7 +178,7 @@
 
         .admin-notice__message {
             display: block;
-            color: #53685b;
+            color: var(--theme-text-muted);
             line-height: 1.45;
         }
 
@@ -200,8 +228,8 @@
         }
 
         .admin-section-card {
-            background: #f8fbf8;
-            border: 1px solid #e0e7e0;
+            background: var(--theme-surface-soft);
+            border: 1px solid var(--theme-border-soft);
             border-radius: 18px;
             padding: 18px;
         }
@@ -222,8 +250,8 @@
         }
 
         .admin-pane {
-            background: #fff;
-            border: 1px solid #e2e9e2;
+            background: var(--theme-surface);
+            border: 1px solid var(--theme-border-soft);
             border-radius: 22px;
             padding: 20px;
         }
@@ -259,13 +287,13 @@
         }
 
         .admin-pane .table tbody tr.admin-booking-row--pending-mp > * {
-            background: #f3f4f6 !important;
-            color: #4b5563;
-            border-color: #e5e7eb;
+            background: #fff8e7 !important;
+            color: #7a5600;
+            border-color: #f1d59a;
         }
 
         .admin-pane .table tbody tr.admin-booking-row--pending-mp:hover > * {
-            background: #eceff3 !important;
+            background: #fdf1cf !important;
         }
 
         .admin-pane .booking-payment-badge {
@@ -283,16 +311,47 @@
             white-space: nowrap;
         }
 
-        .admin-pane .booking-payment-badge--pending {
-            background: #eef2f7;
-            color: #546170;
-            border-color: #d5dce4;
+        .admin-pane .booking-payment-state {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .admin-pane .booking-payment-badge__note {
+            color: #5f6e7f;
+            font-size: 0.72rem;
+            line-height: 1.25;
+            max-width: 18rem;
+        }
+
+        .admin-pane .booking-payment-badge--pending-mp {
+            background: #fff3cd;
+            color: #8a6100;
+            border-color: #efcf8b;
         }
 
         .admin-pane .booking-payment-badge--approved {
             background: #e6f6eb;
             color: #17663a;
             border-color: #bfe6cb;
+        }
+
+        .admin-pane .booking-payment-badge--partial {
+            background: #fff0d8;
+            color: #955f00;
+            border-color: #efcf9a;
+        }
+
+        .admin-pane .booking-payment-badge--registered {
+            background: #eef2f7;
+            color: #445468;
+            border-color: #d5dce4;
+        }
+
+        .admin-pane .booking-payment-badge--cancelled {
+            background: #fde2e1;
+            color: #9c2e29;
+            border-color: #f1b7b4;
         }
 
         .admin-pane .booking-payment-badge--na {
@@ -322,7 +381,7 @@
 
         .admin-userbar__name {
             font-weight: 700;
-            color: #355040;
+            color: var(--theme-text);
         }
 
         .admin-userbar__logout {
@@ -421,13 +480,13 @@
 
             .admin-topbar-inner {
                 min-height: auto;
-                padding: 12px 16px 18px;
-                flex-direction: column;
-                gap: 10px;
+                padding: 10px 14px 12px;
+                gap: 8px;
             }
 
             .admin-topbar .navbar-brand img {
-                max-height: 104px;
+                max-height: 46px;
+                max-width: min(150px, 46vw);
             }
 
             .admin-topbar .navbar-brand {
@@ -436,6 +495,7 @@
 
             .admin-userbar {
                 justify-self: center;
+                gap: 8px;
             }
 
             .admin-pane {
@@ -492,6 +552,9 @@ $userLogo = $modelUploads->first();
 
                 <?php if (session()->logueado) : ?>
                     <div class="admin-userbar">
+                        <button type="button" id="adminThemeToggle" class="admin-theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">
+                            <i data-theme-icon class="fa-solid fa-moon" aria-hidden="true"></i>
+                        </button>
                         <span class="admin-userbar__name"><?= session()->name ?></span>
                         <a href="<?= base_url('auth/logOut') ?>" class="btn btn-danger admin-userbar__logout" type="button"><i class="fa-solid fa-plug-circle-xmark"></i></a>
                     </div>
@@ -508,11 +571,11 @@ $userLogo = $modelUploads->first();
 
     <?php echo $this->renderSection('footer') ?>
     <div class="container-fluid">
-        <footer class="my-4 py-4 px-3 rounded-3" style="color: #fff; background-color: <?= (isset($userLogo['main_color']) ? $userLogo['main_color'] : '#0064b0') ?> !important;">
+        <footer class="my-4 py-4 px-3 rounded-3" style="color: var(--theme-text); background-color: var(--theme-surface-strong) !important;">
             <div class="d-flex flex-column flex-md-row justify-content-center justify-content-md-between align-items-center">
 
                 <div class="mb-3 mb-md-0">
-                    <a href="https://alfa-net-plus-soluciones-informaticas.odoo.com/" target="_blank" class="text-white text-decoration-none">
+                    <a href="https://alfa-net-plus-soluciones-informaticas.odoo.com/" target="_blank" class="text-decoration-none" style="color: var(--theme-text);">
                         <small>© 2025 - Powered by Alfanet</small>
                     </a>
                 </div>
@@ -520,17 +583,17 @@ $userLogo = $modelUploads->first();
                 <ul class="nav">
                     <?php if (session()->logueado) : ?>
                         <li class="nav-item">
-                            <a href="<?= base_url('auth/logOut') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-plug-circle-xmark me-1"></i>Cerrar sesión</a>
+                            <a href="<?= base_url('auth/logOut') ?>" class="nav-link px-2" style="color: var(--theme-text);"><i class="fa-solid fa-plug-circle-xmark me-1"></i>Cerrar sesión</a>
                         </li>
                         <li class="nav-item">
-                            <a href="<?= base_url('abmAdmin') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-tablet-screen-button me-1"></i>Panel</a>
+                            <a href="<?= base_url('abmAdmin') ?>" class="nav-link px-2" style="color: var(--theme-text);"><i class="fa-solid fa-tablet-screen-button me-1"></i>Panel</a>
                         </li>
                     <?php else : ?>
                         <li class="nav-item">
-                            <a href="<?= base_url('auth/login') ?>" class="nav-link px-2 text-white"><i class="fa-solid fa-user me-1"></i>Ingreso Admin</a>
+                            <a href="<?= base_url('auth/login') ?>" class="nav-link px-2" style="color: var(--theme-text);"><i class="fa-solid fa-user me-1"></i>Ingreso Admin</a>
                         </li>
                         <li class="nav-item">
-                            <a href="/customers/register" class="nav-link px-2 text-white"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
+                            <a href="/customers/register" class="nav-link px-2" style="color: var(--theme-text);"><i class="fa-solid fa-user-plus me-1"></i>Registrarme</a>
                         </li>
                     <?php endif; ?>
                 </ul>
@@ -545,6 +608,8 @@ $userLogo = $modelUploads->first();
         let sessionUserSuperadmin = <?= json_encode(session()->superadmin) ?>;
     </script>
     <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js?v=20260521-1325") ?>"></script>
+    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/price-format.js?v=20260701-1") ?>"></script>
+    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/admin-theme.js?v=20260630-7") ?>"></script>
 
     <?php echo $this->renderSection('scripts') ?>
 </body>

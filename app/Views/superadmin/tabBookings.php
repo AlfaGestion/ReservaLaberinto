@@ -8,18 +8,18 @@ $uploadData = $uploadModel->first();
 ?>
 
 <div id="selectDateBooking"
-    class="d-flex flex-column justify-content-center align-items-center"
+    class="d-flex flex-column justify-content-center align-items-center admin-bookings-filter"
     data-week-start="<?= esc($weekStart ?? date('Y-m-d')) ?>"
     data-latest-booking-date="<?= esc($latestBookingDate ?? date('Y-m-d')) ?>"
     data-invoice-email-subject="<?= esc($uploadData['invoice_email_subject'] ?? 'Factura de reserva - Laberinto: {nombre}') ?>"
     data-invoice-email-message="<?= esc($uploadData['invoice_email_message'] ?? "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.") ?>">
 
-    <div class="d-flex justify-content-center align-items-center flex-row mt-3">
+    <div class="d-flex justify-content-center align-items-center flex-row mt-3 admin-bookings-summary">
         <strong>Total de reservas para hoy:</strong> <strong id="totalReservasHoy"></strong>
     </div>
 
 
-    <div class="d-flex justify-content-center align-items-center flex-row">
+    <div class="d-flex justify-content-center align-items-center flex-row admin-bookings-dates">
         <div class="form-floating mb-3 mt-3 me-2">
             <input type="date" name="fechaDesdeBooking" id="fechaDesdeBooking" class="form-control" value="" aria-label="date">
             <label for="fechaDesdeBooking">Desde</label>
@@ -31,7 +31,7 @@ $uploadData = $uploadModel->first();
         </div>
     </div>
 
-    <div class="d-flex flex-wrap justify-content-center gap-2">
+    <div class="d-flex flex-wrap justify-content-center gap-2 admin-bookings-actions">
         <a href="<?= site_url('/') ?>#formBooking" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
             <i class="fa-solid fa-plus me-1"></i>Nueva reserva
         </a>
@@ -287,6 +287,7 @@ $uploadData = $uploadModel->first();
                 <th scope="col">Horario</th>
                 <th scope="col">Nombre</th>
                 <th scope="col">Tel&eacute;fono</th>
+                <th scope="col">Creado por</th>
                 <th scope="col">Visitantes</th>
                 <th scope="col">Pagado</th>
                 <th scope="col">Total</th>

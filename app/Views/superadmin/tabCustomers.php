@@ -91,7 +91,7 @@
                     id="customerFrame"
                     title="Cliente"
                     src="about:blank"
-                    style="width: 100%; height: 78vh; border: 0; background: #f7f3ec;"></iframe>
+                    style="width: 100%; height: 78vh; border: 0; background: var(--theme-surface-strong);"></iframe>
             </div>
         </div>
     </div>

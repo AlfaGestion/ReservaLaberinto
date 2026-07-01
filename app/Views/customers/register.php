@@ -13,7 +13,17 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260428-1820") ?>">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('reservas_theme');
+                document.documentElement.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+            } catch (error) {
+                document.documentElement.classList.add('theme-light');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260630-8") ?>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
@@ -21,10 +31,37 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
     <style>
         body.register-page {
             min-height: 100vh;
-            background:
-                radial-gradient(circle at top, rgba(233, 133, 33, 0.16), transparent 28%),
-                linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
-            color: #243127;
+            --register-page-bg: radial-gradient(circle at top, rgba(233, 133, 33, 0.16), transparent 28%), linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
+            --register-page-text: #243127;
+            --register-page-surface: rgba(255, 255, 255, 0.96);
+            --register-page-border: rgba(13, 106, 58, 0.12);
+            --register-page-muted: #5d6e63;
+            --register-page-title: #163625;
+            --register-page-label: #274536;
+            --register-page-input-border: #d4ddd4;
+            --register-page-input-text: #243127;
+            --register-page-link: #486255;
+            --register-page-link-hover: #163625;
+            --register-page-ghost-bg: #f3f5f3;
+            --register-page-ghost-text: #2d4739;
+            background: var(--register-page-bg);
+            color: var(--register-page-text);
+        }
+
+        html.theme-dark body.register-page {
+            --register-page-bg: radial-gradient(circle at top, rgba(102, 156, 255, 0.16), transparent 28%), linear-gradient(180deg, #0b1c34 0%, #102945 100%);
+            --register-page-text: #eef4fb;
+            --register-page-surface: rgba(16, 40, 68, 0.98);
+            --register-page-border: rgba(142, 182, 229, 0.14);
+            --register-page-muted: #a9bfd7;
+            --register-page-title: #f5f9fd;
+            --register-page-label: #cbd9e8;
+            --register-page-input-border: rgba(142, 182, 229, 0.14);
+            --register-page-input-text: #f2f7fc;
+            --register-page-link: #dbe9f8;
+            --register-page-link-hover: #ffffff;
+            --register-page-ghost-bg: #133253;
+            --register-page-ghost-text: #dbe9f8;
         }
 
         body.register-page.register-page--embedded {
@@ -53,8 +90,8 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
 
         .register-card {
             width: min(100%, 760px);
-            background: rgba(255, 255, 255, 0.96);
-            border: 1px solid rgba(13, 106, 58, 0.12);
+            background: var(--register-page-surface);
+            border: 1px solid var(--register-page-border);
             border-radius: 24px;
             box-shadow: 0 24px 60px rgba(21, 36, 24, 0.12);
             overflow: hidden;
@@ -78,13 +115,13 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
             line-height: 1;
             font-weight: 800;
             letter-spacing: -0.04em;
-            color: #163625;
+            color: var(--register-page-title);
         }
 
         .register-subtitle {
             margin: 0 auto;
             max-width: 560px;
-            color: #5d6e63;
+            color: var(--register-page-muted);
             font-size: 1rem;
         }
 
@@ -107,17 +144,19 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
             margin-bottom: 8px;
             font-size: 0.92rem;
             font-weight: 700;
-            color: #274536;
+            color: var(--register-page-label);
         }
 
         .register-input,
         .register-select {
             min-height: 56px;
             border-radius: 16px;
-            border: 1px solid #d4ddd4;
+            border: 1px solid var(--register-page-input-border);
             padding: 14px 16px;
             font-size: 1rem;
             box-shadow: none !important;
+            background: var(--register-page-surface);
+            color: var(--register-page-input-text);
         }
 
         .register-input:focus,
@@ -144,7 +183,7 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
         }
 
         .register-back-link {
-            color: #486255;
+            color: var(--register-page-link);
             font-weight: 700;
             padding: 8px 4px;
             display: inline-flex;
@@ -153,13 +192,13 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
         }
 
         .register-back-link:hover {
-            color: #163625;
+            color: var(--register-page-link-hover);
         }
 
         .register-btn--ghost {
-            background: #f3f5f3;
-            color: #2d4739;
-            border: 1px solid #d2dbd2;
+            background: var(--register-page-ghost-bg);
+            color: var(--register-page-ghost-text);
+            border: 1px solid var(--register-page-border);
         }
 
         .register-btn--primary {
@@ -169,6 +208,16 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
         .register-alert {
             border-radius: 16px;
             padding: 14px 16px;
+        }
+
+        html.theme-dark body.register-page .alert {
+            background: #112b49;
+            color: #dbe9f8;
+            border-color: rgba(142, 182, 229, 0.18);
+        }
+
+        html.theme-dark body.register-page .btn-close {
+            filter: invert(1) grayscale(1);
         }
 
         @media (max-width: 768px) {

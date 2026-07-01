@@ -174,27 +174,33 @@ $uploadData = $uploadModel->first();
                             </div>
                         </div>
 
-                        <div class="form-floating mb-2" style="max-width: 520px;">
-                            <input type="text" class="form-control" id="notificationEmail" placeholder="email1@dominio.com; email2@dominio.com" value="<?= esc($uploadData['notification_email'] ?? '') ?>">
-                            <label for="notificationEmail">Emails para reservas recibidas</label>
-                        </div>
-                        <small class="text-muted d-block">Podes cargar uno o varios emails separados por ;</small>
+                        <div class="border rounded-4 p-3 mt-3 bg-body-tertiary">
+                            <h6 class="mb-3 fw-bold">Notificaciones y contacto</h6>
+                            <div class="form-floating mb-2" style="max-width: 520px;">
+                                <input type="text" class="form-control" id="notificationEmail" placeholder="email1@dominio.com; email2@dominio.com" value="<?= esc($uploadData['notification_email'] ?? '') ?>">
+                                <label for="notificationEmail">Emails para recibir reservas</label>
+                            </div>
+                            <small class="text-muted d-block">Podes cargar uno o varios emails separados por ; o ,</small>
 
-                        <div class="row g-3 mt-2" style="max-width: 720px;">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="email" class="form-control" id="paymentSupportEmail" placeholder="soporte@dominio.com" value="<?= esc($uploadData['payment_support_email'] ?? '') ?>">
-                                    <label for="paymentSupportEmail">Email de soporte de pagos</label>
+                            <div class="row g-3 mt-2" style="max-width: 720px;">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="email" class="form-control" id="paymentSupportEmail" placeholder="soporte@dominio.com" value="<?= esc($uploadData['payment_support_email'] ?? '') ?>">
+                                        <label for="paymentSupportEmail">Email de soporte</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="paymentSupportPhone" placeholder="+54 9 11 1234-5678" value="<?= esc($uploadData['payment_support_phone'] ?? '') ?>">
+                                        <label for="paymentSupportPhone">Telefono de contacto/soporte</label>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="paymentSupportPhone" placeholder="+54 9 11 1234-5678" value="<?= esc($uploadData['payment_support_phone'] ?? '') ?>">
-                                    <label for="paymentSupportPhone">Telefono de soporte de pagos</label>
-                                </div>
-                            </div>
+                            <small class="text-muted d-block mt-2">Estos datos se usan en los mails de reserva pendiente, pago cancelado y mensajes de soporte.</small>
+                            <?php if (empty(trim((string) ($uploadData['notification_email'] ?? '')))) : ?>
+                                <div class="alert alert-warning mt-3 mb-0">No hay emails administrativos configurados para recibir reservas.</div>
+                            <?php endif; ?>
                         </div>
-                        <small class="text-muted d-block mt-2">Estos datos se insertan en los correos de reserva pendiente y pago rechazado.</small>
 
                         <div class="border rounded-3 bg-white p-3 mt-4">
                             <div class="form-check form-switch mb-3">

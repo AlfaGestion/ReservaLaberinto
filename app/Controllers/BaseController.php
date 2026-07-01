@@ -43,7 +43,7 @@ abstract class BaseController extends Controller
      *
      * @var array
      */
-    protected $helpers = [];
+    protected $helpers = ['money'];
 
     /**
      * Be sure to declare properties for any property fetch you initialized.
@@ -311,7 +311,7 @@ abstract class BaseController extends Controller
 
     protected function formatAuditMoney(float $amount): string
     {
-        return '$' . number_format($amount, 2, ',', '.');
+        return format_price_ar($amount, '$0');
     }
 
     protected function resolveCurrentUnitPriceForBooking(array $booking): float

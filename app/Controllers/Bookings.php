@@ -4,6 +4,9 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Libraries\PrintBookings;
+use App\Libraries\MercadoPagoReservationService;
+use App\Libraries\EmailDeliveryService;
+use App\Libraries\NotificationSettingsService;
 use App\Models\BookingSlotsModel;
 use App\Models\BookingsModel;
 use App\Models\CustomersModel;
@@ -19,147 +22,32 @@ use App\Models\RateModel;
 use App\Models\SpecialBookingRequestsModel;
 use App\Models\ValuesModel;
 use CodeIgniter\I18n\Time;
-use Config\Services;
 
 class Bookings extends BaseController
 {
-    private function createEmailService()
-    {
-        $email = Services::email();
-        $email->SMTPTimeout = 8;
-
-        return $email;
-    }
-
     private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        foreach ($accounts as $account) {
-            try {
-                $email = $this->createEmailService();
-                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                $email->setFrom($email->fromEmail, $email->fromName);
-                $email->setTo($to);
-                $email->setSubject($subject);
-                $email->setMailType($isHtml ? 'html' : 'text');
-                $email->setMessage($message);
-
-                if ($email->send()) {
-                    return true;
-                }
-
-                log_message('error', 'Fallo envio SMTP con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
-            } catch (\Throwable $e) {
-                log_message('error', 'Fallo envio SMTP con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [], [
+            'context' => 'bookings',
+        ]);
     }
 
     private function sendEmailWithAttachmentFallback($to, string $subject, string $message, string $attachmentName, string $attachmentContent, string $mimeType = 'application/pdf', bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        $tempPath = rtrim(WRITEPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . uniqid('booking_invoice_', true) . '_' . $attachmentName;
-        file_put_contents($tempPath, $attachmentContent);
-
-        try {
-            foreach ($accounts as $account) {
-                try {
-                    $email = $this->createEmailService();
-                    $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                    $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                    $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                    $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                    $email->setFrom($email->fromEmail, $email->fromName);
-                    $email->setTo($to);
-                    $email->setSubject($subject);
-                    $email->setMailType($isHtml ? 'html' : 'text');
-                    $email->setMessage($message);
-                    $email->attach($tempPath, 'attachment', $attachmentName, $mimeType);
-
-                    if ($email->send()) {
-                        return true;
-                    }
-
-                    log_message('error', 'Fallo envio SMTP con adjunto con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
-                } catch (\Throwable $e) {
-                    log_message('error', 'Fallo envio SMTP con adjunto con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
-                }
-            }
-        } finally {
-            if (is_file($tempPath)) {
-                @unlink($tempPath);
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [[
+            'content' => $attachmentContent,
+            'name' => $attachmentName,
+            'mimeType' => $mimeType,
+        ]], [
+            'context' => 'bookings_attachment',
+        ]);
     }
 
     private function sendEmailWithAttachmentPathFallback($to, string $subject, string $message, string $attachmentPath, string $attachmentName, string $mimeType = 'application/pdf', bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        foreach ($accounts as $account) {
-            try {
-                $email = $this->createEmailService();
-                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                $email->setFrom($email->fromEmail, $email->fromName);
-                $email->setTo($to);
-                $email->setSubject($subject);
-                $email->setMailType($isHtml ? 'html' : 'text');
-                $email->setMessage($message);
-                $email->attach($attachmentPath, 'attachment', $attachmentName, $mimeType);
-
-                if ($email->send()) {
-                    return true;
-                }
-
-                log_message('error', 'Fallo envio SMTP con adjunto local con ' . ($email->fromEmail ?? 'sin cuenta') . ': ' . $email->printDebugger(['headers']));
-            } catch (\Throwable $e) {
-                log_message('error', 'Fallo envio SMTP con adjunto local con ' . (($account['fromEmail'] ?? '') ?: 'sin cuenta') . ': ' . $e->getMessage());
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [$attachmentPath], [
+            'context' => 'bookings_attachment_path',
+        ]);
     }
 
     private function expireActiveBookingSlots(BookingSlotsModel $bookingSlotsModel, array $conditions): void
@@ -294,6 +182,13 @@ class Bookings extends BaseController
             'paid_entries'          => $paidEntries,
             'IdPedido'              => $orderId,
         ];
+
+        $bookingDb = db_connect();
+        if ($bookingDb->fieldExists('created_by_type', 'bookings')) {
+            $queryBooking['created_by_type'] = 'CLIENTE';
+            $queryBooking['created_by_name'] = 'CLIENTE';
+            $queryBooking['created_by_user_id'] = null;
+        }
 
 
         try {
@@ -701,10 +596,27 @@ class Bookings extends BaseController
         $booking = $bookingsModel->find($idBooking);
 
         try {
+            if (!$booking) {
+                return $this->response->setJSON($this->setResponse(404, true, null, 'Reserva no encontrada.'));
+            }
+
+            $isPendingMercadoPagoBooking = (string) ($booking['payment_method'] ?? '') === 'Mercado Pago'
+                && (int) ($booking['approved'] ?? 0) !== 1
+                && (int) ($booking['annulled'] ?? 0) !== 1;
+
+            if ($isPendingMercadoPagoBooking) {
+                (new MercadoPagoReservationService())->markBookingAsAbandoned($booking, 'admin_cancel_booking');
+            } else {
+                $bookingsModel->update($idBooking, [
+                    'approved' => 0,
+                    'annulled' => 1,
+                ]);
+            }
+
             if (isset($mpPayment)) {
                 $mercadoPagoModel->update($mpPayment['id'], ['annulled' => 1]);
             }
-            $bookingsModel->update($idBooking, ['annulled' => 1]);
+
             $bookingSlotsModel->where('booking_id', $idBooking)
                 ->where('active', 1)
                 ->delete();
@@ -776,14 +688,8 @@ class Bookings extends BaseController
 
     private function sendBookingNotificationEmail(array $booking, object $requestData): void
     {
-        $uploadModel = new UploadModel();
-        $config = $uploadModel->first();
-        $notificationEmail = trim($config['notification_email'] ?? '');
-        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
-
-        if ($notificationEmailList === []) {
-            return;
-        }
+        $settings = new NotificationSettingsService();
+        $notificationEmailList = $settings->getNotificationRecipients();
 
         $formattedDate = $this->formatBookingDate((string) ($requestData->fecha ?? ''));
         $subjectName = trim((string) ($requestData->nombre ?? ''));
@@ -820,7 +726,16 @@ class Bookings extends BaseController
             'primaryActionLabel' => 'Ver reserva',
         ]);
 
-        $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
+        if ($notificationEmailList === []) {
+            log_message('warning', 'No hay emails administrativos configurados para recibir reservas booking_id=' . (int) ($booking['id'] ?? 0));
+        } else {
+            $sentInternal = $this->sendEmailWithFallback($notificationEmailList, $subject, $html, true);
+            if ($sentInternal) {
+                log_message('info', 'email_confirmation_sent booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . implode(';', $notificationEmailList) . ' subject="' . $subject . '" target=internal');
+            } else {
+                log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . implode(';', $notificationEmailList) . ' subject="' . $subject . '" context=confirmation_internal');
+            }
+        }
 
         // Solo enviamos confirmacion al cliente si la reserva quedo aprobada.
         if ($isApprovedBooking) {
@@ -1118,6 +1033,13 @@ class Bookings extends BaseController
             'paid_entries'    => $paidEntries,
             'IdPedido'        => $orderId,
         ];
+
+        $bookingDb = db_connect();
+        if ($bookingDb->fieldExists('created_by_type', 'bookings')) {
+            $queryBooking['created_by_type'] = 'ADMIN';
+            $queryBooking['created_by_name'] = trim((string) (session()->name ?? '')) ?: 'ADMIN';
+            $queryBooking['created_by_user_id'] = session()->get('id_user') ?: null;
+        }
 
         try {
             $bookingInsert = $bookingsModel->insert($queryBooking, true);

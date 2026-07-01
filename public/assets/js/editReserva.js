@@ -204,10 +204,7 @@ async function getValue(type) {
         // const amount = parseFloat(responseData.data.amount);
         // serviceValue = amount;
 
-        // inputMonto.value = amount.toLocaleString('es-AR', {
-        //     minimumFractionDigits: 2,
-        //     maximumFractionDigits: 2
-        // });
+        // inputMonto.value = formatPriceAR(amount, '$0')
     }
 }
 

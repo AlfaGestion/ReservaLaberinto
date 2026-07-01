@@ -75,7 +75,7 @@ $userData = $modelUploads->first();
 <?php echo $this->section('scripts') ?>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/abmSuperadmin.js") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchReports.js") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js?v=20260630-1") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/customers.js") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/editReserva.js") ?>"></script>
 

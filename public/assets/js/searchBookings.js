@@ -271,23 +271,101 @@ function formatSpecialRequestAmount(amount) {
         return 'No calculado'
     }
 
-    return `$${new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(numericAmount)}`
+    return formatPriceAR(numericAmount, '$0')
 }
 
 function formatBookingMoney(amount) {
     const numericAmount = Number(amount)
 
     if (!Number.isFinite(numericAmount)) {
-        return '$0,00'
+        return '$0'
     }
 
-    return `$${new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(numericAmount)}`
+    return formatPriceAR(numericAmount, '$0')
+}
+
+function normalizeBookingPaymentMethod(value) {
+    return `${value ?? ''}`.trim().toLowerCase().replace(/\s+/g, '_')
+}
+
+function isMercadoPagoBooking(reserva = {}) {
+    const method = normalizeBookingPaymentMethod(reserva.metodo_pago)
+    return method === 'mercado_pago' || method === 'mercadopago' || method === 'mp'
+}
+
+function parseBookingDateTime(value) {
+    const rawValue = `${value ?? ''}`.trim()
+    if (rawValue === '') {
+        return null
+    }
+
+    const normalizedValue = rawValue.includes('T') ? rawValue : rawValue.replace(' ', 'T')
+    const parsedDate = new Date(normalizedValue)
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+}
+
+function formatMinutesLeft(targetDate) {
+    if (!(targetDate instanceof Date) || Number.isNaN(targetDate.getTime())) {
+        return ''
+    }
+
+    const diffMinutes = Math.ceil((targetDate.getTime() - Date.now()) / 60000)
+    if (diffMinutes <= 0) {
+        return ''
+    }
+
+    return diffMinutes === 1 ? '1 min' : `${diffMinutes} min`
+}
+
+function buildPendingMercadoPagoNote(reserva = {}) {
+    const expiresAt = parseBookingDateTime(reserva.mp_expires_at)
+    const minutesLeft = formatMinutesLeft(expiresAt)
+
+    if (minutesLeft !== '') {
+        return `Vence en ${minutesLeft} · Se libera automáticamente si Mercado Pago no confirma el pago.`
+    }
+
+    return 'Esperando confirmación de Mercado Pago. Si no se acredita dentro de unos minutos, la reserva se liberará automáticamente.'
+}
+
+function buildBookingPaymentState(reserva = {}) {
+    const annulled = Number(reserva.anulada || 0) === 1
+    const approved = Number(reserva.approved || reserva.aprobado || 0) === 1
+    const paymentAmount = Number(reserva.monto_reserva ?? reserva.payment ?? 0)
+    const balanceAmount = Number(reserva.diferencia ?? 0)
+    const isMercadoPago = isMercadoPagoBooking(reserva)
+    const hasPayment = Number.isFinite(paymentAmount) && paymentAmount > 0
+    const hasBalance = Number.isFinite(balanceAmount) && balanceAmount > 0
+
+    let label = 'Sin pago registrado'
+    let badgeClass = 'booking-payment-badge--na'
+    let note = ''
+
+    if (annulled) {
+        label = 'Anulada'
+        badgeClass = 'booking-payment-badge--cancelled'
+    } else if (approved && hasPayment && hasBalance) {
+        label = 'Pago parcial'
+        badgeClass = 'booking-payment-badge--partial'
+        note = `Saldo pendiente ${formatBookingMoney(balanceAmount)}`
+    } else if (approved) {
+        label = 'Pagado'
+        badgeClass = 'booking-payment-badge--approved'
+    } else if (hasPayment) {
+        label = 'Pago registrado'
+        badgeClass = 'booking-payment-badge--registered'
+        if (hasBalance) {
+            note = `Saldo pendiente ${formatBookingMoney(balanceAmount)}`
+        }
+    } else if (isMercadoPago && !annulled && !approved) {
+        label = 'Pendiente MP'
+        badgeClass = 'booking-payment-badge--pending-mp'
+        note = buildPendingMercadoPagoNote(reserva)
+    }
+
+    const title = note !== '' ? note : label
+
+    return { label, badgeClass, note, title }
 }
 
 function formatRawBookingAmount(amount) {
@@ -296,8 +374,7 @@ function formatRawBookingAmount(amount) {
         return '0'
     }
 
-    const roundedAmount = Math.round((numericAmount + Number.EPSILON) * 100) / 100
-    return Number.isInteger(roundedAmount) ? String(roundedAmount) : roundedAmount.toFixed(2)
+    return String(Math.round(numericAmount))
 }
 
 function resolveCompletePaymentEntryUnitPrice(booking = currentCompletePaymentBooking) {
@@ -1481,7 +1558,6 @@ async function fillTableBookings(data, options = {}) {
     const bookings = Array.isArray(data) ? [...data] : []
 
     let existPending = false
-    let paymentState = ''
     let tr = ''
     let actions = ''
     let edit = ''
@@ -1500,29 +1576,20 @@ async function fillTableBookings(data, options = {}) {
     })
 
     bookings.forEach(reserva => {
+        const paymentStateData = buildBookingPaymentState(reserva)
 
-        if (reserva.mp == 0) {
-            if (existPending == false) {
-                existPending = true
-                if (showPendingMpAlert) {
-                    if (typeof showAdminNotice === 'function') {
-                        showAdminNotice('Hay pagos pendientes entrantes de Mercado Pago', 'warning', 'Pago pendiente')
-                    } else {
-                        alert('Hay pagos pendientes entrantes de Mercado Pago')
-                    }
+        if (paymentStateData.label === 'Pendiente MP' && existPending == false) {
+            existPending = true
+            if (showPendingMpAlert) {
+                if (typeof showAdminNotice === 'function') {
+                    showAdminNotice('Hay pagos pendientes entrantes de Mercado Pago', 'warning', 'Pago pendiente')
+                } else {
+                    alert('Hay pagos pendientes entrantes de Mercado Pago')
                 }
             }
         }
 
         reserva.anulada == 1 ? state = 'Anulada' : state = 'Activa'
-
-        if (reserva.metodo_pago == 'mercado_pago') {
-            paymentState = reserva.mp == 0
-                ? '<span class="badge booking-payment-badge booking-payment-badge--pending">En proceso</span>'
-                : '<span class="badge booking-payment-badge booking-payment-badge--approved">Aprobada</span>'
-        } else {
-            paymentState = '<span class="badge booking-payment-badge booking-payment-badge--na">No aplica</span>'
-        }
 
         if (sessionUserSuperadmin == 1) {
             edit = `
@@ -1620,8 +1687,8 @@ async function fillTableBookings(data, options = {}) {
 
         const rowClass = [
             'admin-booking-row',
-            reserva.pago_total === 'Si' ? 'admin-booking-row--paid' : '',
-            reserva.metodo_pago == 'mercado_pago' && Number(reserva.mp || 0) === 0 ? 'admin-booking-row--pending-mp' : '',
+            paymentStateData.label === 'Pagado' ? 'admin-booking-row--paid' : '',
+            paymentStateData.label === 'Pendiente MP' ? 'admin-booking-row--pending-mp' : '',
         ].filter(Boolean).join(' ')
         const isEntryPayment = Number(reserva.partial_by_entries || 0) === 1
         const paidAmountDisplay = isEntryPayment
@@ -1630,15 +1697,25 @@ async function fillTableBookings(data, options = {}) {
         const pendingAmountDisplay = isEntryPayment
             ? `${Number(reserva.pending_entries || 0) > 0 ? '-' + formatBookingMoney(reserva.pending_entries_amount) : '0'}<small class="d-block text-muted">${Number(reserva.pending_entries || 0)} entradas pendientes</small>`
             : `${Number(reserva.diferencia || 0) > 0 ? '-' + escapeHtml(reserva.diferencia) : 0}`
+        const paymentBadgeNote = paymentStateData.note !== ''
+            ? `<small class="booking-payment-badge__note">${escapeHtml(paymentStateData.note)}</small>`
+            : ''
+        const paymentBadgeTitle = escapeHtml(paymentStateData.title)
 
         tr += `
         <tr class="${rowClass}">
-            <td>${paymentState}</td>
+            <td>
+                <div class="booking-payment-state">
+                    <span class="badge booking-payment-badge ${paymentStateData.badgeClass}" title="${paymentBadgeTitle}">${escapeHtml(paymentStateData.label)}</span>
+                    ${paymentBadgeNote}
+                </div>
+            </td>
             <td>${reserva.fecha}</th>
             <td>${reserva.cancha}</td>
             <td>${reserva.horario}</td>
             <td>${reserva.nombre}</td>
             <td>${reserva.telefono}</td>
+            <td>${escapeHtml(reserva.creado_por || '-')}</td>
             <td>${reserva.visitantes}</td>
             <td>${paidAmountDisplay}</td>
             <td>${reserva.total_reserva}</td>

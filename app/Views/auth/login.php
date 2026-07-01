@@ -5,6 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ingreso Admin</title>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('reservas_theme');
+                document.documentElement.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+            } catch (error) {
+                document.documentElement.classList.add('theme-light');
+            }
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
@@ -12,10 +22,35 @@
     <style>
         body.login-page {
             min-height: 100vh;
-            background:
-                radial-gradient(circle at top, rgba(233, 133, 33, 0.18), transparent 28%),
-                linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
-            color: #243127;
+            --login-page-bg: radial-gradient(circle at top, rgba(233, 133, 33, 0.18), transparent 28%), linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
+            --login-page-text: #243127;
+            --login-page-surface: rgba(255, 255, 255, 0.96);
+            --login-page-border: rgba(13, 106, 58, 0.12);
+            --login-page-muted: #5d6e63;
+            --login-page-title: #163625;
+            --login-page-label: #486255;
+            --login-page-input-border: #d4ddd4;
+            --login-page-input-text: #243127;
+            --login-page-icon: #607567;
+            --login-page-link: #486255;
+            --login-page-link-hover: #163625;
+            background: var(--login-page-bg);
+            color: var(--login-page-text);
+        }
+
+        html.theme-dark body.login-page {
+            --login-page-bg: radial-gradient(circle at top, rgba(102, 156, 255, 0.16), transparent 28%), linear-gradient(180deg, #0b1c34 0%, #102945 100%);
+            --login-page-text: #eef4fb;
+            --login-page-surface: rgba(16, 40, 68, 0.98);
+            --login-page-border: rgba(142, 182, 229, 0.14);
+            --login-page-muted: #a9bfd7;
+            --login-page-title: #f5f9fd;
+            --login-page-label: #cbd9e8;
+            --login-page-input-border: rgba(142, 182, 229, 0.14);
+            --login-page-input-text: #f2f7fc;
+            --login-page-icon: #9bb5d1;
+            --login-page-link: #dbe9f8;
+            --login-page-link-hover: #ffffff;
         }
 
         .login-shell {
@@ -28,8 +63,8 @@
 
         .login-card {
             width: min(100%, 520px);
-            background: rgba(255, 255, 255, 0.96);
-            border: 1px solid rgba(13, 106, 58, 0.12);
+            background: var(--login-page-surface);
+            border: 1px solid var(--login-page-border);
             border-radius: 24px;
             box-shadow: 0 24px 60px rgba(21, 36, 24, 0.12);
             overflow: hidden;
@@ -53,13 +88,13 @@
             line-height: 1;
             font-weight: 800;
             letter-spacing: -0.04em;
-            color: #163625;
+            color: var(--login-page-title);
         }
 
         .login-subtitle {
             margin: 0 auto;
             max-width: 380px;
-            color: #5d6e63;
+            color: var(--login-page-muted);
             font-size: 1rem;
         }
 
@@ -77,7 +112,7 @@
             margin: 0 0 8px;
             font-size: 0.95rem;
             font-weight: 700;
-            color: #486255;
+            color: var(--login-page-label);
         }
 
         .login-control {
@@ -89,7 +124,7 @@
             top: 50%;
             left: 18px;
             transform: translateY(-50%);
-            color: #607567;
+            color: var(--login-page-icon);
             font-size: 0.95rem;
             z-index: 2;
         }
@@ -97,10 +132,12 @@
         .login-input {
             min-height: 58px;
             border-radius: 16px;
-            border: 1px solid #d4ddd4;
+            border: 1px solid var(--login-page-input-border);
             padding: 14px 16px 14px 48px;
             font-size: 1rem;
             box-shadow: none !important;
+            background: var(--login-page-surface);
+            color: var(--login-page-input-text);
         }
 
         .login-input:focus {
@@ -117,7 +154,7 @@
         }
 
         .login-back-link {
-            color: #486255;
+            color: var(--login-page-link);
             font-weight: 700;
             padding: 8px 4px;
             display: inline-flex;
@@ -126,7 +163,7 @@
         }
 
         .login-back-link:hover {
-            color: #163625;
+            color: var(--login-page-link-hover);
         }
 
         .login-btn {
@@ -142,6 +179,16 @@
         .login-alert {
             border-radius: 16px;
             padding: 14px 16px;
+        }
+
+        html.theme-dark body.login-page .alert {
+            background: #112b49;
+            color: #dbe9f8;
+            border-color: rgba(142, 182, 229, 0.18);
+        }
+
+        html.theme-dark body.login-page .btn-close {
+            filter: invert(1) grayscale(1);
         }
 
         @media (max-width: 768px) {

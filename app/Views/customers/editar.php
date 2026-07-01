@@ -5,7 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar cliente</title>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260428-1820") ?>">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('reservas_theme');
+                document.documentElement.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+            } catch (error) {
+                document.documentElement.classList.add('theme-light');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles-20260428.css?v=20260630-8") ?>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
@@ -13,10 +23,33 @@
     <style>
         body.customer-edit-page {
             min-height: 100vh;
-            background:
-                radial-gradient(circle at top, rgba(233, 133, 33, 0.16), transparent 28%),
-                linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
-            color: #243127;
+            --customer-edit-bg: radial-gradient(circle at top, rgba(233, 133, 33, 0.16), transparent 28%), linear-gradient(180deg, #f7f3ec 0%, #eef3ee 100%);
+            --customer-edit-text: #243127;
+            --customer-edit-surface: rgba(255, 255, 255, 0.96);
+            --customer-edit-border: rgba(13, 106, 58, 0.12);
+            --customer-edit-muted: #5d6e63;
+            --customer-edit-title: #163625;
+            --customer-edit-label: #274536;
+            --customer-edit-input-border: #d4ddd4;
+            --customer-edit-input-text: #243127;
+            --customer-edit-link: #486255;
+            --customer-edit-link-hover: #163625;
+            background: var(--customer-edit-bg);
+            color: var(--customer-edit-text);
+        }
+
+        html.theme-dark body.customer-edit-page {
+            --customer-edit-bg: radial-gradient(circle at top, rgba(102, 156, 255, 0.16), transparent 28%), linear-gradient(180deg, #0b1c34 0%, #102945 100%);
+            --customer-edit-text: #eef4fb;
+            --customer-edit-surface: rgba(16, 40, 68, 0.98);
+            --customer-edit-border: rgba(142, 182, 229, 0.14);
+            --customer-edit-muted: #a9bfd7;
+            --customer-edit-title: #f5f9fd;
+            --customer-edit-label: #cbd9e8;
+            --customer-edit-input-border: rgba(142, 182, 229, 0.14);
+            --customer-edit-input-text: #f2f7fc;
+            --customer-edit-link: #dbe9f8;
+            --customer-edit-link-hover: #ffffff;
         }
 
         body.customer-edit-page.customer-edit-page--embedded {
@@ -39,8 +72,8 @@
 
         .customer-edit-card {
             width: min(100%, 760px);
-            background: rgba(255, 255, 255, 0.96);
-            border: 1px solid rgba(13, 106, 58, 0.12);
+            background: var(--customer-edit-surface);
+            border: 1px solid var(--customer-edit-border);
             border-radius: 24px;
             box-shadow: 0 24px 60px rgba(21, 36, 24, 0.12);
             overflow: hidden;
@@ -70,7 +103,7 @@
             line-height: 1;
             font-weight: 800;
             letter-spacing: -0.04em;
-            color: #163625;
+            color: var(--customer-edit-title);
         }
 
         .customer-edit-card__body {
@@ -92,17 +125,19 @@
             margin-bottom: 8px;
             font-size: 0.92rem;
             font-weight: 700;
-            color: #274536;
+            color: var(--customer-edit-label);
         }
 
         .customer-edit-input,
         .customer-edit-select {
             min-height: 56px;
             border-radius: 16px;
-            border: 1px solid #d4ddd4;
+            border: 1px solid var(--customer-edit-input-border);
             padding: 14px 16px;
             font-size: 1rem;
             box-shadow: none !important;
+            background: var(--customer-edit-surface);
+            color: var(--customer-edit-input-text);
         }
 
         .customer-edit-input:focus,
@@ -129,7 +164,7 @@
         }
 
         .customer-edit-back-link {
-            color: #486255;
+            color: var(--customer-edit-link);
             font-weight: 700;
             padding: 8px 4px;
             display: inline-flex;
@@ -138,12 +173,22 @@
         }
 
         .customer-edit-back-link:hover {
-            color: #163625;
+            color: var(--customer-edit-link-hover);
         }
 
         .customer-edit-alert {
             border-radius: 16px;
             padding: 14px 16px;
+        }
+
+        html.theme-dark body.customer-edit-page .alert {
+            background: #112b49;
+            color: #dbe9f8;
+            border-color: rgba(142, 182, 229, 0.18);
+        }
+
+        html.theme-dark body.customer-edit-page .btn-close {
+            filter: invert(1) grayscale(1);
         }
 
         @media (max-width: 768px) {

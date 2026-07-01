@@ -121,12 +121,6 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('cancelSpecialBookingRequest/(:num)', 'Superadmin::cancelSpecialBookingRequest/$1');
     $routes->post('deleteSpecialBookingRequest/(:num)', 'Superadmin::deleteSpecialBookingRequest/$1');
     $routes->post('resendBookingEmail/(:num)', 'Superadmin::resendBookingEmail/$1');
-    $routes->get('getRejectedBookings', 'Superadmin::getRejectedBookings');
-    $routes->post('resendRejectedPaymentLink/(:num)', 'Superadmin::resendRejectedPaymentLink/$1');
-    $routes->post('approveRejectedPayment/(:num)', 'Superadmin::approveRejectedPayment/$1');
-    $routes->post('moveRejectedToBookings/(:num)', 'Superadmin::moveRejectedToBookings/$1');
-    $routes->post('closeRejectedPayment/(:num)', 'Superadmin::closeRejectedPayment/$1');
-
     $routes->post('saveTime', 'Time::saveTime');
     $routes->post('confirmMP', 'Bookings::confirmMP');
 

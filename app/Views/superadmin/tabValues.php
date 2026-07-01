@@ -26,9 +26,9 @@
                     ?>
                     <tr id="value-row-<?= $value['id'] ?>">
                         <td><?= isset($value['name']) ? $value['name'] : 'No indicado' ?></td>
-                        <td><?= isset($value['amount']) ? number_format((float) $value['amount'], 2, ',', '.') : 'No indicado' ?></td>
+                        <td><?= isset($value['amount']) ? esc(format_price_ar($value['amount'])) : 'No indicado' ?></td>
                         <td><?= isset($value['discount_percentage']) ? $value['discount_percentage'] : '0' ?>%</td>
-                        <td><?= number_format($finalAmount, 2, ',', '.') ?></td>
+                        <td><?= esc(format_price_ar($finalAmount)) ?></td>
                         <td>
                             <button
                                 type="button"

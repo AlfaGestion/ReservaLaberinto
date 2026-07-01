@@ -8,9 +8,9 @@ use App\Models\CustomersModel;
 use App\Models\MercadoPagoModel;
 use App\Models\PaymentsModel;
 use App\Models\RejectedPaymentsModel;
-use App\Models\UploadModel;
 use App\Models\UsersModel;
-use Config\Services;
+use App\Libraries\EmailDeliveryService;
+use App\Libraries\NotificationSettingsService;
 
 class MercadoPagoReservationService
 {
@@ -78,7 +78,7 @@ class MercadoPagoReservationService
         foreach ($bookings as $booking) {
             $reviewed++;
             try {
-                $reconcile = $this->reconcileBookingWithMercadoPago($booking, [], $source . ':expire');
+                $reconcile = $this->reconcileBookingWithMercadoPago($booking, [], $source . ':expire', 'expire');
                 if (($reconcile['status'] ?? '') === 'approved') {
                     $confirmed++;
                     $released += (int) ($reconcile['released_slots'] ?? 0);
@@ -134,7 +134,7 @@ class MercadoPagoReservationService
             return ['status' => 'already_approved', 'booking_id' => (int) $booking['id']];
         }
 
-        return $this->reconcileBookingWithMercadoPago($booking, $payload, $source);
+        return $this->reconcileBookingWithMercadoPago($booking, $payload, $source, 'callback');
     }
 
     public function processWebhook(array $payload, array $query = []): array
@@ -175,29 +175,104 @@ class MercadoPagoReservationService
             'collection_status' => $query['collection_status'] ?? $payload['collection_status'] ?? null,
         ];
 
-        return $this->reconcileBookingWithMercadoPago($booking, $hints, 'webhook');
+        return $this->reconcileBookingWithMercadoPago($booking, $hints, 'webhook', 'callback');
     }
 
     public function markBookingAsAbandoned(array $booking, string $source = 'client_cancel'): void
     {
-        if ((int) ($booking['approved'] ?? 0) === 1) {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        if ($bookingId <= 0 || (int) ($booking['approved'] ?? 0) === 1) {
             return;
         }
 
-        $this->bookingsModel->update((int) $booking['id'], [
+        $this->bookingsModel->update($bookingId, [
             'approved' => 0,
             'annulled' => 1,
+            'mp' => 0,
+            'payment' => 0,
+            'reservation' => 0,
+            'diference' => (float) ($booking['total'] ?? 0),
+            'total_payment' => 0,
+            'paid_entries' => 0,
         ]);
-        $this->releaseBookingSlots((int) $booking['id']);
+        $this->releaseBookingSlots($bookingId);
         $this->upsertRejectedPaymentRecord($booking, [
             'status' => 'abandoned',
             'status_detail' => 'Checkout abandonado por el cliente',
             'preference_id' => $booking['id_preference_parcial'] ?? null,
         ], 'closed', false);
-        log_message('info', 'MP booking ' . $booking['id'] . ' cancelled by abandonment [' . $source . ']');
+        $this->sendBookingCancellationEmailOnce($bookingId, 'abandoned');
+        log_message('info', 'MP booking ' . $bookingId . ' cancelled by abandonment [' . $source . ']');
     }
 
-    private function reconcileBookingWithMercadoPago(array $booking, array $hints = [], string $source = 'reconcile'): array
+    public function cancelPendingReservations(array $filters = [], string $source = 'client_cancel'): array
+    {
+        $reviewed = 0;
+        $cancelled = 0;
+        $ignored = 0;
+        $failed = 0;
+
+        $query = $this->bookingsModel
+            ->where('annulled', 0)
+            ->where('approved', 0)
+            ->whereIn('payment_method', ['Mercado Pago', 'mercado_pago']);
+
+        foreach ($filters as $field => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            switch ($field) {
+                case 'bookingId':
+                    $query->where('id', (int) $value);
+                    break;
+                case 'preferenceIdParcial':
+                    $query->where('id_preference_parcial', trim((string) $value));
+                    break;
+                case 'preferenceIdTotal':
+                    $query->where('id_preference_total', trim((string) $value));
+                    break;
+                case 'date':
+                    $query->where('date', trim((string) $value));
+                    break;
+                case 'id_field':
+                    $query->where('id_field', (int) $value);
+                    break;
+                case 'time_from':
+                    $query->where('time_from', trim((string) $value));
+                    break;
+                case 'time_until':
+                    $query->where('time_until', trim((string) $value));
+                    break;
+            }
+        }
+
+        $bookings = $query->findAll();
+        foreach ($bookings as $booking) {
+            $reviewed++;
+            try {
+                if ((int) ($booking['approved'] ?? 0) === 1) {
+                    $ignored++;
+                    continue;
+                }
+
+                $this->markBookingAsAbandoned($booking, $source);
+                $cancelled++;
+            } catch (\Throwable $e) {
+                $failed++;
+                log_message('error', 'Error cancelling pending MP booking ' . ($booking['id'] ?? '?') . ': ' . $e->getMessage());
+            }
+        }
+
+        return [
+            'reviewed' => $reviewed,
+            'cancelled' => $cancelled,
+            'ignored' => $ignored,
+            'failed' => $failed,
+        ];
+    }
+
+    private function reconcileBookingWithMercadoPago(array $booking, array $hints = [], string $source = 'reconcile', string $mode = 'callback'): array
     {
         $bookingId = (int) ($booking['id'] ?? 0);
         if ($bookingId <= 0) {
@@ -217,6 +292,10 @@ class MercadoPagoReservationService
         $apiReachable = true;
 
         $paymentInfo = null;
+        if ($paymentId === '') {
+            $paymentId = $this->resolveStoredPaymentId($booking, $hints);
+        }
+
         if ($paymentId !== '') {
             $paymentResult = $this->mercadoPagoLibrary->getPaymentByIdWithMeta($paymentId);
             $apiReachable = (bool) ($paymentResult['api_reachable'] ?? false);
@@ -231,12 +310,14 @@ class MercadoPagoReservationService
                 log_message('error', 'MP reconciliation api_unreachable booking_id=' . $bookingId . ' payment_id=' . $paymentId . ' source=' . $source . ' error=' . (string) ($paymentResult['error'] ?? 'unknown'));
                 return ['status' => 'api_unreachable', 'booking_id' => $bookingId];
             }
-        } elseif ($hasPaymentIdentifiers) {
-            log_message('error', 'MP reconciliation_failed booking_id=' . $bookingId . ' source=' . $source . ' reason=missing_payment_id_with_identifiers');
-            return ['status' => 'reconciliation_failed', 'booking_id' => $bookingId];
         }
 
         if ($status === 'approved') {
+            if ($paymentId === '') {
+                log_message('warning', 'MP reconciliation missing payment_id for approved booking_id=' . $bookingId . ' source=' . $source);
+                return ['status' => 'missing_payment_id', 'booking_id' => $bookingId];
+            }
+
             $result = $this->approveBookingFromPayment($booking, $paymentId, $hints, $paymentInfo, $source);
             return $result + ['status' => 'approved'];
         }
@@ -270,6 +351,44 @@ class MercadoPagoReservationService
             return ['status' => $status, 'booking_id' => $bookingId];
         }
 
+        $finalFailureStatuses = ['cancelled', 'rejected', 'failed', 'failure', 'expired', 'charged_back', 'refunded', 'voided', 'not_approved'];
+        if ($status !== '' && in_array($status, $finalFailureStatuses, true)) {
+            $this->storeMercadoPagoLog($bookingId, [
+                'payment_id' => $paymentId,
+                'status' => $status,
+                'collection_status' => $statusDetail,
+                'external_reference' => $hints['external_reference'] ?? null,
+                'payment_type' => $hints['payment_type'] ?? null,
+                'merchant_order_id' => $hints['merchant_order_id'] ?? null,
+                'preference_id' => $hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+                'site_id' => $hints['site_id'] ?? null,
+                'processing_mode' => $hints['processing_mode'] ?? null,
+                'merchant_account_id' => $hints['merchant_account_id'] ?? null,
+            ]);
+
+            if ($mode !== 'expire') {
+                return $this->cancelBookingFromPaymentFailure($booking, [
+                    'payment_id' => $paymentId,
+                    'status' => $status,
+                    'status_detail' => $statusDetail,
+                    'preference_id' => $hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+                    'external_reference' => $hints['external_reference'] ?? null,
+                ], $source);
+            }
+
+            return ['status' => $status, 'booking_id' => $bookingId];
+        }
+
+        if ($status === '' && $hasPaymentIdentifiers && $paymentId === '') {
+            return $this->cancelBookingFromPaymentFailure($booking, [
+                'payment_id' => null,
+                'status' => 'cancelled',
+                'status_detail' => 'missing_payment_id',
+                'preference_id' => $hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? null),
+                'external_reference' => $hints['external_reference'] ?? null,
+            ], $source);
+        }
+
         $this->storeMercadoPagoLog($bookingId, [
             'payment_id' => $paymentId,
             'status' => $status,
@@ -293,6 +412,104 @@ class MercadoPagoReservationService
         ], $rejectedStatus, true);
 
         return ['status' => $status !== '' ? $status : 'not_approved', 'booking_id' => $bookingId];
+    }
+
+    private function cancelBookingFromPaymentFailure(array $booking, array $hints = [], string $source = 'callback'): array
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        if ($bookingId <= 0) {
+            return ['status' => 'invalid_booking'];
+        }
+
+        if ((int) ($booking['approved'] ?? 0) === 1 && (int) ($booking['annulled'] ?? 0) === 0) {
+            return ['status' => 'already_approved', 'booking_id' => $bookingId];
+        }
+
+        $paymentStatus = strtolower(trim((string) ($hints['status'] ?? 'rejected')));
+        $statusDetail = trim((string) ($hints['status_detail'] ?? ''));
+        $paymentId = trim((string) ($hints['payment_id'] ?? ''));
+        $preferenceId = trim((string) ($hints['preference_id'] ?? ($booking['id_preference_parcial'] ?? $booking['id_preference_total'] ?? '')));
+
+        $this->bookingsModel->update($bookingId, [
+            'approved' => 0,
+            'annulled' => 1,
+            'mp' => 0,
+            'payment' => 0,
+            'reservation' => 0,
+            'diference' => (float) ($booking['total'] ?? 0),
+            'total_payment' => 0,
+            'paid_entries' => 0,
+        ]);
+        $releasedSlots = $this->releaseBookingSlots($bookingId);
+
+        $this->upsertRejectedPaymentRecord($booking, [
+            'payment_id' => $paymentId !== '' ? $paymentId : null,
+            'status' => $paymentStatus,
+            'status_detail' => $statusDetail !== '' ? $statusDetail : $paymentStatus,
+            'preference_id' => $preferenceId !== '' ? $preferenceId : null,
+            'external_reference' => $hints['external_reference'] ?? null,
+        ], 'rejected', false);
+
+        $this->sendBookingCancellationEmailOnce($bookingId, $paymentStatus);
+
+        log_message('info', 'Booking ' . $bookingId . ' cancelled from MP failure [' . $source . '] status=' . $paymentStatus . ' released_slots=' . $releasedSlots);
+
+        return ['booking_id' => $bookingId, 'status' => $paymentStatus, 'released_slots' => $releasedSlots];
+    }
+
+    private function resolveStoredPaymentId(array $booking, array $hints = []): string
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        $candidates = [];
+
+        foreach ([
+            $hints['payment_id'] ?? null,
+            $hints['preference_id'] ?? null,
+            $booking['id_preference_parcial'] ?? null,
+            $booking['id_preference_total'] ?? null,
+            $hints['external_reference'] ?? null,
+            $hints['merchant_order_id'] ?? null,
+        ] as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                $candidates[] = $candidate;
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $query = $this->mercadoPagoModel->groupStart()
+                ->where('payment_id', $candidate)
+                ->orWhere('preference_id', $candidate)
+                ->orWhere('external_reference', $candidate)
+                ->orWhere('merchant_order_id', $candidate)
+                ->orWhere('id_booking', $bookingId)
+                ->groupEnd()
+                ->orderBy('id', 'DESC');
+
+            $rows = $query->findAll(5);
+            foreach ($rows as $row) {
+                $paymentId = trim((string) ($row['payment_id'] ?? ''));
+                if ($paymentId !== '' && $paymentId !== '-') {
+                    return $paymentId;
+                }
+            }
+        }
+
+        if ($bookingId > 0) {
+            $rows = $this->mercadoPagoModel
+                ->where('id_booking', $bookingId)
+                ->orderBy('id', 'DESC')
+                ->findAll(5);
+
+            foreach ($rows as $row) {
+                $paymentId = trim((string) ($row['payment_id'] ?? ''));
+                if ($paymentId !== '' && $paymentId !== '-') {
+                    return $paymentId;
+                }
+            }
+        }
+
+        return '';
     }
 
     private function approveBookingFromPayment(array $booking, string $paymentId, array $hints, ?array $paymentInfo, string $source): array
@@ -439,13 +656,20 @@ class MercadoPagoReservationService
         $this->bookingsModel->update($bookingId, [
             'approved' => 0,
             'annulled' => 1,
+            'mp' => 0,
+            'payment' => 0,
+            'reservation' => 0,
+            'diference' => (float) ($booking['total'] ?? 0),
+            'total_payment' => 0,
+            'paid_entries' => 0,
         ]);
         $releasedSlots = $this->releaseBookingSlots($bookingId);
         $this->upsertRejectedPaymentRecord($booking, [
             'status' => 'rejected',
             'status_detail' => 'Reserva pendiente vencida por tiempo de pago',
             'preference_id' => $booking['id_preference_parcial'] ?? null,
-        ], 'rejected', true);
+        ], 'rejected', false);
+        $this->sendBookingCancellationEmailOnce($bookingId, 'expired');
         log_message('info', 'Booking ' . $bookingId . ' expired by policy [' . $source . ']');
         return $releasedSlots;
     }
@@ -617,7 +841,7 @@ class MercadoPagoReservationService
 
     private function formatAuditMoney(float $amount): string
     {
-        return '$' . number_format($amount, 2, ',', '.');
+        return format_price_ar($amount, '$0');
     }
 
     private function ensureCustomerForBooking(array $booking): ?int
@@ -791,14 +1015,87 @@ class MercadoPagoReservationService
         }
     }
 
+    private function sendBookingCancellationEmailOnce(int $bookingId, string $reason = 'cancelled'): void
+    {
+        if ($bookingId <= 0) {
+            return;
+        }
+
+        $booking = $this->bookingsModel->find($bookingId);
+        if (!is_array($booking)) {
+            return;
+        }
+
+        if (!empty($booking['mp_cancelled_email_sent_at'])) {
+            return;
+        }
+
+        $sent = $this->sendBookingCancellationEmail($booking, $reason);
+        if (!$sent) {
+            return;
+        }
+
+        $db = db_connect();
+        if ($db->fieldExists('mp_cancelled_email_sent_at', 'bookings')) {
+            $this->bookingsModel->update($bookingId, [
+                'mp_cancelled_email_sent_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    private function sendBookingCancellationEmail(array $booking, string $reason = 'cancelled'): bool
+    {
+        $bookingId = (int) ($booking['id'] ?? 0);
+        $to = $this->resolveCustomerEmail($booking);
+        if ($to === '') {
+            log_message('warning', 'No se pudo enviar email de cancelacion: cliente sin email booking_id=' . $bookingId . ' reason=' . $reason);
+            return false;
+        }
+
+        $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
+        $customerName = trim((string) ($booking['name'] ?? 'Cliente'));
+        $supportText = $this->buildPaymentSupportText($this->getPaymentSupportContact());
+        $retryUrl = $this->buildRetryPaymentUrl($booking);
+
+        $subject = 'Reserva no confirmada - Pago cancelado';
+        $html = $this->renderEmailCard([
+            'eyebrow' => 'Reserva cancelada',
+            'title' => 'Tu reserva no fue confirmada',
+            'intro' => 'Detectamos que el pago fue cancelado o no se acredito.',
+            'details' => [
+                'Nombre' => $customerName,
+                'Fecha' => $formattedDate,
+                'Horario' => trim(((string) ($booking['time_from'] ?? '')) . ' a ' . ((string) ($booking['time_until'] ?? ''))),
+                'Visitantes' => (string) ($booking['visitors'] ?? ''),
+                'Total' => $this->formatAuditMoney((float) ($booking['total'] ?? 0)),
+                'Pagado' => $this->formatAuditMoney((float) ($booking['payment'] ?? 0)),
+                'Saldo' => $this->formatAuditMoney((float) ($booking['diference'] ?? 0)),
+            ],
+            'messageHtml' => '<p>No se registró ningún cobro y tu reserva no quedó confirmada. Podés volver a iniciar la reserva o intentar nuevamente si querés conservar el horario.</p>',
+            'primaryActionUrl' => $retryUrl,
+            'primaryActionLabel' => $retryUrl !== '' ? 'Intentar nuevamente' : '',
+            'secondaryActionUrl' => site_url(),
+            'secondaryActionLabel' => 'Volver al inicio',
+            'supportText' => $supportText,
+        ]);
+
+        $sent = $this->sendEmailWithFallback($to, $subject, $html, true);
+        if ($sent) {
+            log_message('info', 'email_cancellation_sent booking_id=' . $bookingId . ' to=' . $to . ' subject="' . $subject . '" reason=' . $reason);
+            return true;
+        }
+
+        log_message('error', 'email_send_failed booking_id=' . $bookingId . ' to=' . $to . ' subject="' . $subject . '" context=cancellation reason=' . $reason);
+        return false;
+    }
+
     private function getPaymentSupportContact(): array
     {
-        $uploadModel = new UploadModel();
-        $config = $uploadModel->first() ?: [];
+        $settings = new NotificationSettingsService();
 
         return [
-            'email' => trim((string) ($config['payment_support_email'] ?? '')),
-            'phone' => trim((string) ($config['payment_support_phone'] ?? '')),
+            'email' => $settings->getSupportEmail(),
+            'phone' => $settings->getSupportPhone(),
         ];
     }
 
@@ -825,10 +1122,8 @@ class MercadoPagoReservationService
 
     private function sendBookingConfirmedEmails(array $booking): void
     {
-        $uploadModel = new UploadModel();
-        $config = $uploadModel->first();
-        $notificationEmail = trim((string) ($config['notification_email'] ?? ''));
-        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+        $settings = new NotificationSettingsService();
+        $notificationEmailList = $settings->getNotificationRecipients();
 
         $formattedDate = $this->formatBookingDate((string) ($booking['date'] ?? ''));
         $subjectName = trim((string) ($booking['name'] ?? ''));
@@ -863,6 +1158,8 @@ class MercadoPagoReservationService
             } else {
                 log_message('error', 'email_send_failed booking_id=' . (int) ($booking['id'] ?? 0) . ' to=' . implode(';', $notificationEmailList) . ' subject="' . $subject . '" context=confirmation_internal');
             }
+        } else {
+            log_message('warning', 'No hay emails administrativos configurados para recibir reservas booking_id=' . (int) ($booking['id'] ?? 0));
         }
 
         $customerEmail = $this->resolveCustomerEmail($booking);
@@ -929,39 +1226,9 @@ class MercadoPagoReservationService
 
     private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        foreach ($accounts as $account) {
-            try {
-                $email = Services::email();
-                $email->SMTPTimeout = 8;
-                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                $email->setFrom($email->fromEmail, $email->fromName);
-                $email->setTo($to);
-                $email->setSubject($subject);
-                $email->setMailType($isHtml ? 'html' : 'text');
-                $email->setMessage($message);
-                if ($email->send()) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                log_message('error', 'Fallo envio SMTP central MP: ' . $e->getMessage());
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [], [
+            'context' => 'mercado_pago_reservation_service',
+        ]);
     }
 
     private function renderEmailCard(array $payload): string

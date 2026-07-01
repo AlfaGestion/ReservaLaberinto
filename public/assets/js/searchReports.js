@@ -19,10 +19,7 @@ const reportsSummary = document.getElementById('reportsSummary')
 const reservationsSummary = document.getElementById('reservationsSummary')
 
 function formatMoney(value) {
-    return new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(Number(value || 0))
+    return formatPriceAR(value, '$0').replace('$', '')
 }
 
 function formatLocalDate(date) {

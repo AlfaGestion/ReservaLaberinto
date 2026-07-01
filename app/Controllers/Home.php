@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Libraries\MercadoPagoReservationService;
+use App\Libraries\EmailDeliveryService;
+use App\Libraries\NotificationSettingsService;
 use App\Models\BookingsModel;
 use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
@@ -15,54 +17,14 @@ use App\Models\TimeModel;
 use App\Models\UploadModel;
 use DateInterval;
 use DateTime;
-use Config\Services;
 
 class Home extends BaseController
 {
-    private function createEmailService()
-    {
-        $email = Services::email();
-        $email->SMTPTimeout = 8;
-
-        return $email;
-    }
-
     private function sendEmailWithFallback($to, string $subject, string $message, bool $isHtml = false): bool
     {
-        $emailConfig = config('Email');
-        $accounts = $emailConfig->accounts ?? [];
-
-        if ($accounts === []) {
-            $accounts = [[
-                'fromEmail' => $emailConfig->fromEmail,
-                'fromName' => $emailConfig->fromName,
-                'SMTPUser' => $emailConfig->SMTPUser,
-                'SMTPPass' => $emailConfig->SMTPPass,
-            ]];
-        }
-
-        foreach ($accounts as $account) {
-            try {
-                $email = $this->createEmailService();
-                $email->fromEmail = $account['fromEmail'] ?? $emailConfig->fromEmail;
-                $email->fromName = $account['fromName'] ?? $emailConfig->fromName;
-                $email->SMTPUser = $account['SMTPUser'] ?? $emailConfig->SMTPUser;
-                $email->SMTPPass = $account['SMTPPass'] ?? $emailConfig->SMTPPass;
-                $email->setFrom($email->fromEmail, $email->fromName);
-                $email->setTo($to);
-                $email->setSubject($subject);
-                $email->setMailType($isHtml ? 'html' : 'text');
-                $email->setMessage($message);
-
-                if ($email->send()) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                log_message('error', 'Fallo envio solicitud especial: ' . $e->getMessage());
-            }
-        }
-
-        return false;
+        return (new EmailDeliveryService())->send($to, $subject, $message, $isHtml, [], [
+            'context' => 'home',
+        ]);
     }
 
     private function renderBookingLanding(array $prefill = [], string $prefillToken = '')
@@ -299,12 +261,11 @@ class Home extends BaseController
 
     public function requestSpecialBooking()
     {
-        $uploadModel = new UploadModel();
+        $settings = new NotificationSettingsService();
         $specialBookingRequestsModel = new SpecialBookingRequestsModel();
         $fieldsModel = new FieldsModel();
         $data = $this->request->getJSON();
-        $notificationEmail = trim((string) (($uploadModel->first()['notification_email'] ?? '')));
-        $notificationEmailList = array_values(array_filter(array_map('trim', explode(';', $notificationEmail))));
+        $notificationEmailList = $settings->getNotificationRecipients();
 
         if ($notificationEmailList === []) {
             return $this->response->setJSON($this->setResponse(400, true, null, 'No hay email configurado para recibir solicitudes especiales.'));
@@ -365,7 +326,7 @@ class Home extends BaseController
             (string) $coordinators,
             (string) $chargedTickets,
             (string) $minimumVisitors,
-            $totalAmount !== null ? '$' . number_format($totalAmount, 2, ',', '.') : 'No calculado'
+            $totalAmount !== null ? format_price_ar($totalAmount) : 'No calculado'
         );
 
         $requestId = $specialBookingRequestsModel->insert([
@@ -412,7 +373,7 @@ class Home extends BaseController
                 'Coordinadores sin cargo' => (string) $coordinators,
                 'Entradas a cobrar' => (string) $chargedTickets,
                 'Minimo requerido' => (string) $minimumVisitors,
-                'Importe estimado' => $totalAmount !== null ? '$' . number_format($totalAmount, 2, ',', '.') : 'No calculado',
+                'Importe estimado' => $totalAmount !== null ? format_price_ar($totalAmount) : 'No calculado',
             ],
             'messageHtml' => '<p>' . esc($requestMessage) . '</p><p>Revisar disponibilidad manualmente y responder por los canales habituales.</p>',
         ]);

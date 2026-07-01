@@ -161,7 +161,7 @@ if (!empty($prefill['time_until'])) {
                         </select>
                         <span class="terms-audio-hint">Click en un punto para leer desde ahi</span>
                     </div>
-                    <div class="terms-container p-3 rounded" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
+                    <div class="terms-container p-3 rounded" style="background-color: var(--theme-surface-soft); color: var(--theme-text); max-height: 60vh; overflow-y: auto;">
 
                         <div class="mb-3 d-flex flex-column align-items-center justify-content-center">
                             <h2 class="fw-bold text-center" style="color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Laberinto Patagonia - Reservas Grupales</h2>
@@ -357,7 +357,7 @@ if (!empty($prefill['time_until'])) {
 
                 <div class="d-flex flex-column align-items-start justify-content-center">
                     <div class="form-floating mb-1 mt-3" style="width: 100%;">
-                        <input type="text" name="fecha" id="fecha" class="form-control" value="" aria-label="date" placeholder="Selecciona una fecha" autocomplete="off">
+                        <input type="text" name="fecha" id="fecha" class="form-control" value="" aria-label="date" placeholder="Selecciona una fecha" autocomplete="off" readonly inputmode="none">
                         <label for="fecha">Fecha</label>
                     </div>
                 </div>
@@ -640,11 +640,11 @@ if (!empty($prefill['time_until'])) {
                     <div class="modal-footer d-flex justify-contente-center align-items-center payment-entry-modal__footer">
                         <?php if (session()->logueado) : ?>
                             <button type="button" class="btn btn-primary" id="confirmBooking">Reservar</button>
-                            <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
+                            <button type="button" class="btn" style="background-color: var(--theme-surface-soft); color: var(--theme-text); border: 1px solid var(--theme-border-soft);" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
                         <?php else : ?>
                             <div id="checkout-btn-parcial"></div>
                             <div id="checkout-btn-total" style="display:none;"></div>
-                            <button type="button" class="btn" style="background-color: #5a5a5a; color: #ffffff" id="" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
+                            <button type="button" class="btn" style="background-color: var(--theme-surface-soft); color: var(--theme-text); border: 1px solid var(--theme-border-soft);" id="" data-bs-target="#modalConfirmarReserva" data-bs-toggle="modal">Volver</button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -668,7 +668,7 @@ if (!empty($prefill['time_until'])) {
                         <h5 class="modal-title" id="modalAvailabilityLabel">Disponibilidad</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body" id="availabilityResult" style="background-color: #f8f9fa; max-height: 60vh; overflow-y: auto;">
+                    <div class="modal-body" id="availabilityResult" style="background-color: var(--theme-surface-soft); max-height: 60vh; overflow-y: auto;">
 
                     </div>
                 </div>
@@ -760,14 +760,14 @@ if (!empty($prefill['time_until'])) {
         font-weight: 800;
         font-size: 1.25rem;
         margin-bottom: 6px;
-        color: #1e2e22;
+        color: var(--theme-text);
     }
 
     .public-notice-inline__message {
         display: block;
         line-height: 1.6;
         font-size: 1.08rem;
-        color: #556a5d;
+        color: var(--theme-text-muted);
     }
 
     .booking-price-notice {
@@ -776,9 +776,9 @@ if (!empty($prefill['time_until'])) {
         margin-top: 10px;
         padding: 12px 14px;
         border-radius: 16px;
-        border: 1px solid #bde2c8;
-        background: #edf8f0;
-        color: #14532d;
+        border: 1px solid var(--theme-border-soft);
+        background: var(--theme-surface-soft);
+        color: var(--theme-text);
         font-weight: 800;
         line-height: 1.35;
     }
@@ -812,9 +812,9 @@ if (!empty($prefill['time_until'])) {
 
     .booking-price-notice__line:first-child span:last-child {
         font-size: 1.1em;
-        color: #0f5132;
-        background: #d6f3df;
-        border: 1px solid #93d3aa;
+        color: var(--theme-accent-contrast);
+        background: var(--theme-accent);
+        border: 1px solid var(--theme-accent);
         border-radius: 999px;
         padding: 4px 10px;
     }
@@ -825,19 +825,20 @@ if (!empty($prefill['time_until'])) {
         border-radius: 16px;
         border: 0;
         font-weight: 700;
-        color: #fff;
-        background: linear-gradient(135deg, #0d6a3a 0%, #157347 100%);
+        color: var(--theme-accent-contrast);
+        background: linear-gradient(135deg, var(--theme-accent) 0%, #157347 100%);
         box-shadow: 0 16px 28px rgba(13, 106, 58, 0.22);
     }
 
     .public-notice-modal__button:hover {
-        color: #fff;
+        color: var(--theme-accent-contrast);
         background: linear-gradient(135deg, #0b5c33 0%, #12643d 100%);
     }
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js?v=20260603-1") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/price-format.js?v=20260701-1") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js?v=20260701-1") ?>"></script>
 
 
 <?php echo $this->endSection() ?>
