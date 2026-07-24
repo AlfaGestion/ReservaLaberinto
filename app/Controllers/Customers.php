@@ -135,7 +135,7 @@ class Customers extends BaseController
             ]);
         }
 
-        $redirectUrl = base_url('/?registered=1&phone=' . rawurlencode((string) $phone) . '&email=' . rawurlencode((string) $email));
+        $redirectUrl = base_url('?registered=1&phone=' . rawurlencode((string) $phone) . '&email=' . rawurlencode((string) $email));
         return redirect()->to($redirectUrl)->with('msg', ['type' => 'success', 'body' => 'Usuario registrado con éxito']);
     }
 

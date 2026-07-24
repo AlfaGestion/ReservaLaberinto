@@ -137,7 +137,7 @@ class Home extends BaseController
 
     private function redirectWithSpecialRequestAction(string $action)
     {
-        return redirect()->to(site_url('/') . '?specialRequestAction=' . rawurlencode($action));
+        return redirect()->to(site_url('?specialRequestAction=' . rawurlencode($action)));
     }
 
     public function index()
