@@ -837,8 +837,8 @@ if (!empty($prefill['time_until'])) {
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/price-format.js?v=20260701-1") ?>"></script>
-    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/formReserva.js?v=20260810-1") ?>"></script>
+    <script src="<?= asset_url('assets/js/price-format.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/formReserva.js') ?>"></script>
 
 
 <?php echo $this->endSection() ?>

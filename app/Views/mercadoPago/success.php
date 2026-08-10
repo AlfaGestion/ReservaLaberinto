@@ -8,8 +8,8 @@ $uploadModel = new UploadModel();
 $branding = $uploadModel->first();
 $logoFile = trim((string) ($branding['name'] ?? ''));
 $logoPath = $logoFile !== ''
-    ? base_url(PUBLIC_FOLDER . 'assets/images/uploads/' . $logoFile)
-    : base_url(PUBLIC_FOLDER . 'assets/images/sinlogo2.png');
+    ? asset_url('assets/images/uploads/' . $logoFile)
+    : asset_url('assets/images/sinlogo2.png');
 
 $field = $fieldsModel->find($booking['id_field'] ?? null);
 $fieldName = trim((string) ($field['name'] ?? 'Reserva'));
@@ -47,7 +47,7 @@ $isApprovedBooking = (int) ($booking['approved'] ?? 0) === 1 && $paymentStatus =
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($currentStatus['title']) ?></title>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
+    <link rel="stylesheet" href="<?= asset_url('assets/vendor/bootstrap/css/bootstrap.min.css') ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
     <script>
         (function () {

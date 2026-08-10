@@ -7,7 +7,7 @@ $tone = trim((string) ($tone ?? 'secondary'));
 $icon = trim((string) ($icon ?? 'fa-circle-pause'));
 $homeUrl = trim((string) ($homeUrl ?? base_url()));
 $retryUrl = trim((string) ($retryUrl ?? ''));
-$logoPath = trim((string) ($logoPath ?? base_url(PUBLIC_FOLDER . 'assets/images/sinlogo2.png')));
+$logoPath = trim((string) ($logoPath ?? asset_url('assets/images/sinlogo2.png')));
 $booking = is_array($booking ?? null) ? $booking : null;
 $hasRetryUrl = !empty($hasRetryUrl);
 
@@ -32,7 +32,7 @@ if ($booking) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title) ?></title>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
+    <link rel="stylesheet" href="<?= asset_url('assets/vendor/bootstrap/css/bootstrap.min.css') ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
     <script>
         (function () {

@@ -4,11 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <?php
-
-    use App\Models\UploadModel;
-
-    echo $this->renderSection('title') ?>
+    <?php echo $this->renderSection('title') ?>
     <title>Laberinto Patagonia - Reservas</title>
 
     <script>
@@ -29,24 +25,24 @@
         })();
     </script>
 
-    <link rel="icon" href="<?= base_url(PUBLIC_FOLDER . "assets/images/favicon.ico") ?>" type="image/x-icon">
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/flatpickr/css/flatpickr.min.css?v=4.6.13') ?>">
-    <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=5.2.3') ?>"></script>
-    
-    <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/flatpickr/js/flatpickr.min.js?v=4.6.13') ?>"></script>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css?v=20260810-1") ?>">
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/admin-theme.css?v=20260810-1") ?>">
+    <link rel="icon" href="<?= asset_url('assets/images/favicon.ico') ?>" type="image/x-icon">
+    <link rel="stylesheet" href="<?= asset_url('assets/vendor/bootstrap/css/bootstrap.min.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('assets/vendor/flatpickr/css/flatpickr.min.css') ?>">
+    <script src="<?= asset_url('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= asset_url('assets/vendor/flatpickr/js/flatpickr.min.js') ?>"></script>
+    <link rel="stylesheet" href="<?= asset_url('assets/css/styles.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('assets/css/admin-theme.css') ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
 </head>
 
 <?php
 
+use App\Models\UploadModel;
+
 $modelUploads = new UploadModel();
 $userBackground = '';
 
 $userData = $modelUploads->first();
-
 
 ?>
 
@@ -55,7 +51,7 @@ $userData = $modelUploads->first();
     <body class="admin-page">
 <?php elseif ($userBackground) : ?>
 
-    <body style="background: url(<?= base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userBackground['name']) ?>);">
+    <body style="background: url(<?= asset_url('assets/images/uploads/' . $userBackground['name']) ?>);">
     <?php else : ?>
 
         <body>
@@ -64,69 +60,47 @@ $userData = $modelUploads->first();
         <?php echo $this->renderSection('navbar') ?>
         <?php if ($userBackground) : ?>
 
-            <nav class="navbar navbar-expand-lg" style="background: url(<?= base_url(PUBLIC_FOLDER . "assets/images/uploads" . $userBackground['name']) ?>);">
+            <nav class="navbar navbar-expand-lg site-topbar" style="background: url(<?= asset_url('assets/images/uploads/' . $userBackground['name']) ?>);">
             <?php else : ?>
 
-                <nav class="navbar navbar-expand-lg" style="background: var(--theme-surface); border-bottom: 1px solid var(--theme-border-soft); color: var(--theme-text);">
+                <nav class="navbar navbar-expand-lg site-topbar" style="background: var(--theme-surface); border-bottom: 1px solid var(--theme-border-soft); color: var(--theme-text);">
                 <?php endif; ?>
 
-                <div class="container-fluid">
+                <div class="container-fluid site-topbar__inner">
+                    <div class="mx-auto site-topbar__brand-wrap">
+                        <a class="navbar-brand site-navbar-brand" href="<?= base_url() ?>">
+                            <img
+                                class="site-navbar-logo"
+                                src="<?= isset($userData) ? asset_url('assets/images/uploads/' . $userData['name']) : asset_url('assets/images/sinlogo2.png') ?>"
+                                alt="Laberinto Patagonia">
+                        </a>
+                    </div>
 
-                    <?php if ($userBackground) : ?>
+                    <div class="site-topbar-actions d-flex align-items-center gap-1 ms-auto">
+                        <button type="button" id="adminThemeToggle" class="admin-theme-toggle site-theme-toggle me-1" aria-label="Cambiar tema" title="Cambiar tema">
+                            <i data-theme-icon class="fa-solid fa-moon" aria-hidden="true"></i>
+                        </button>
 
-                        <div class="mx-auto d-lg-none"> <!-- Centra en dispositivos móviles -->
-                            <a class="navbar-brand" href="<?= base_url() ?>">
-                                <img src="<?= isset($userData) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" width="250px" alt="">
+                        <?php if (session()->logueado) : ?>
+                            <span class="site-topbar__user me-1"><?= session()->name ?></span>
+                            <a href="<?= base_url('auth/logOut') ?>" class="btn btn-danger me-1 site-topbar__logout" type="button" aria-label="Cerrar sesión">
+                                <i class="fa-solid fa-plug-circle-xmark"></i>
                             </a>
-                        </div>
-
-                        <div class="mx-auto d-none d-lg-block"> <!-- Centra en pantalla grande -->
-                            <a class="navbar-brand" href="<?= base_url() ?>">
-                                <img src="<?= isset($userData) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" width="250px" alt="">
-                            </a>
-                        </div>
-
-                    <?php else : ?>
-
-                        <div class="mx-auto d-lg-none"> <!-- Centra en dispositivos móviles -->
-                            <a class="navbar-brand" href="<?= base_url() ?>">
-                                <img src="<?= isset($userData) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" width="250px" alt="">
-                            </a>
-                        </div>
-
-                        <div class="mx-auto d-none d-lg-block"> <!-- Centra en pantalla grande -->
-                            <a class="navbar-brand" href="<?= base_url() ?>">
-                                <img src="<?= isset($userData) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" width="250px" alt="">
-                            </a>
-                        </div>
-                    <?php endif; ?>
-
-
-                    <button type="button" id="adminThemeToggle" class="admin-theme-toggle site-theme-toggle me-1" aria-label="Cambiar tema" title="Cambiar tema">
-                        <i data-theme-icon class="fa-solid fa-moon" aria-hidden="true"></i>
-                    </button>
-
-                    <?php if (session()->logueado) : ?>
-                        <span class="me-1"><?= session()->name ?></span>
-                        <a href="<?= base_url('auth/logOut') ?>" class="btn btn-danger me-1" type="button" id=""><i class="fa-solid fa-plug-circle-xmark"></i></a>
-                    <?php endif; ?>
-                </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 </nav>
 
-
                 <?php echo $this->renderSection('content') ?>
-
 
                 <?php echo $this->renderSection('footer') ?>
 
                 <div class="container-fluid">
                     <footer class="my-4 py-4 px-3 rounded-3" style="color: var(--theme-text); background-color: var(--theme-surface-strong) !important;">
                         <div class="d-flex flex-column flex-md-row justify-content-center justify-content-md-between align-items-center">
-
                             <div class="mb-3 mb-md-0">
                                 <a href="https://alfa-net-plus-soluciones-informaticas.odoo.com/" target="_blank" class="text-decoration-none" style="color: var(--theme-text);">
-                                    <small>© 2025 - Powered by Alfanet</small>
+                                    <small>&copy; 2025 - Powered by Alfanet</small>
                                 </a>
                             </div>
 
@@ -150,7 +124,6 @@ $userData = $modelUploads->first();
                                     </li>
                                 <?php endif; ?>
                             </ul>
-
                         </div>
                     </footer>
                 </div>
@@ -161,9 +134,9 @@ $userData = $modelUploads->first();
         let sessionUserLogued = <?= json_encode(session()->logueado) ?>;
         let sessionUserSuperadmin = <?= json_encode(session()->superadmin) ?>;
     </script>
-    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/config.js?v=20260521-1325") ?>"></script>
-    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/price-format.js?v=20260701-1") ?>"></script>
-    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/admin-theme.js?v=20260630-7") ?>"></script>
+    <script src="<?= asset_url('assets/js/config.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/price-format.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/admin-theme.js') ?>"></script>
 
                 <?php echo $this->renderSection('scripts') ?>
         </body>

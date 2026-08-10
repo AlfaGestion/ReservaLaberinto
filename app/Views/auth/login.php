@@ -15,10 +15,10 @@
             }
         })();
     </script>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
-    <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=5.2.3') ?>"></script>
+    <link rel="stylesheet" href="<?= asset_url('assets/vendor/bootstrap/css/bootstrap.min.css') ?>">
+    <script src="<?= asset_url('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
-    <link rel="icon" href="<?= base_url(PUBLIC_FOLDER . "assets/images/favicon.ico") ?>" type="image/x-icon">
+    <link rel="icon" href="<?= asset_url('assets/images/favicon.ico') ?>" type="image/x-icon">
     <style>
         body.login-page {
             min-height: 100vh;

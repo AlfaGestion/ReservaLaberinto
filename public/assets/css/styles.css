@@ -249,6 +249,74 @@ select {
     backdrop-filter: blur(10px);
 }
 
+.site-topbar .container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.site-topbar__inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 12px;
+}
+
+.site-topbar__brand-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.site-navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 100%;
+}
+
+.site-navbar-logo {
+    display: block;
+    width: min(72vw, 250px);
+    max-width: 250px;
+    height: auto;
+    object-fit: contain;
+}
+
+.site-topbar-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.site-topbar__user {
+    font-weight: 700;
+    color: var(--theme-text);
+    white-space: nowrap;
+}
+
+.site-topbar__logout {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.site-topbar .site-theme-toggle {
+    position: static;
+    right: auto;
+    bottom: auto;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+}
+
 .booking-stage {
     display: block;
 }
@@ -1015,6 +1083,30 @@ select {
 }
 
 @media (max-width: 768px) {
+    .site-topbar__inner {
+        min-height: 56px;
+        padding: 6px 8px;
+    }
+
+    .site-navbar-logo {
+        width: min(58vw, 180px);
+        max-width: 180px;
+    }
+
+    .site-topbar__user {
+        display: none;
+    }
+
+    .site-topbar__logout {
+        width: 36px;
+        height: 36px;
+    }
+
+    .site-topbar .site-theme-toggle {
+        width: 36px;
+        height: 36px;
+    }
+
     .booking-availability-picker__dates-wrap {
         display: flex;
         flex-direction: column-reverse;
@@ -1219,6 +1311,15 @@ select {
 }
 
 @media (max-width: 480px) {
+    .site-topbar__inner {
+        padding: 6px 8px;
+    }
+
+    .site-navbar-logo {
+        width: min(60vw, 160px);
+        max-width: 160px;
+    }
+
     #formBooking {
         width: calc(100% + 12px);
         margin: 6px -6px 0;

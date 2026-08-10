@@ -73,11 +73,11 @@ $userData = $modelUploads->first();
 <?php echo $this->endSection() ?>
 
 <?php echo $this->section('scripts') ?>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/abmSuperadmin.js") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchReports.js") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js?v=20260810-1") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/customers.js") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/editReserva.js") ?>"></script>
+<script src="<?= asset_url('assets/js/abmSuperadmin.js') ?>"></script>
+<script src="<?= asset_url('assets/js/searchReports.js') ?>"></script>
+<script src="<?= asset_url('assets/js/searchBookings.js') ?>"></script>
+<script src="<?= asset_url('assets/js/customers.js') ?>"></script>
+<script src="<?= asset_url('assets/js/editReserva.js') ?>"></script>
 
 
 <?php echo $this->endSection() ?>
