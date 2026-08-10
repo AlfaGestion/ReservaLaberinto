@@ -11,7 +11,7 @@ if (! function_exists('asset_url')) {
             return $url;
         }
 
-        $separator = str_contains($url, '?') ? '&' : '?';
+        $separator = strpos($url, '?') !== false ? '&' : '?';
 
         return $url . $separator . 'v=' . filemtime($absolutePath);
     }
