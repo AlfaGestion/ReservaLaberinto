@@ -67,7 +67,7 @@ $userData = $modelUploads->first();
                 <?php endif; ?>
 
                 <div class="container-fluid site-topbar__inner">
-                    <div class="mx-auto site-topbar__brand-wrap">
+                    <div class="site-topbar__brand-wrap">
                         <a class="navbar-brand site-navbar-brand" href="<?= base_url() ?>">
                             <img
                                 class="site-navbar-logo"
