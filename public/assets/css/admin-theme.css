@@ -190,6 +190,53 @@ body.admin-page .booking-payment-badge__note {
     max-width: 18rem;
 }
 
+body.admin-page .admin-branding {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+body.admin-page .admin-branding__logo {
+    flex-shrink: 0;
+}
+
+body.admin-page .admin-branding__title {
+    display: none;
+    min-width: 0;
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    color: var(--theme-text);
+    white-space: nowrap;
+}
+
+body.admin-page .admin-userbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: end;
+}
+
+body.admin-page .admin-userbar__logout {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 0;
+}
+
+body.admin-page .admin-bookings-table-wrap {
+    overflow: visible;
+}
+
+body.admin-page .admin-bookings-table {
+    width: 100%;
+}
+
 body.admin-page .booking-payment-badge--na {
     background: var(--theme-badge-muted-bg);
     color: var(--theme-badge-muted-text);
@@ -838,54 +885,113 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
     }
 
     body.admin-page .admin-shell {
-        width: calc(100% - 16px);
-        padding: 16px 0 28px;
+        width: calc(100% - 12px);
+        padding: 10px 0 24px;
     }
 
     body.admin-page .admin-card {
-        padding: 14px;
-        border-radius: 20px;
+        padding: 8px;
+        border-radius: 18px;
     }
 
     body.admin-page .admin-topbar-inner {
-        min-height: auto;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 10px 14px 12px;
-        text-align: center;
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        text-align: left;
+    }
+
+    body.admin-page .admin-topbar-spacer {
+        display: none;
+    }
+
+    body.admin-page .admin-branding {
+        flex: 1 1 auto;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    body.admin-page .admin-branding__title {
+        display: block;
+        font-size: 0.92rem;
     }
 
     body.admin-page .admin-topbar .navbar-brand {
-        justify-self: center;
+        justify-self: auto;
     }
 
     body.admin-page .admin-topbar .navbar-brand img {
-        max-height: 46px;
-        max-width: min(150px, 48vw);
+        max-height: 38px;
+        max-width: min(34vw, 120px);
     }
 
     body.admin-page .admin-userbar {
-        justify-self: center;
-        width: 100%;
-        flex-wrap: wrap;
-        justify-content: center;
+        justify-self: auto;
+        width: auto;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    body.admin-page .admin-userbar__name {
+        display: none;
+    }
+
+    body.admin-page .admin-userbar__logout {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    body.admin-page .admin-theme-toggle {
+        width: 36px;
+        height: 36px;
     }
 
     body.admin-page .admin-tabs {
         flex-wrap: nowrap;
         overflow-x: auto;
-        padding-bottom: 6px;
-        margin-bottom: 14px;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    body.admin-page .admin-tabs::-webkit-scrollbar,
+    body.admin-page .admin-subtabs::-webkit-scrollbar {
+        display: none;
     }
 
     body.admin-page .admin-tabs .nav-link {
         white-space: nowrap;
         flex: 0 0 auto;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    body.admin-page .admin-subtabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    body.admin-page .admin-subtabs .nav-link {
+        white-space: nowrap;
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        font-size: 0.88rem;
     }
 
     body.admin-page .admin-pane {
-        padding: 14px;
+        padding: 8px;
     }
 
     body.admin-page .admin-toolbar,
@@ -894,6 +1000,7 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
     body.admin-page #generalButtons {
         flex-direction: column;
         align-items: stretch;
+        gap: 8px;
     }
 
     body.admin-page .admin-toolbar__search .form-floating {
@@ -902,8 +1009,17 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
 
     body.admin-page #selectDateBooking,
     body.admin-page #selectDateReport {
-        padding: 16px 14px;
-        border-radius: 18px;
+        width: 100%;
+        padding: 12px 10px;
+        border-radius: 16px;
+    }
+
+    body.admin-page #selectDateBooking .admin-bookings-summary {
+        width: 100%;
+        justify-content: flex-start;
+        align-items: flex-start;
+        text-align: left;
+        margin-top: 6px;
     }
 
     body.admin-page #selectDateBooking .admin-bookings-summary,
@@ -912,6 +1028,8 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
+        justify-content: flex-start;
+        gap: 8px;
     }
 
     body.admin-page #selectDateBooking .admin-bookings-date-field,
@@ -921,7 +1039,7 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
 
     body.admin-page #selectDateBooking .admin-bookings-date-field + .admin-bookings-date-field {
         margin-left: 0 !important;
-        margin-top: 10px;
+        margin-top: 0;
     }
 
     body.admin-page #selectDateBooking .admin-bookings-actions {
@@ -937,18 +1055,161 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
         -webkit-overflow-scrolling: touch;
     }
 
-    body.admin-page .admin-pane .table {
-        min-width: 1260px;
+    body.admin-page .admin-bookings-table-wrap {
+        overflow: visible;
     }
 
-    body.admin-page .admin-pane .table > :not(caption) > * > * {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.9rem;
+    body.admin-page .admin-pane .table {
+        min-width: 0;
     }
 
     body.admin-page .booking-payment-badge {
-        min-width: 92px;
+        min-width: 84px;
         font-size: 0.72rem;
+    }
+
+    body.admin-page .admin-bookings-table {
+        min-width: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    body.admin-page .admin-bookings-table thead {
+        display: none;
+    }
+
+    body.admin-page .admin-bookings-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    body.admin-page .admin-bookings-table tbody tr {
+        display: block;
+    }
+
+    body.admin-page .admin-bookings-table tbody tr > td {
+        display: block;
+    }
+
+    body.admin-page .admin-booking-row--mobile > td {
+        padding: 0;
+        border: 0;
+        background: transparent !important;
+    }
+
+    body.admin-page .admin-booking-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid var(--theme-border-soft);
+        background: var(--theme-surface-strong);
+        box-shadow: var(--theme-shadow-soft);
+    }
+
+    body.admin-page .admin-booking-card__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    body.admin-page .admin-booking-card__when {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    body.admin-page .admin-booking-card__date {
+        display: block;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--theme-text);
+        line-height: 1.15;
+    }
+
+    body.admin-page .admin-booking-card__time {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.88rem;
+        color: var(--theme-text-muted);
+    }
+
+    body.admin-page .admin-booking-card__service {
+        font-size: 0.96rem;
+        font-weight: 700;
+        color: var(--theme-text);
+    }
+
+    body.admin-page .admin-booking-card__details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+        font-size: 0.8rem;
+        color: var(--theme-text-muted);
+    }
+
+    body.admin-page .admin-booking-card__details span {
+        min-width: 0;
+        line-height: 1.35;
+    }
+
+    body.admin-page .admin-booking-card__details strong {
+        color: var(--theme-text);
+    }
+
+    body.admin-page .admin-booking-card__invoice {
+        grid-column: 1 / -1;
+    }
+
+    body.admin-page .admin-booking-card__meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 10px;
+    }
+
+    body.admin-page .admin-booking-card__field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    body.admin-page .admin-booking-card__field span {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--theme-text-muted);
+    }
+
+    body.admin-page .admin-booking-card__field strong {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--theme-text);
+        word-break: break-word;
+    }
+
+    body.admin-page .admin-booking-card__footer {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    body.admin-page .admin-booking-card__footer .btn-group,
+    body.admin-page .admin-booking-card__footer .dropdown-menu {
+        width: 100%;
+    }
+
+    body.admin-page .admin-booking-card__footer .booking-payment-state {
+        gap: 0.2rem;
+    }
+
+    body.admin-page .admin-booking-card__footer .booking-payment-badge__note {
+        max-width: none;
     }
 
     body.admin-page .admin-pane .btn-group,
@@ -1037,35 +1298,88 @@ body:not(.admin-page) .site-theme-toggle:focus-visible {
 
 @media (max-width: 480px) {
     body.admin-page .admin-shell {
-        width: calc(100% - 10px);
+        width: calc(100% - 8px);
+        padding: 8px 0 20px;
     }
 
     body.admin-page .admin-card,
     body.admin-page .admin-pane {
-        border-radius: 18px;
+        border-radius: 16px;
+    }
+
+    body.admin-page .admin-card {
+        padding: 6px;
+    }
+
+    body.admin-page .admin-pane {
+        padding: 6px;
+    }
+
+    body.admin-page .admin-topbar-inner {
+        gap: 6px;
+        padding: 7px 8px;
+    }
+
+    body.admin-page .admin-branding {
+        gap: 6px;
+    }
+
+    body.admin-page .admin-branding__title {
+        font-size: 0.88rem;
+    }
+
+    body.admin-page .admin-topbar .navbar-brand img {
+        max-height: 34px;
+        max-width: min(32vw, 110px);
     }
 
     body.admin-page .admin-tabs .nav-link {
-        padding: 9px 12px;
-        font-size: 0.92rem;
+        padding: 7px 10px;
+        font-size: 0.86rem;
+    }
+
+    body.admin-page .admin-subtabs .nav-link {
+        padding: 6px 9px;
+        font-size: 0.84rem;
     }
 
     body.admin-page #selectDateBooking,
     body.admin-page #selectDateReport {
-        padding: 14px 12px;
+        padding: 10px 8px;
+        border-radius: 14px;
     }
 
     body.admin-page .admin-pane .table {
-        min-width: 1180px;
+        min-width: 0;
     }
 
     body.admin-page .admin-pane .table > :not(caption) > * > * {
-        padding: 0.65rem 0.75rem;
-        font-size: 0.86rem;
+        padding: 0.55rem 0.65rem;
+        font-size: 0.84rem;
     }
 
     body.admin-page .admin-pane .booking-payment-badge {
-        min-width: 84px;
+        min-width: 78px;
+        font-size: 0.68rem;
+    }
+
+    body.admin-page .admin-booking-card {
+        padding: 10px;
+        gap: 8px;
+        border-radius: 14px;
+    }
+
+    body.admin-page .admin-booking-card__header {
+        flex-direction: column;
+    }
+
+    body.admin-page .admin-booking-card__meta {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    body.admin-page .admin-booking-card__details {
+        grid-template-columns: 1fr;
     }
 
     body.admin-page #editarReservaModal .modal-body,

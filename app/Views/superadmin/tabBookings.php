@@ -277,8 +277,8 @@ $uploadData = $uploadModel->first();
 </div>
 
 
-<div class="table-responsive">
-    <table class="table align-middle table-striped-columns mt-2">
+<div class="table-responsive admin-bookings-table-wrap">
+    <table class="table align-middle table-striped-columns mt-2 admin-bookings-table">
         <thead>
             <tr>
                 <th scope="col">Estado de pago</th>

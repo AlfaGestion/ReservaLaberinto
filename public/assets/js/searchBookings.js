@@ -47,12 +47,26 @@ let knownActiveBookingIds = new Set()
 let unreadBookingIds = new Set()
 let knownSpecialRequestIds = new Set()
 let currentCompletePaymentBooking = null
+const adminBookingsMobileQuery = window.matchMedia('(max-width: 768px)')
+let currentRenderedBookings = []
 let specialRequestAudioContext = null
 let browserNotificationPermissionRequested = false
 let originalDocumentTitle = document.title
 let originalBookingsTabLabel = bookingsTabButton?.innerHTML || '<i class="fa-regular fa-calendar-days"></i> Reservas'
 let bookingsViewInitialized = false
 let bookingRefreshIntervalId = null
+
+function isAdminBookingsMobileLayout() {
+    return adminBookingsMobileQuery.matches
+}
+
+if (typeof adminBookingsMobileQuery.addEventListener === 'function') {
+    adminBookingsMobileQuery.addEventListener('change', () => {
+        if (Array.isArray(currentRenderedBookings) && currentRenderedBookings.length > 0) {
+            fillTableBookings(currentRenderedBookings, { showPendingMpAlert: false })
+        }
+    })
+}
 
 function formatLocalDate(date) {
     const year = date.getFullYear()
@@ -366,6 +380,82 @@ function buildBookingPaymentState(reserva = {}) {
     const title = note !== '' ? note : label
 
     return { label, badgeClass, note, title }
+}
+
+function buildAdminBookingCardMarkup({
+    reserva,
+    state,
+    paymentStateData,
+    paymentBadgeTitle,
+    paymentBadgeNote,
+    paidAmountDisplay,
+    pendingAmountDisplay,
+    invoiceStatus,
+    actions
+}) {
+    const bookingDate = escapeHtml(reserva?.fecha || '-')
+    const bookingTime = escapeHtml(reserva?.horario || '-')
+    const bookingField = escapeHtml(reserva?.cancha || '-')
+    const bookingName = escapeHtml(reserva?.nombre || '-')
+    const bookingVisitors = escapeHtml(reserva?.visitantes ?? '-')
+    const bookingTotal = escapeHtml(reserva?.total_reserva || '-')
+    const bookingPaymentMethod = escapeHtml(reserva?.metodo_pago || '-')
+    const bookingCode = escapeHtml(reserva?.code || '-')
+    const bookingState = escapeHtml(state || '-')
+
+    return `
+        <div class="admin-booking-card">
+            <div class="admin-booking-card__header">
+                <div class="admin-booking-card__when">
+                    <span class="admin-booking-card__date">${bookingDate}</span>
+                    <span class="admin-booking-card__time">${bookingTime}</span>
+                </div>
+                <div class="booking-payment-state">
+                    <span class="badge booking-payment-badge ${paymentStateData.badgeClass}" title="${paymentBadgeTitle}">${escapeHtml(paymentStateData.label)}</span>
+                    ${paymentBadgeNote}
+                </div>
+            </div>
+
+            <div class="admin-booking-card__service">${bookingField}</div>
+
+            <div class="admin-booking-card__meta">
+                <div class="admin-booking-card__field">
+                    <span>Nombre</span>
+                    <strong>${bookingName}</strong>
+                </div>
+                <div class="admin-booking-card__field">
+                    <span>Estado</span>
+                    <strong>${bookingState}</strong>
+                </div>
+                <div class="admin-booking-card__field">
+                    <span>Visitantes</span>
+                    <strong>${bookingVisitors}</strong>
+                </div>
+                <div class="admin-booking-card__field">
+                    <span>Pago</span>
+                    <strong>${paidAmountDisplay}</strong>
+                </div>
+                <div class="admin-booking-card__field">
+                    <span>Total</span>
+                    <strong>${bookingTotal}</strong>
+                </div>
+                <div class="admin-booking-card__field">
+                    <span>Saldo</span>
+                    <strong>${pendingAmountDisplay}</strong>
+                </div>
+            </div>
+
+            <div class="admin-booking-card__details">
+                <span><strong>Método:</strong> ${bookingPaymentMethod}</span>
+                <span><strong>Código:</strong> ${bookingCode}</span>
+                <div class="admin-booking-card__invoice">${invoiceStatus}</div>
+            </div>
+
+            <div class="admin-booking-card__footer">
+                ${actions}
+            </div>
+        </div>
+    `
 }
 
 function formatRawBookingAmount(amount) {
@@ -1556,6 +1646,10 @@ async function fillTableBookings(data, options = {}) {
     }
 
     const bookings = Array.isArray(data) ? [...data] : []
+    const bookingsTable = divBookings.closest('table')
+    const bookingColumnsCount = bookingsTable?.querySelectorAll('thead th').length || 1
+    const useMobileCards = isAdminBookingsMobileLayout()
+    currentRenderedBookings = bookings
 
     let existPending = false
     let tr = ''
@@ -1702,32 +1796,52 @@ async function fillTableBookings(data, options = {}) {
             : ''
         const paymentBadgeTitle = escapeHtml(paymentStateData.title)
 
-        tr += `
-        <tr class="${rowClass}">
-            <td>
-                <div class="booking-payment-state">
-                    <span class="badge booking-payment-badge ${paymentStateData.badgeClass}" title="${paymentBadgeTitle}">${escapeHtml(paymentStateData.label)}</span>
-                    ${paymentBadgeNote}
-                </div>
-            </td>
-            <td>${reserva.fecha}</th>
-            <td>${reserva.cancha}</td>
-            <td>${reserva.horario}</td>
-            <td>${reserva.nombre}</td>
-            <td>${reserva.telefono}</td>
-            <td>${escapeHtml(reserva.creado_por || '-')}</td>
-            <td>${reserva.visitantes}</td>
-            <td>${paidAmountDisplay}</td>
-            <td>${reserva.total_reserva}</td>
-            <td>${pendingAmountDisplay}</td>
-            <td>${reserva.metodo_pago}</td>
-            <td>${descripcion}</td>
-            <td>${state}</td>
-            <td>${reserva.code}</td>
-            <td>${invoiceStatus}</td>
-            <td>${actions}</td>
-        </tr>
-    `
+        if (useMobileCards) {
+            tr += `
+            <tr class="${rowClass} admin-booking-row--mobile">
+                <td colspan="${bookingColumnsCount}">
+                    ${buildAdminBookingCardMarkup({
+                        reserva,
+                        state,
+                        paymentStateData,
+                        paymentBadgeTitle,
+                        paymentBadgeNote,
+                        paidAmountDisplay,
+                        pendingAmountDisplay,
+                        invoiceStatus,
+                        actions: actions.replace('dropstart', 'dropup')
+                    })}
+                </td>
+            </tr>
+        `
+        } else {
+            tr += `
+            <tr class="${rowClass}">
+                <td>
+                    <div class="booking-payment-state">
+                        <span class="badge booking-payment-badge ${paymentStateData.badgeClass}" title="${paymentBadgeTitle}">${escapeHtml(paymentStateData.label)}</span>
+                        ${paymentBadgeNote}
+                    </div>
+                </td>
+                <td>${reserva.fecha}</th>
+                <td>${reserva.cancha}</td>
+                <td>${reserva.horario}</td>
+                <td>${reserva.nombre}</td>
+                <td>${reserva.telefono}</td>
+                <td>${escapeHtml(reserva.creado_por || '-')}</td>
+                <td>${reserva.visitantes}</td>
+                <td>${paidAmountDisplay}</td>
+                <td>${reserva.total_reserva}</td>
+                <td>${pendingAmountDisplay}</td>
+                <td>${reserva.metodo_pago}</td>
+                <td>${descripcion}</td>
+                <td>${state}</td>
+                <td>${reserva.code}</td>
+                <td>${invoiceStatus}</td>
+                <td>${actions}</td>
+            </tr>
+        `
+        }
     });
 
     divBookings.innerHTML = tr

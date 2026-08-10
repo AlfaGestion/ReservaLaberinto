@@ -569,9 +569,12 @@ $userLogo = $modelUploads->first();
         <div class="container-fluid">
             <div class="admin-topbar-inner">
                 <div class="admin-topbar-spacer" aria-hidden="true"></div>
-                <a class="navbar-brand m-0" href="<?= base_url() ?>">
-                    <img src="<?= isset($userLogo['name']) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userLogo['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" alt="">
-                </a>
+                <div class="admin-branding">
+                    <a class="navbar-brand m-0 admin-branding__logo" href="<?= base_url() ?>">
+                        <img src="<?= isset($userLogo['name']) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userLogo['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" alt="">
+                    </a>
+                    <span class="admin-branding__title">Administración</span>
+                </div>
 
                 <?php if (session()->logueado) : ?>
                     <div class="admin-userbar">

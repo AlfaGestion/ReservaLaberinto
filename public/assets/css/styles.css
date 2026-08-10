@@ -1016,31 +1016,42 @@ select {
 
 @media (max-width: 768px) {
     .booking-availability-picker__dates-wrap {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: stretch;
         gap: 8px;
-        align-items: center;
     }
 
     .booking-availability-picker__dates {
         flex-wrap: nowrap;
+        width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
-        gap: 8px;
+        gap: 6px;
         min-width: 0;
-        scrollbar-width: thin;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .booking-availability-picker__dates::-webkit-scrollbar {
+        display: none;
     }
 
     .booking-availability-picker__nav {
         flex: 0 0 auto;
-        justify-self: end;
+        align-self: flex-end;
+        justify-content: flex-end;
+        gap: 6px;
     }
 
     .booking-date-pill {
-        min-width: 74px;
-        min-height: 48px;
-        padding: 6px 12px;
+        min-width: 70px;
+        min-height: 42px;
+        padding: 5px 10px;
+        border-radius: 14px;
     }
 
     .booking-date-pill__weekday {
@@ -1061,24 +1072,101 @@ select {
         text-align: center;
     }
 
+    .booking-availability-inline {
+        margin-bottom: 16px;
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    .booking-availability-inline__header {
+        margin-bottom: 10px;
+    }
+
+    .booking-availability-inline__title {
+        font-size: 1rem;
+    }
+
+    .booking-availability-inline__subtitle {
+        font-size: 0.86rem;
+        line-height: 1.4;
+    }
+
+    .booking-availability-picker {
+        gap: 12px;
+    }
+
+    .booking-availability-day {
+        padding: 12px 12px 10px;
+        border-radius: 16px;
+    }
+
+    .booking-availability-day__title {
+        margin-bottom: 8px;
+        font-size: 0.94rem;
+    }
+
     .booking-availability-day__slots {
         grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .booking-slot-card {
+        min-height: 44px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        gap: 8px;
+    }
+
+    .booking-slot-card__time {
+        font-size: 0.88rem;
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .booking-slot-card__button {
+        min-width: 72px;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.75rem;
         align-self: flex-end;
         width: auto;
     }
 
     #formBooking {
-        padding: 20px 16px 18px;
-        border-radius: 24px;
+        max-width: none;
+        width: calc(100% + 16px);
+        margin: 8px -8px 0;
+        padding: 12px 8px 14px;
+        border-radius: 18px;
+        box-shadow: 0 16px 34px rgba(21, 36, 24, 0.08);
+    }
+
+    #bookingForm .form-control,
+    #bookingForm .form-select {
+        min-height: 52px;
+        border-radius: 14px;
+    }
+
+    #bookingForm .form-floating > label {
+        font-size: 0.88rem;
+    }
+
+    .booking-stage__header {
+        margin-bottom: 14px;
+    }
+
+    .booking-stage__title {
+        font-size: clamp(1.15rem, 5.8vw, 1.45rem);
+    }
+
+    .booking-stage__subtitle {
+        font-size: 0.9rem;
+        line-height: 1.45;
     }
 
     #bookingForm .horario,
     #bookingForm #divSelectCancha {
         flex-direction: column !important;
-        gap: 0;
+        gap: 8px;
     }
 
     #bookingForm #div-time-h,
@@ -1088,22 +1176,99 @@ select {
         width: 100% !important;
     }
 
+    #bookingForm .ms-4 {
+        margin-left: 0 !important;
+    }
+
     #showAvailability,
     #confirmarReserva,
     #confirmarAdminReserva,
     #cancelarReserva {
         width: 100%;
         margin-right: 0;
+        min-height: 48px;
     }
 
     .booking-stage__actions,
     .booking-stage__actions--final {
         justify-content: stretch;
         flex-direction: column;
+        gap: 8px;
+        margin-top: 4px;
     }
 
     .booking-stage__button {
         width: 100%;
+        min-height: 48px;
+    }
+
+    .booking-coordinator-notice,
+    .booking-price-notice {
+        padding: 0.55rem 0.65rem;
+        border-radius: 12px;
+    }
+
+    .booking-price-notice__line {
+        gap: 4px;
+    }
+
+    .booking-price-notice__line strong,
+    .booking-price-notice__line span {
+        font-size: 0.86rem;
+    }
+}
+
+@media (max-width: 480px) {
+    #formBooking {
+        width: calc(100% + 12px);
+        margin: 6px -6px 0;
+        padding: 10px 6px 12px;
+        border-radius: 16px;
+    }
+
+    .booking-availability-inline {
+        padding: 10px;
+        border-radius: 16px;
+    }
+
+    .booking-availability-picker__dates {
+        gap: 5px;
+    }
+
+    .booking-date-pill {
+        min-width: 62px;
+        min-height: 40px;
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+
+    .booking-date-pill__weekday {
+        display: none;
+    }
+
+    .booking-date-pill__short {
+        font-size: 0.8rem;
+    }
+
+    .booking-date-nav {
+        width: 32px;
+        height: 32px;
+    }
+
+    .booking-slot-card {
+        padding: 8px 9px;
+    }
+
+    .booking-slot-card__button {
+        min-width: 68px;
+    }
+
+    .booking-stage__title {
+        font-size: clamp(1.08rem, 6vw, 1.3rem);
+    }
+
+    .booking-stage__subtitle {
+        font-size: 0.87rem;
     }
 }
 .booking-coordinator-notice {
@@ -1862,4 +2027,38 @@ html.theme-dark #payByEntriesSection .alert-warning {
     background: rgba(22, 58, 94, 0.72);
     border-color: rgba(142, 182, 229, 0.14);
     color: #dbe9f8;
+}
+
+@media (max-width: 768px) {
+    html.theme-dark #formBooking {
+        max-width: none;
+        width: calc(100% + 16px);
+        margin: 8px -8px 0;
+        padding: 12px 8px 14px;
+        border-radius: 18px;
+    }
+
+    html.theme-dark .booking-stage {
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    html.theme-dark .booking-stage__header {
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+    }
+
+    html.theme-dark .booking-availability-inline {
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    html.theme-dark .booking-availability-inline__title {
+        font-size: 1rem;
+    }
+
+    html.theme-dark .booking-availability-inline__subtitle {
+        font-size: 0.86rem;
+        line-height: 1.4;
+    }
 }
