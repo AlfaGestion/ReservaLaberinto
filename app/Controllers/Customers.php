@@ -41,6 +41,116 @@ class Customers extends BaseController
         return $customers[0] ?? null;
     }
 
+    private function normalizePhoneCandidates(string $phone): array
+    {
+        $phone = trim($phone);
+
+        if ($phone === '') {
+            return [];
+        }
+
+        $digitsOnly = preg_replace('/\D+/', '', $phone) ?? '';
+        $candidates = [$phone];
+
+        if ($digitsOnly !== '' && $digitsOnly !== $phone) {
+            $candidates[] = $digitsOnly;
+        }
+
+        if ($digitsOnly !== '') {
+            $withoutLeadingZeros = ltrim($digitsOnly, '0');
+            if ($withoutLeadingZeros !== '') {
+                $candidates[] = $withoutLeadingZeros;
+            }
+
+            $withLeadingZero = $digitsOnly[0] === '0' ? $digitsOnly : '0' . $digitsOnly;
+            $candidates[] = $withLeadingZero;
+        }
+
+        return array_values(array_unique(array_filter($candidates, static fn(string $candidate): bool => $candidate !== '')));
+    }
+
+    private function buildActiveCustomersBuilder(CustomersModel $customersModel)
+    {
+        return $customersModel->builder()
+            ->select('*')
+            ->groupStart()
+                ->where('deleted', 0)
+                ->orWhere('deleted IS NULL', null, false)
+            ->groupEnd();
+    }
+
+    private function applyPhoneLookupConstraints($builder, array $phoneCandidates): void
+    {
+        if ($phoneCandidates === []) {
+            return;
+        }
+
+        $builder->groupStart();
+
+        foreach ($phoneCandidates as $index => $candidate) {
+            if ($index === 0) {
+                $builder->groupStart();
+            } else {
+                $builder->orGroupStart();
+            }
+
+            $builder
+                ->where('phone', $candidate)
+                ->orWhere('complete_phone', $candidate)
+                ->orLike('phone', $candidate, 'both')
+                ->orLike('complete_phone', $candidate, 'both')
+                ->groupEnd();
+        }
+
+        $builder->groupEnd();
+    }
+
+    private function findCustomerByEmail(CustomersModel $customersModel, string $email): ?array
+    {
+        $normalizedEmail = strtolower(trim($email));
+
+        if ($normalizedEmail === '') {
+            return null;
+        }
+
+        $builder = $this->buildActiveCustomersBuilder($customersModel);
+        $builder
+            ->where('LOWER(email) = ' . $customersModel->db->escape($normalizedEmail), null, false)
+            ->orderBy('id', 'DESC');
+
+        return $this->resolvePreferredCustomer($builder->get()->getResultArray());
+    }
+
+    private function findCustomerByPhoneAndEmail(CustomersModel $customersModel, string $phone, string $email): ?array
+    {
+        $normalizedEmail = strtolower(trim($email));
+
+        if ($normalizedEmail === '') {
+            return null;
+        }
+
+        $phoneCandidates = $this->normalizePhoneCandidates($phone);
+        $builder = $this->buildActiveCustomersBuilder($customersModel);
+        $this->applyPhoneLookupConstraints($builder, $phoneCandidates);
+        $builder
+            ->where('LOWER(email) = ' . $customersModel->db->escape($normalizedEmail), null, false)
+            ->orderBy('id', 'DESC');
+
+        return $this->resolvePreferredCustomer($builder->get()->getResultArray());
+    }
+
+    private function decorateValidationCustomer(?array $customer, string $matchType, bool $requiresConfirmation = false): ?array
+    {
+        if ($customer === null) {
+            return null;
+        }
+
+        $customer['match_type'] = $matchType;
+        $customer['requires_confirmation'] = $requiresConfirmation;
+
+        return $customer;
+    }
+
 
     public function register()
     {
@@ -242,24 +352,25 @@ class Customers extends BaseController
     public function validateCustomer($phone, $email)
     {
         $customersModel = new CustomersModel();
-        $normalizedPhone = trim((string) $phone);
-        $normalizedEmail = strtolower(trim((string) $email));
 
-        $customers = $customersModel->builder()
-            ->select('*')
-            ->groupStart()
-                ->where('phone', $normalizedPhone)
-                ->orWhere('complete_phone', $normalizedPhone)
-            ->groupEnd()
-            ->where("LOWER(email) = '{$normalizedEmail}'", null, false)
-            ->groupStart()
-                ->where('deleted', 0)
-                ->orWhere('deleted IS NULL', null, false)
-            ->groupEnd()
-            ->orderBy('id', 'DESC')
-            ->get()
-            ->getResultArray();
-        $customer = $this->resolvePreferredCustomer($customers);
+        $normalizedPhone = trim((string) $phone);
+        $normalizedEmail = trim((string) $email);
+
+        if ($normalizedPhone === '' || $normalizedEmail === '') {
+            return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar telefono y email'));
+        }
+
+        $customer = $this->findCustomerByPhoneAndEmail($customersModel, $normalizedPhone, $normalizedEmail);
+
+        if ($customer === null) {
+            $customer = $this->findCustomerByEmail($customersModel, $normalizedEmail);
+
+            if ($customer !== null) {
+                $customer = $this->decorateValidationCustomer($customer, 'email', true);
+            }
+        } else {
+            $customer = $this->decorateValidationCustomer($customer, 'phone_email', false);
+        }
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
@@ -275,23 +386,23 @@ class Customers extends BaseController
         $rawData = $this->request->getRawInput();
 
         $phone = trim((string) ($jsonData['phone'] ?? $rawData['phone'] ?? $this->request->getVar('phone') ?? ''));
-        $email = strtolower(trim((string) ($jsonData['email'] ?? $rawData['email'] ?? $this->request->getVar('email') ?? '')));
+        $email = trim((string) ($jsonData['email'] ?? $rawData['email'] ?? $this->request->getVar('email') ?? ''));
 
-        $customers = $customersModel->builder()
-            ->select('*')
-            ->groupStart()
-                ->where('phone', $phone)
-                ->orWhere('complete_phone', $phone)
-            ->groupEnd()
-            ->where("LOWER(email) = '{$email}'", null, false)
-            ->groupStart()
-                ->where('deleted', 0)
-                ->orWhere('deleted IS NULL', null, false)
-            ->groupEnd()
-            ->orderBy('id', 'DESC')
-            ->get()
-            ->getResultArray();
-        $customer = $this->resolvePreferredCustomer($customers);
+        if ($phone === '' || $email === '') {
+            return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar telefono y email'));
+        }
+
+        $customer = $this->findCustomerByPhoneAndEmail($customersModel, $phone, $email);
+
+        if ($customer === null) {
+            $customer = $this->findCustomerByEmail($customersModel, $email);
+
+            if ($customer !== null) {
+                $customer = $this->decorateValidationCustomer($customer, 'email', true);
+            }
+        } else {
+            $customer = $this->decorateValidationCustomer($customer, 'phone_email', false);
+        }
 
         try {
             return $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
