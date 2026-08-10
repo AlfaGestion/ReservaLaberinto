@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css?v=20260630-8") ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css?v=20260810-1") ?>">
     <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/css/bootstrap.min.css?v=5.2.3') ?>">
     <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=5.2.3') ?>"></script>
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>

@@ -145,7 +145,7 @@ $userData = $modelUploads->first();
 <?php echo $this->section('scripts') ?>
 
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/abmSuperadmin.js?v=20260520-1200") ?>"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js?v=20260630-1") ?>"></script>
+    <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchBookings.js?v=20260810-1") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/searchReports.js?v=20260428-1810") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/editReserva.js?v=20260428-1810") ?>"></script>
 <script src="<?= base_url(PUBLIC_FOLDER . "assets/js/customers.js?v=20260428-1810") ?>"></script>

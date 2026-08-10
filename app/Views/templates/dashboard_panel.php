@@ -23,8 +23,8 @@
     <script src="<?= base_url(PUBLIC_FOLDER . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=5.2.3') ?>"></script>
     
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script> -->
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css?v=20260701-4") ?>">
-    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/admin-theme.css?v=20260630-7") ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/styles.css?v=20260810-1") ?>">
+    <link rel="stylesheet" href="<?= base_url(PUBLIC_FOLDER . "assets/css/admin-theme.css?v=20260810-1") ?>">
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
     <?php
     $inlineCssFiles = [
