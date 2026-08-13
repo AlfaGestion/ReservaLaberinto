@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\CustomersModel;
+use App\Models\BookingsModel;
 use App\Models\ValuesModel;
 
 class Customers extends BaseController
@@ -69,6 +70,36 @@ class Customers extends BaseController
         return array_values(array_unique(array_filter($candidates, static fn(string $candidate): bool => $candidate !== '')));
     }
 
+    private function normalizeCustomersById(array $customers): array
+    {
+        $normalized = [];
+        $seenIds = [];
+
+        foreach ($customers as $customer) {
+            $customerId = (int) ($customer['id'] ?? 0);
+
+            if ($customerId <= 0 || isset($seenIds[$customerId])) {
+                continue;
+            }
+
+            $seenIds[$customerId] = true;
+            $normalized[] = $customer;
+        }
+
+        return $normalized;
+    }
+
+    private function indexCustomersById(array $customers): array
+    {
+        $indexed = [];
+
+        foreach ($this->normalizeCustomersById($customers) as $customer) {
+            $indexed[(int) $customer['id']] = $customer;
+        }
+
+        return $indexed;
+    }
+
     private function buildActiveCustomersBuilder(CustomersModel $customersModel)
     {
         return $customersModel->builder()
@@ -103,6 +134,231 @@ class Customers extends BaseController
         }
 
         $builder->groupEnd();
+    }
+
+    private function findCustomerCandidatesByEmail(CustomersModel $customersModel, string $email): array
+    {
+        $normalizedEmail = strtolower(trim($email));
+
+        if ($normalizedEmail === '') {
+            return [];
+        }
+
+        $builder = $this->buildActiveCustomersBuilder($customersModel);
+        $builder
+            ->where('LOWER(email) = ' . $customersModel->db->escape($normalizedEmail), null, false)
+            ->orderBy('id', 'DESC');
+
+        return $this->normalizeCustomersById($builder->get()->getResultArray());
+    }
+
+    private function findCustomerCandidatesByPhone(CustomersModel $customersModel, string $phone): array
+    {
+        $phoneCandidates = $this->normalizePhoneCandidates($phone);
+
+        if ($phoneCandidates === []) {
+            return [];
+        }
+
+        $builder = $this->buildActiveCustomersBuilder($customersModel);
+        $this->applyPhoneLookupConstraints($builder, $phoneCandidates);
+        $builder->orderBy('id', 'DESC');
+
+        return $this->normalizeCustomersById($builder->get()->getResultArray());
+    }
+
+    private function resolveCustomerTypeLabel(ValuesModel $valuesModel, string $typeValue): string
+    {
+        $normalizedType = trim($typeValue);
+
+        if ($normalizedType === '') {
+            return 'No indicado';
+        }
+
+        $type = $valuesModel
+            ->where('value', $normalizedType)
+            ->where('disabled', 0)
+            ->first();
+
+        $label = trim((string) ($type['name'] ?? ''));
+
+        return $label !== '' ? $label : $normalizedType;
+    }
+
+    private function countCustomerReservations(BookingsModel $bookingsModel, array $customer): int
+    {
+        $customerId = (int) ($customer['id'] ?? 0);
+        $phoneCandidates = array_values(array_unique(array_filter([
+            trim((string) ($customer['phone'] ?? '')),
+            trim((string) ($customer['complete_phone'] ?? '')),
+        ], static fn(string $candidate): bool => $candidate !== '')));
+
+        if ($customerId <= 0 && $phoneCandidates === []) {
+            return 0;
+        }
+
+        $builder = $bookingsModel->builder()
+            ->select('id')
+            ->where('annulled', 0)
+            ->groupStart();
+
+        $hasCondition = false;
+
+        if ($customerId > 0) {
+            $builder->where('id_customer', $customerId);
+            $hasCondition = true;
+        }
+
+        foreach ($phoneCandidates as $candidate) {
+            if ($hasCondition) {
+                $builder->orWhere('phone', $candidate);
+                continue;
+            }
+
+            $builder->where('phone', $candidate);
+            $hasCondition = true;
+        }
+
+        $builder->groupEnd();
+
+        if (!$hasCondition) {
+            return 0;
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    private function buildValidationCustomerPayload(
+        array $customer,
+        ValuesModel $valuesModel,
+        BookingsModel $bookingsModel,
+        string $validationStatus,
+        string $message,
+        ?string $mismatchField = null
+    ): array {
+        $reservationCount = $this->countCustomerReservations($bookingsModel, $customer);
+        $customerPayload = $customer;
+        $customerPayload['name'] = trim((string) ($customerPayload['name'] ?? ''));
+        $customerPayload['last_name'] = trim((string) ($customerPayload['last_name'] ?? ''));
+        $customerPayload['phone'] = trim((string) ($customerPayload['phone'] ?? ''));
+        $customerPayload['complete_phone'] = trim((string) ($customerPayload['complete_phone'] ?? ''));
+        $customerPayload['email'] = trim((string) ($customerPayload['email'] ?? ''));
+        $customerPayload['city'] = trim((string) ($customerPayload['city'] ?? ''));
+        $customerPayload['type_institution'] = trim((string) ($customerPayload['type_institution'] ?? ''));
+        $customerPayload['type_label'] = $this->resolveCustomerTypeLabel($valuesModel, (string) ($customerPayload['type_institution'] ?? ''));
+        $customerPayload['reservations_count'] = $reservationCount;
+        $customerPayload['validation_status'] = $validationStatus;
+        $customerPayload['validation_message'] = $message;
+        $customerPayload['mismatch_field'] = $mismatchField;
+
+        return [
+            'validation_status' => $validationStatus,
+            'message' => $message,
+            'mismatch_field' => $mismatchField,
+            'reservation_count' => $reservationCount,
+            'customer' => $customerPayload,
+        ];
+    }
+
+    private function buildValidationNoticePayload(string $validationStatus, string $message): array
+    {
+        return [
+            'validation_status' => $validationStatus,
+            'message' => $message,
+            'mismatch_field' => null,
+            'reservation_count' => 0,
+            'customer' => null,
+        ];
+    }
+
+    private function resolveValidationCustomer(CustomersModel $customersModel, BookingsModel $bookingsModel, ValuesModel $valuesModel, string $phone, string $email): array
+    {
+        $normalizedPhone = trim($phone);
+        $normalizedEmail = strtolower(trim($email));
+
+        if ($normalizedPhone === '' && $normalizedEmail === '') {
+            return $this->buildValidationNoticePayload('not_found', 'Ingresá teléfono y email para validar tu reserva.');
+        }
+
+        $phoneCustomers = $this->indexCustomersById($this->findCustomerCandidatesByPhone($customersModel, $normalizedPhone));
+        $emailCustomers = $this->indexCustomersById($this->findCustomerCandidatesByEmail($customersModel, $normalizedEmail));
+
+        $phoneIds = array_keys($phoneCustomers);
+        $emailIds = array_keys($emailCustomers);
+        $commonIds = array_values(array_intersect($phoneIds, $emailIds));
+
+        if (count($commonIds) === 1) {
+            $customerId = (int) $commonIds[0];
+            $customer = $phoneCustomers[$customerId] ?? $emailCustomers[$customerId] ?? null;
+
+            if ($customer !== null) {
+                return $this->buildValidationCustomerPayload(
+                    $customer,
+                    $valuesModel,
+                    $bookingsModel,
+                    'exact',
+                    'Tus datos están registrados. Podés continuar para realizar una nueva reserva.'
+                );
+            }
+        }
+
+        if (count($commonIds) > 1) {
+            return $this->buildValidationNoticePayload(
+                'ambiguous',
+                'Los datos ingresados corresponden a registros diferentes. Revisá el teléfono y el email.'
+            );
+        }
+
+        if (count($phoneIds) === 1 && count($emailIds) === 1) {
+            return $this->buildValidationNoticePayload(
+                'ambiguous',
+                'Los datos ingresados corresponden a registros diferentes. Revisá el teléfono y el email.'
+            );
+        }
+
+        if (count($phoneIds) === 1 && count($emailIds) !== 1) {
+            $customerId = (int) $phoneIds[0];
+            $customer = $phoneCustomers[$customerId] ?? null;
+
+            if ($customer !== null) {
+                return $this->buildValidationCustomerPayload(
+                    $customer,
+                    $valuesModel,
+                    $bookingsModel,
+                    'phone',
+                    'Encontramos un cliente registrado por teléfono, pero el email ingresado no coincide con nuestros registros.',
+                    'email'
+                );
+            }
+        }
+
+        if (count($emailIds) === 1 && count($phoneIds) !== 1) {
+            $customerId = (int) $emailIds[0];
+            $customer = $emailCustomers[$customerId] ?? null;
+
+            if ($customer !== null) {
+                return $this->buildValidationCustomerPayload(
+                    $customer,
+                    $valuesModel,
+                    $bookingsModel,
+                    'email',
+                    'Encontramos un cliente registrado por email, pero el teléfono ingresado no coincide con nuestros registros.',
+                    'phone'
+                );
+            }
+        }
+
+        if ($phoneIds !== [] || $emailIds !== []) {
+            return $this->buildValidationNoticePayload(
+                'ambiguous',
+                'Los datos ingresados corresponden a registros diferentes. Revisá el teléfono y el email.'
+            );
+        }
+
+        return $this->buildValidationNoticePayload(
+            'not_found',
+            'No encontramos un cliente con esos datos. Podés registrarte para continuar.'
+        );
     }
 
     private function findCustomerByEmail(CustomersModel $customersModel, string $email): ?array
@@ -384,6 +640,16 @@ class Customers extends BaseController
     public function validateCustomer($phone, $email)
     {
         $customersModel = new CustomersModel();
+        $bookingsModel = new BookingsModel();
+        $valuesModel = new ValuesModel();
+
+        $payload = $this->resolveValidationCustomer($customersModel, $bookingsModel, $valuesModel, trim((string) $phone), trim((string) $email));
+
+        try {
+            return $this->response->setJSON($this->setResponse(null, null, $payload, 'Operacion completada'));
+        } catch (\Exception $e) {
+            return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
+        }
 
         $normalizedPhone = trim((string) $phone);
         $normalizedEmail = trim((string) $email);
@@ -414,11 +680,21 @@ class Customers extends BaseController
     public function validateCustomerLookup()
     {
         $customersModel = new CustomersModel();
+        $bookingsModel = new BookingsModel();
+        $valuesModel = new ValuesModel();
         $jsonData = $this->request->getJSON(true);
         $rawData = $this->request->getRawInput();
 
         $phone = trim((string) ($jsonData['phone'] ?? $rawData['phone'] ?? $this->request->getVar('phone') ?? ''));
         $email = trim((string) ($jsonData['email'] ?? $rawData['email'] ?? $this->request->getVar('email') ?? ''));
+
+        $payload = $this->resolveValidationCustomer($customersModel, $bookingsModel, $valuesModel, $phone, $email);
+
+        try {
+            return $this->response->setJSON($this->setResponse(null, null, $payload, 'Operacion completada'));
+        } catch (\Exception $e) {
+            return $this->response->setJSON($this->setResponse(404, true, null, $e->getMessage()));
+        }
 
         if ($phone === '' || $email === '') {
             return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar telefono y email'));

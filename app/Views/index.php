@@ -315,7 +315,7 @@ if (!empty($prefill['time_until'])) {
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" id="validateDataButton" style="color: #fff; background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;">Validar</button>
-                    <button data-bs-dismiss="modal" class="btn btn-secondary d-none" id="closeModalValidate" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Comenzar</button>
+                    <button data-bs-dismiss="modal" class="btn btn-secondary d-none" id="closeModalValidate" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;">Continuar con mi reserva</button>
                 </div>
             </div>
         </div>
