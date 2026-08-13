@@ -60,11 +60,27 @@ if (! function_exists('brand_logo_candidates')) {
     }
 }
 
+if (! function_exists('brand_logo_is_valid_file')) {
+    function brand_logo_is_valid_file(string $absolutePath): bool
+    {
+        if (! is_file($absolutePath)) {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+        if (! in_array($extension, ['jpg', 'jpeg', 'gif', 'png', 'webp'], true)) {
+            return false;
+        }
+
+        return @getimagesize($absolutePath) !== false;
+    }
+}
+
 if (! function_exists('brand_logo_url')) {
     function brand_logo_url(): string
     {
         foreach (brand_logo_candidates() as $candidate) {
-            if (is_file($candidate['absolute'])) {
+            if (brand_logo_is_valid_file($candidate['absolute'])) {
                 return asset_url($candidate['relative']);
             }
         }
@@ -77,7 +93,7 @@ if (! function_exists('brand_logo_data_uri')) {
     function brand_logo_data_uri(): string
     {
         foreach (brand_logo_candidates() as $candidate) {
-            if (! is_file($candidate['absolute'])) {
+            if (! brand_logo_is_valid_file($candidate['absolute'])) {
                 continue;
             }
 
