@@ -94,7 +94,7 @@ class MercadoPago extends BaseController
 
     private function resolveBrandLogoPath(): string
     {
-        return brand_logo_url();
+        return brand_logo_src();
     }
 
     private function normalizeMpStatus($status): string

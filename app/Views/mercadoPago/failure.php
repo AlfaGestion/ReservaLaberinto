@@ -7,7 +7,7 @@ $tone = trim((string) ($tone ?? 'secondary'));
 $icon = trim((string) ($icon ?? 'fa-circle-pause'));
 $homeUrl = trim((string) ($homeUrl ?? base_url()));
 $retryUrl = trim((string) ($retryUrl ?? ''));
-$logoPath = trim((string) ($logoPath ?? brand_logo_url()));
+$logoPath = trim((string) ($logoPath ?? brand_logo_src()));
 $booking = is_array($booking ?? null) ? $booking : null;
 $hasRetryUrl = !empty($hasRetryUrl);
 

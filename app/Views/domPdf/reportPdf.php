@@ -86,7 +86,7 @@
 
 <body>
     <div>
-        <img src="<?= esc(brand_logo_url()) ?>" style="width: 100px;" alt="Logo">
+        <img src="<?= esc(brand_logo_src()) ?>" style="width: 100px;" alt="Logo">
     </div>
 
     <?php

@@ -293,9 +293,9 @@ select {
 .site-navbar-logo {
     display: block !important;
     width: auto !important;
-    height: 56px !important;
-    max-height: 56px !important;
-    max-width: min(34vw, 160px) !important;
+    height: 52px !important;
+    max-height: 52px !important;
+    max-width: min(30vw, 150px) !important;
     object-fit: contain !important;
 }
 
@@ -1166,9 +1166,9 @@ html.theme-dark .booking-history-btn:focus-visible {
     }
 
     .site-navbar-logo {
-        height: 48px !important;
-        max-height: 48px !important;
-        max-width: min(42vw, 140px) !important;
+        height: 46px !important;
+        max-height: 46px !important;
+        max-width: min(40vw, 132px) !important;
     }
 
     .site-topbar-actions {
@@ -1400,9 +1400,9 @@ html.theme-dark .booking-history-btn:focus-visible {
     }
 
     .site-navbar-logo {
-        height: 44px !important;
-        max-height: 44px !important;
-        max-width: min(44vw, 132px) !important;
+        height: 42px !important;
+        max-height: 42px !important;
+        max-width: min(38vw, 122px) !important;
     }
 
     #formBooking {

@@ -141,3 +141,15 @@ if (! function_exists('brand_logo_data_uri')) {
         return '';
     }
 }
+
+if (! function_exists('brand_logo_src')) {
+    function brand_logo_src(): string
+    {
+        $dataUri = brand_logo_data_uri();
+        if ($dataUri !== '') {
+            return $dataUri;
+        }
+
+        return brand_logo_url();
+    }
+}

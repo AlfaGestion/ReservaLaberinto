@@ -3,7 +3,7 @@
 use App\Models\FieldsModel;
 
 $fieldsModel = new FieldsModel();
-$logoPath = brand_logo_url();
+$logoPath = brand_logo_src();
 
 $field = $fieldsModel->find($booking['id_field'] ?? null);
 $fieldName = trim((string) ($field['name'] ?? 'Reserva'));

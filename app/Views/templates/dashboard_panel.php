@@ -36,7 +36,7 @@
                 <div class="admin-branding">
                     <a class="navbar-brand m-0 admin-branding__logo" href="<?= base_url() ?>">
                         <img
-                            src="<?= esc(brand_logo_url()) ?>"
+                            src="<?= esc(brand_logo_src()) ?>"
                             alt="">
                     </a>
                     <span class="admin-branding__title">Administración</span>

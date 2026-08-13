@@ -235,7 +235,7 @@ $userData = $modelUploads->first();
             <div class="customer-edit-card__hero">
                 <a href="<?= base_url() ?>">
                     <img
-                        src="<?= esc(brand_logo_url()) ?>"
+                        src="<?= esc(brand_logo_src()) ?>"
                         alt="Laberinto Patagonia"
                         class="customer-edit-logo">
                 </a>

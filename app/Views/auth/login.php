@@ -229,12 +229,12 @@ $userData = $modelUploads->first();
     <div class="login-shell">
         <section class="login-card">
             <div class="login-card__hero">
-                    <a href="<?= base_url() ?>">
-                        <img
-                        src="<?= esc(brand_logo_url()) ?>"
+                <a href="<?= base_url() ?>">
+                    <img
+                        src="<?= esc(brand_logo_src()) ?>"
                         alt="Laberinto Patagonia"
                         class="login-logo">
-                    </a>
+                </a>
                 <h1 class="login-title">Ingreso Admin</h1>
                 <p class="login-subtitle">Accede con tu usuario y contrasena para administrar reservas y configuraciones.</p>
             </div>
