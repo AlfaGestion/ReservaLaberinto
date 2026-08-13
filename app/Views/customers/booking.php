@@ -54,7 +54,7 @@ $mpKeys = $mpKeysModel->first();
 
         <div class="d-flex flex-wrap gap-2 mt-3 mb-3">
             <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;" id="searchBooking">Ver reserva por codigo</button>
-            <button type="button" class="btn btn-outline-dark" id="searchCustomerBookings">Ver todas mis reservas</button>
+            <button type="button" class="btn booking-history-btn" id="searchCustomerBookings">Ver todas mis reservas</button>
         </div>
     </div>
 

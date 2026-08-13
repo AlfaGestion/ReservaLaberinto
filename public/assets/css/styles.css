@@ -394,6 +394,51 @@ select {
     background: #e6ece7;
 }
 
+.booking-history-btn {
+    min-height: 44px;
+    padding: 0.55rem 1rem;
+    border-radius: 14px;
+    font-weight: 700;
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+html.theme-light .booking-history-btn {
+    background: #f3f7f4;
+    color: #274033;
+    border: 1px solid #cfded3;
+    box-shadow: 0 10px 22px rgba(21, 36, 24, 0.08);
+}
+
+html.theme-light .booking-history-btn:hover,
+html.theme-light .booking-history-btn:focus-visible {
+    background: #e9f0ea;
+    color: #193929;
+    border-color: #b9cabb;
+    box-shadow: 0 12px 26px rgba(21, 36, 24, 0.12);
+    transform: translateY(-1px);
+}
+
+html.theme-dark .booking-history-btn {
+    background: linear-gradient(180deg, #173854 0%, #1b4468 100%);
+    color: #eef4fb;
+    border: 1px solid rgba(142, 182, 229, 0.18);
+    box-shadow: 0 12px 24px rgba(4, 14, 28, 0.18);
+}
+
+html.theme-dark .booking-history-btn:hover,
+html.theme-dark .booking-history-btn:focus-visible {
+    background: linear-gradient(180deg, #1a4063 0%, #1f4d77 100%);
+    color: #fff;
+    border-color: rgba(156, 193, 255, 0.32);
+    box-shadow: 0 16px 30px rgba(4, 14, 28, 0.24);
+    transform: translateY(-1px);
+}
+
 .booking-availability-inline {
     width: 100%;
     margin-bottom: 20px;
