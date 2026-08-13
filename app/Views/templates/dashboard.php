@@ -76,7 +76,7 @@ $userData = $modelUploads->first();
                         </a>
                     </div>
 
-                    <div class="site-topbar-actions d-flex align-items-center gap-1 ms-auto">
+                    <div class="site-topbar-actions d-flex align-items-center gap-1">
                         <button type="button" id="adminThemeToggle" class="admin-theme-toggle site-theme-toggle me-1" aria-label="Cambiar tema" title="Cambiar tema">
                             <i data-theme-icon class="fa-solid fa-moon" aria-hidden="true"></i>
                         </button>
