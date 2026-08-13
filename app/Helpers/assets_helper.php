@@ -30,6 +30,14 @@ if (! function_exists('brand_logo_candidates')) {
 
         $candidates = [];
 
+        // Prefer the icon file used by the public branding so the site always
+        // has a visible logo even if the uploaded branding image is missing or
+        // outdated.
+        $candidates[] = [
+            'relative' => 'assets/images/favicon.ico',
+            'absolute' => FCPATH . 'assets/images/favicon.ico',
+        ];
+
         try {
             $uploadModel = new UploadModel();
             $branding = $uploadModel->first() ?: [];
@@ -68,6 +76,10 @@ if (! function_exists('brand_logo_is_valid_file')) {
         }
 
         $extension = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+        if ($extension === 'ico') {
+            return filesize($absolutePath) > 0;
+        }
+
         if (! in_array($extension, ['jpg', 'jpeg', 'gif', 'png', 'webp'], true)) {
             return false;
         }
@@ -106,6 +118,9 @@ if (! function_exists('brand_logo_data_uri')) {
                     break;
                 case 'gif':
                     $mimeType = 'image/gif';
+                    break;
+                case 'ico':
+                    $mimeType = 'image/x-icon';
                     break;
                 case 'webp':
                     $mimeType = 'image/webp';
