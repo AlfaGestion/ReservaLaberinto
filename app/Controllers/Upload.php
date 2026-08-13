@@ -35,14 +35,14 @@ class Upload extends BaseController
                     . '|is_image[userfile]'
                     . '|mime_in[userfile,image/jpg,image/jpeg,image/gif,image/png,image/webp]'
                     . '|max_size[userfile,2000]'
-                    . '|max_dims[userfile,3600,5000]'
+                    . '|max_dims[userfile,3600,5000]',
             ],
         ];
 
         if (!$this->validate($validationRule)) {
             $query = [
                 'main_color' => $mainColor,
-                'secondary_color' => $secondaryColor
+                'secondary_color' => $secondaryColor,
             ];
 
             $existingLogo = $modelUpload->first();
@@ -51,43 +51,67 @@ class Upload extends BaseController
                 $modelUpload->update($existingLogo['id'], $query);
             }
 
-            $data = ['errors' => 'Datos guardados con éxito.'];
+            $data = ['errors' => 'Datos guardados con Ã©xito.'];
 
             return redirect()->to('uploadLogo')->with('msg', ['type' => 'success', 'body' => $data]);
-        } else {
+        }
 
-            $img = $this->request->getFile('userfile');
+        $img = $this->request->getFile('userfile');
 
-
-            if (!$img->hasMoved()) {
-                $extension = explode('.', $img->getName());
-                $fileName = uniqid() . '.' . $extension[count($extension) - 1];
-
-                $query = [
-                    'name' => $fileName,
-                    'main_color' => $mainColor,
-                    'secondary_color' => $secondaryColor
-                ];
-
-                $existingLogo = $modelUpload->first();
-
-                if ($existingLogo) {
-                    $modelUpload->delete($existingLogo['id']);
-                }
-
-                $modelUpload->insert($query);
-
-                $img->move(ROOTPATH . 'public/assets/images/uploads', $fileName);
-
-                $data = ['errors' => 'Datos guardados con éxito.'];
-
-                return redirect()->to('uploadLogo')->with('msg', ['type' => 'success', 'body' => $data]);
-            }
-
+        if ($img->hasMoved()) {
             $data = ['errors' => 'The file has already been moved.'];
 
             return view('upload/upload_logo', $data);
         }
+
+        $targetDirectory = ROOTPATH . 'public/assets/images/uploads';
+        if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
+            return redirect()->to('uploadLogo')->with('msg', ['type' => 'danger', 'body' => ['No pudimos crear la carpeta de logos en este servidor.']]);
+        }
+
+        $fileExtension = strtolower((string) ($img->guessExtension() ?: $img->getClientExtension() ?: pathinfo($img->getName(), PATHINFO_EXTENSION) ?: 'png'));
+        if (!in_array($fileExtension, ['jpg', 'jpeg', 'gif', 'png', 'webp'], true)) {
+            $fileExtension = 'png';
+        }
+
+        $fileName = uniqid('', true) . '.' . $fileExtension;
+
+        $query = [
+            'name' => $fileName,
+            'main_color' => $mainColor,
+            'secondary_color' => $secondaryColor,
+        ];
+
+        try {
+            $moved = $img->move($targetDirectory, $fileName, true);
+        } catch (\Throwable $exception) {
+            log_message('error', 'No se pudo mover el logo subido: ' . $exception->getMessage());
+            return redirect()->to('uploadLogo')->with('msg', ['type' => 'danger', 'body' => ['No pudimos guardar el archivo subido.']]);
+        }
+
+        if (!$moved) {
+            log_message('error', 'No se pudo mover el logo subido: ' . implode(' | ', $img->getErrors()));
+            return redirect()->to('uploadLogo')->with('msg', ['type' => 'danger', 'body' => ['No pudimos guardar el archivo subido.']]);
+        }
+
+        $existingLogo = $modelUpload->first();
+        if ($existingLogo) {
+            $oldLogoFile = trim((string) ($existingLogo['name'] ?? ''));
+            $modelUpload->update($existingLogo['id'], $query);
+
+            if ($oldLogoFile !== '' && $oldLogoFile !== $fileName) {
+                $oldLogoPath = rtrim($targetDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $oldLogoFile;
+                if (is_file($oldLogoPath)) {
+                    @unlink($oldLogoPath);
+                }
+            }
+        } else {
+            $modelUpload->insert($query);
+        }
+
+        $data = ['errors' => 'Datos guardados con Ã©xito.'];
+
+        return redirect()->to('uploadLogo')->with('msg', ['type' => 'success', 'body' => $data]);
     }
 
     public function deleteBackground()
@@ -98,10 +122,9 @@ class Upload extends BaseController
 
         if ($bg) {
             $modelUpload->delete($bg['id']);
-            return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'success', 'body' => 'Eliminado con éxito']);
+            return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'success', 'body' => 'Eliminado con Ã©xito']);
         } else {
             return redirect()->to(base_url('abmAdmin'))->with('msg', ['type' => 'danger', 'body' => 'No hay archivos para eliminar']);
         }
     }
 }
-

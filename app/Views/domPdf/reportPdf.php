@@ -86,7 +86,7 @@
 
 <body>
     <div>
-        <img src="<?= base_url(PUBLIC_FOLDER . "assets/images/logo_pdf.png") ?>" style="width: 100px;" alt="Logo">
+        <img src="<?= esc(brand_logo_url()) ?>" style="width: 100px;" alt="Logo">
     </div>
 
     <?php

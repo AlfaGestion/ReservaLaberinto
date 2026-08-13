@@ -29,7 +29,7 @@ $userData = $modelUploads->first();
 
             <div class="login-box-body">
                 <div class="login-logo d-flex justify-content-center align-items-center">
-                    <a href="<?= base_url() ?>"><img src="<?= isset($userData['name']) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>" width="300px" alt=""></a>
+                    <a href="<?= base_url() ?>"><img src="<?= esc(brand_logo_url()) ?>" alt="" style="width: min(100%, 260px); max-height: 140px; object-fit: contain; display: block;"></a>
                 </div>
 
                 <select class="form-select mt-3 mb-3" name="users" id="selectUser" aria-label="Select Usuarios">

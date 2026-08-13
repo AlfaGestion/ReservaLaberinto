@@ -26,15 +26,6 @@
     <script src="https://kit.fontawesome.com/9bae38f407.js" crossorigin="anonymous"></script>
 </head>
 
-<?php
-
-use App\Models\UploadModel;
-
-$modelUploads = new UploadModel();
-$userLogo = $modelUploads->first();
-
-?>
-
 <body class="admin-page">
     <?php echo $this->renderSection('navbar') ?>
 
@@ -45,7 +36,7 @@ $userLogo = $modelUploads->first();
                 <div class="admin-branding">
                     <a class="navbar-brand m-0 admin-branding__logo" href="<?= base_url() ?>">
                         <img
-                            src="<?= isset($userLogo['name']) ? asset_url('assets/images/uploads/' . $userLogo['name']) : asset_url('assets/images/sinlogo2.png') ?>"
+                            src="<?= esc(brand_logo_url()) ?>"
                             alt="">
                     </a>
                     <span class="admin-branding__title">Administración</span>

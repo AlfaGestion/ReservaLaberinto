@@ -1,52 +1,6 @@
 <?php
 
-use App\Models\UploadModel;
-
-$uploadModel = new UploadModel();
-$branding = $uploadModel->first();
-$logoFile = trim((string) ($branding['name'] ?? ''));
-
-$candidatePaths = [];
-if ($logoFile !== '') {
-    $candidatePaths[] = FCPATH . 'assets/images/uploads/' . $logoFile;
-}
-$candidatePaths[] = FCPATH . 'assets/images/logo_pdf.png';
-$candidatePaths[] = FCPATH . 'assets/images/sinlogo2.png';
-
-$logoDataUri = '';
-foreach ($candidatePaths as $candidatePath) {
-    if (!is_file($candidatePath)) {
-        continue;
-    }
-
-    $extension = strtolower(pathinfo($candidatePath, PATHINFO_EXTENSION));
-    if (!extension_loaded('gd') && !in_array($extension, ['jpg', 'jpeg'], true)) {
-        continue;
-    }
-
-    switch ($extension) {
-        case 'jpg':
-        case 'jpeg':
-            $mimeType = 'image/jpeg';
-            break;
-        case 'gif':
-            $mimeType = 'image/gif';
-            break;
-        case 'webp':
-            $mimeType = 'image/webp';
-            break;
-        default:
-            $mimeType = 'image/png';
-            break;
-    }
-    $binary = @file_get_contents($candidatePath);
-    if ($binary === false) {
-        continue;
-    }
-
-    $logoDataUri = 'data:' . $mimeType . ';base64,' . base64_encode($binary);
-    break;
-}
+$logoDataUri = brand_logo_data_uri();
 
 $fechaReserva = trim((string) ($data['fecha'] ?? ''));
 $fechaReservaFormateada = $fechaReserva;

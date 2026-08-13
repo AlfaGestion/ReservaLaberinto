@@ -94,13 +94,7 @@ class MercadoPago extends BaseController
 
     private function resolveBrandLogoPath(): string
     {
-        $uploadModel = new UploadModel();
-        $branding = $uploadModel->first();
-        $logoFile = trim((string) ($branding['name'] ?? ''));
-
-        return $logoFile !== ''
-            ? base_url(PUBLIC_FOLDER . 'assets/images/uploads/' . $logoFile)
-            : base_url(PUBLIC_FOLDER . 'assets/images/sinlogo2.png');
+        return brand_logo_url();
     }
 
     private function normalizeMpStatus($status): string

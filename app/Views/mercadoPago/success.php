@@ -1,15 +1,9 @@
 <?php
 
 use App\Models\FieldsModel;
-use App\Models\UploadModel;
 
 $fieldsModel = new FieldsModel();
-$uploadModel = new UploadModel();
-$branding = $uploadModel->first();
-$logoFile = trim((string) ($branding['name'] ?? ''));
-$logoPath = $logoFile !== ''
-    ? asset_url('assets/images/uploads/' . $logoFile)
-    : asset_url('assets/images/sinlogo2.png');
+$logoPath = brand_logo_url();
 
 $field = $fieldsModel->find($booking['id_field'] ?? null);
 $fieldName = trim((string) ($field['name'] ?? 'Reserva'));

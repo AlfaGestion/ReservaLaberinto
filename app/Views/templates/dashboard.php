@@ -71,7 +71,7 @@ $userData = $modelUploads->first();
                         <a class="navbar-brand site-navbar-brand" href="<?= base_url() ?>">
                             <img
                                 class="site-navbar-logo"
-                                src="<?= isset($userData) ? asset_url('assets/images/uploads/' . $userData['name']) : asset_url('assets/images/sinlogo2.png') ?>"
+                                src="<?= esc(brand_logo_url()) ?>"
                                 alt="Laberinto Patagonia">
                         </a>
                     </div>

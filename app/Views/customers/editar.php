@@ -235,7 +235,7 @@ $userData = $modelUploads->first();
             <div class="customer-edit-card__hero">
                 <a href="<?= base_url() ?>">
                     <img
-                        src="<?= isset($userData) ? base_url(PUBLIC_FOLDER . "assets/images/uploads/" . $userData['name']) : base_url(PUBLIC_FOLDER . "assets/images/sinlogo2.png") ?>"
+                        src="<?= esc(brand_logo_url()) ?>"
                         alt="Laberinto Patagonia"
                         class="customer-edit-logo">
                 </a>
