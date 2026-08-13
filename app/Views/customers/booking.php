@@ -19,6 +19,31 @@ $mpKeys = $mpKeysModel->first();
 
 <?= $this->section('content') ?>
 
+<style>
+    .booking-lookups__intro {
+        max-width: 760px;
+        margin-bottom: 1.5rem;
+    }
+
+    .booking-search-card {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .booking-search-card--secondary {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 247, 252, 0.96) 100%);
+    }
+
+    html.theme-dark .booking-search-card--secondary {
+        background: linear-gradient(180deg, rgba(16, 40, 68, 0.98) 0%, rgba(13, 33, 56, 0.98) 100%);
+    }
+
+    .booking-search-hint {
+        color: var(--bs-secondary-color);
+        max-width: 760px;
+    }
+</style>
+
 <div class="container">
     <?= view('partials/customer_notice', ['customerNotice' => $customerNotice ?? null]) ?>
 
@@ -28,33 +53,59 @@ $mpKeys = $mpKeysModel->first();
         data-code="<?= esc($prefill['code'] ?? '') ?>"
         data-phone="<?= esc($prefill['phone'] ?? '') ?>"
         data-email="<?= esc($prefill['email'] ?? '') ?>"></div>
-    <div class="d-flex flex-column align-items-start justify-content-center">
-        <div class="row g-3 w-100 mt-1">
-            <div class="col-12 col-lg-4">
-                <div class="form-floating">
-                    <input type="text" name="code" id="code" class="form-control" value="" aria-label="codigo">
-                    <label for="code">Codigo de reserva</label>
+    <div class="booking-lookups__intro">
+        <h1 class="display-6 fw-bold mb-2">Mis reservas</h1>
+        <p class="booking-search-hint mb-0">Primero consultá todas tus reservas con teléfono y email. Si buscás una reserva puntual, más abajo tenés la opción por código.</p>
+    </div>
+
+    <div class="card shadow-sm border-0 booking-search-card mb-4">
+        <div class="card-body p-4 p-lg-5">
+            <div class="mb-3">
+                <span class="badge rounded-pill text-bg-success mb-2">Opción principal</span>
+                <h2 class="h4 mb-2">Ver todas mis reservas</h2>
+                <p class="booking-search-hint mb-0">Ingresá teléfono y email para buscar todas las reservas asociadas a ese cliente.</p>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="form-floating">
+                        <input type="text" name="phoneSearch" id="phoneSearch" class="form-control" value="" aria-label="telefono">
+                        <label for="phoneSearch">Telefono</label>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="form-floating">
+                        <input type="email" name="emailSearch" id="emailSearch" class="form-control" value="" aria-label="email">
+                        <label for="emailSearch">Email</label>
+                    </div>
                 </div>
             </div>
 
-            <div class="col-12 col-lg-4">
-                <div class="form-floating">
-                    <input type="text" name="phoneSearch" id="phoneSearch" class="form-control" value="" aria-label="telefono">
-                    <label for="phoneSearch">Telefono</label>
-                </div>
-            </div>
-
-            <div class="col-12 col-lg-4">
-                <div class="form-floating">
-                    <input type="email" name="emailSearch" id="emailSearch" class="form-control" value="" aria-label="email">
-                    <label for="emailSearch">Email</label>
-                </div>
+            <div class="mt-3">
+                <button type="button" class="btn booking-history-btn" id="searchCustomerBookings">Ver mis reservas</button>
             </div>
         </div>
+    </div>
 
-        <div class="d-flex flex-wrap gap-2 mt-3 mb-3">
-            <button type="button" class="btn" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;" id="searchBooking">Ver reserva por codigo</button>
-            <button type="button" class="btn booking-history-btn" id="searchCustomerBookings">Ver todas mis reservas</button>
+    <div class="card shadow-sm border-0 booking-search-card booking-search-card--secondary mb-3">
+        <div class="card-body p-4 p-lg-5">
+            <span class="badge rounded-pill text-bg-secondary mb-2">Opción secundaria</span>
+            <h2 class="h5 mb-2">Buscar una reserva por código</h2>
+            <p class="booking-search-hint mb-3">El código de reserva se envía por email cuando generás una reserva.</p>
+
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-8">
+                    <div class="form-floating">
+                        <input type="text" name="code" id="code" class="form-control" value="" aria-label="codigo">
+                        <label for="code">Codigo de reserva</label>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                    <button type="button" class="btn w-100" style="color: #fff; background-color: <?= isset($userData) ? $userData['secondary_color'] : '#0064b0' ?>;" id="searchBooking">Buscar reserva</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -190,5 +241,5 @@ $mpKeys = $mpKeysModel->first();
 </script>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/showCustomerBooking.js?v=20260603-1") ?>"></script>
+<script src="<?= base_url(PUBLIC_FOLDER . "assets/js/showCustomerBooking.js?v=20260813-1") ?>"></script>
 <?= $this->endSection() ?>

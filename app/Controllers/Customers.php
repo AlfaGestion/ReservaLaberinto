@@ -139,6 +139,38 @@ class Customers extends BaseController
         return $this->resolvePreferredCustomer($builder->get()->getResultArray());
     }
 
+    private function findCustomerByPhone(CustomersModel $customersModel, string $phone): ?array
+    {
+        $phoneCandidates = $this->normalizePhoneCandidates($phone);
+
+        if ($phoneCandidates === []) {
+            return null;
+        }
+
+        $builder = $this->buildActiveCustomersBuilder($customersModel);
+        $this->applyPhoneLookupConstraints($builder, $phoneCandidates);
+        $builder->orderBy('id', 'DESC');
+
+        return $this->resolvePreferredCustomer($builder->get()->getResultArray());
+    }
+
+    private function findExistingCustomerForRegistration(CustomersModel $customersModel, string $phone, string $email): ?array
+    {
+        $customer = $this->findCustomerByPhoneAndEmail($customersModel, $phone, $email);
+
+        if ($customer !== null) {
+            return $customer;
+        }
+
+        $customer = $this->findCustomerByPhone($customersModel, $phone);
+
+        if ($customer !== null) {
+            return $customer;
+        }
+
+        return $this->findCustomerByEmail($customersModel, $email);
+    }
+
     private function decorateValidationCustomer(?array $customer, string $matchType, bool $requiresConfirmation = false): ?array
     {
         if ($customer === null) {
@@ -171,19 +203,16 @@ class Customers extends BaseController
     {
         $modelCustomers = new CustomersModel();
 
-        $phone = $this->request->getVar('phone');
-        $name = $this->request->getVar('name');
-        $lastName = $this->request->getVar('last_name');
-        $dni = $this->request->getVar('dni');
-        $city = $this->request->getVar('city');
-        $email = $this->request->getVar('email');
-        $type = $this->request->getVar('type_institution');
+        $phone = trim((string) $this->request->getVar('phone'));
+        $name = trim((string) $this->request->getVar('name'));
+        $lastName = trim((string) $this->request->getVar('last_name'));
+        $dni = trim((string) $this->request->getVar('dni'));
+        $city = trim((string) $this->request->getVar('city'));
+        $email = trim((string) $this->request->getVar('email'));
+        $type = trim((string) $this->request->getVar('type_institution'));
         $isEmbedded = $this->request->getVar('embed') === '1';
 
         $completePhone = $phone;
-
-        $existingPhone = $modelCustomers->where('phone', $phone)->where('deleted', 0)->findAll();
-        $existingEmail = $modelCustomers->where('email', $email)->where('deleted', 0)->findAll();
 
         if ($phone == '' || $name == '' || $email == '' || $dni == '' || $city == '' || $type == '') {
             $query = http_build_query(array_filter([
@@ -197,16 +226,19 @@ class Customers extends BaseController
                 ->with('msg', ['type' => 'danger', 'body' => 'Completá todos los campos']);
         }
 
-        if ($existingPhone || $existingEmail) {
+        $existingCustomer = $this->findExistingCustomerForRegistration($modelCustomers, $phone, $email);
+
+        if ($existingCustomer !== null) {
             $query = http_build_query(array_filter([
                 'embed' => $isEmbedded ? 1 : null,
+                'existing' => 1,
                 'phone' => $phone ?: null,
                 'email' => $email ?: null,
             ]));
 
             return redirect()->to('Registrarme' . ($query ? '?' . $query : ''))
                 ->withInput()
-                ->with('msg', ['type' => 'danger', 'body' => 'Los datos coinciden con un usuario ya registrado']);
+                ->with('msg', ['type' => 'info', 'body' => 'Tus datos ya están registrados en el sistema.']);
         }
 
         $query = [

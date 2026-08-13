@@ -1747,21 +1747,21 @@ class Bookings extends BaseController
         $data = $this->request->getJSON();
 
         $phone = trim((string) ($data->phone ?? ''));
-        $email = trim((string) ($data->email ?? ''));
+        $email = strtolower(trim((string) ($data->email ?? '')));
 
         if ($phone === '' || $email === '') {
-            return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar telefono y email'));
+            return $this->response->setJSON($this->setResponse(400, true, null, 'Debe ingresar teléfono y email'));
         }
 
         $customer = $customersModel->groupStart()
             ->where('phone', $phone)
             ->orWhere('complete_phone', $phone)
             ->groupEnd()
-            ->where('email', $email)
+            ->where('LOWER(email) = ' . $customersModel->db->escape($email), null, false)
             ->first();
 
         if (!$customer) {
-            return $this->response->setJSON($this->setResponse(404, true, null, 'No encontramos reservas para ese cliente'));
+            return $this->response->setJSON($this->setResponse(404, true, null, 'No encontramos un cliente con esos datos.'));
         }
 
         $bookings = $bookingsModel->groupStart()
@@ -1777,7 +1777,13 @@ class Bookings extends BaseController
             ->findAll();
 
         if (!$bookings) {
-            return $this->response->setJSON($this->setResponse(404, true, null, 'No encontramos reservas para ese cliente'));
+            return $this->response->setJSON([
+                'error' => false,
+                'code' => 200,
+                'data' => [],
+                'customer' => $customer,
+                'message' => 'Tus datos están registrados, pero todavía no tenés reservas.',
+            ]);
         }
 
         $result = [];

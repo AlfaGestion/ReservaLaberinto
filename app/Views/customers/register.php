@@ -5,6 +5,16 @@ $backQuery = array_filter([
     'returnValidate' => !empty($returnValidate) ? 1 : null,
 ]);
 $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : '');
+$isExistingCustomer = $this->request->getGet('existing') === '1';
+$continuePhone = trim((string) old('phone', $prefillPhone ?? ''));
+$continueEmail = trim((string) old('email', $prefillEmail ?? ''));
+$continueQuery = array_filter([
+    'registered' => 1,
+    'phone' => $continuePhone ?: null,
+    'email' => $continueEmail ?: null,
+]);
+$continueHref = base_url() . ($continueQuery ? '?' . http_build_query($continueQuery) : '');
+$continueTarget = !empty($isEmbedded) ? '_top' : '_self';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -210,6 +220,13 @@ $backHref = base_url('') . ($backQuery ? '?' . http_build_query($backQuery) : ''
             padding: 14px 16px;
         }
 
+        .register-existing-note {
+            max-width: 640px;
+            margin: 0 auto 20px;
+            text-align: center;
+            color: var(--register-page-muted);
+        }
+
         html.theme-dark body.register-page .alert {
             background: #112b49;
             color: #dbe9f8;
@@ -268,17 +285,26 @@ $userData = $modelUploads->first();
                         alt="Laberinto Patagonia"
                         class="register-logo">
                 </a>
-                <h1 class="register-title">Registrate</h1>
-                <p class="register-subtitle">Completa los datos de la institucion o particular para poder avanzar con la validacion y las reservas.</p>
+                <h1 class="register-title"><?= $isExistingCustomer ? 'Ya estás registrada' : 'Registrate' ?></h1>
+                <p class="register-subtitle">
+                    <?= $isExistingCustomer ? 'Tus datos ya están registrados en el sistema.' : 'Completa los datos de la institucion o particular para poder avanzar con la validacion y las reservas.' ?>
+                </p>
             </div>
 
             <div class="register-card__body">
-                <form action="<?= site_url('Registrarme') ?>" method="POST">
+                <?php if ($isExistingCustomer) : ?>
+                    <div class="alert alert-info register-alert register-existing-note" role="alert">
+                        <strong>Tus datos ya están registrados en el sistema.</strong>
+                        <div class="mt-2">No hace falta crear otro cliente. Continuá con tu reserva para elegir fecha, horario y servicio.</div>
+                    </div>
+                <?php endif; ?>
+
+                <form action="<?= site_url('Registrarme') ?>" method="POST" <?= $isExistingCustomer ? 'onsubmit="return false;"' : '' ?>>
                     <?php if (!empty($isEmbedded)) : ?>
                         <input type="hidden" name="embed" value="1">
                     <?php endif; ?>
 
-                    <?php if (session('msg')) : ?>
+                    <?php if (session('msg') && !$isExistingCustomer) : ?>
                         <div class="alert alert-<?= session('msg.type') ?> alert-dismissible fade show register-alert mb-4" role="alert">
                             <small><?= session('msg.body') ?></small>
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -323,20 +349,30 @@ $userData = $modelUploads->first();
                     </div>
 
                     <div class="register-actions">
-                        <?php if (empty($isEmbedded)) : ?>
+                        <?php if (!$isExistingCustomer && empty($isEmbedded)) : ?>
                             <a href="<?= esc($backHref) ?>" class="register-back-link">
                                 <i class="fa-solid fa-arrow-left"></i>
                                 <span>Volver</span>
                             </a>
-                        <?php else : ?>
+                        <?php elseif (!$isExistingCustomer) : ?>
                             <span></span>
                         <?php endif; ?>
-                        <button
-                            type="submit"
-                            class="btn register-btn register-btn--primary"
-                            style="background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;">
-                            Registrar
-                        </button>
+                        <?php if ($isExistingCustomer) : ?>
+                            <a
+                                href="<?= esc($continueHref) ?>"
+                                class="btn register-btn register-btn--primary"
+                                target="<?= esc($continueTarget) ?>"
+                                style="background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;">
+                                Continuar con mi reserva
+                            </a>
+                        <?php else : ?>
+                            <button
+                                type="submit"
+                                class="btn register-btn register-btn--primary"
+                                style="background-color: <?= isset($userData) ? $userData['main_color'] : '#0064b0' ?>;">
+                                Registrar
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

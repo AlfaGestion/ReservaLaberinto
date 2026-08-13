@@ -29,6 +29,36 @@ function showBookingMessage(message, type = 'secondary') {
     bookingCardContainer.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
 }
 
+function buildReservationHref(phoneValue, emailValue) {
+    const params = new URLSearchParams({
+        registered: '1',
+        phone: phoneValue || '',
+        email: emailValue || '',
+    });
+
+    return `${baseUrl}?${params.toString()}`;
+}
+
+function renderNoBookingsState(message, phoneValue, emailValue) {
+    bookingCardContainer.classList.remove('d-none');
+
+    const reservationHref = buildReservationHref(phoneValue, emailValue);
+
+    bookingCardContainer.innerHTML = `
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 p-lg-5">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                    <div>
+                        <h5 class="mb-2">Sin reservas</h5>
+                        <p class="mb-0">${message}</p>
+                    </div>
+                    <a href="${reservationHref}" class="btn btn-success">Hacer una reserva</a>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function formatBookingMoney(value) {
     return formatPriceAR(value, '$0')
 }
@@ -460,7 +490,7 @@ async function searchBooking(codeValue) {
     // modalSpinner.show();
 
     if (!codeValue) {
-        showBookingMessage('Debe ingresar el codigo de reserva.', 'warning');
+        showBookingMessage('Debe ingresar el código de reserva.', 'warning');
         return;
     }
 
@@ -469,7 +499,7 @@ async function searchBooking(codeValue) {
         const responseData = await parseJsonResponse(response);
 
         if (!response.ok) {
-            showBookingMessage(responseData.message || 'No se encontro ninguna reserva con ese codigo.', 'warning');
+            showBookingMessage(responseData.message || 'No se encontró ninguna reserva con ese código.', 'warning');
             return;
         }
 
@@ -477,7 +507,7 @@ async function searchBooking(codeValue) {
             currentBooking = responseData.data
             renderBookingCard(responseData.data); // Usamos la nueva funciÃ³n
         } else {
-            showBookingMessage(responseData.message || 'No se encontro ninguna reserva con ese codigo.', 'warning');
+            showBookingMessage(responseData.message || 'No se encontró ninguna reserva con ese código.', 'warning');
         }
 
     } catch (error) {
@@ -490,7 +520,7 @@ async function searchBooking(codeValue) {
 
 async function searchCustomerBookings(phoneValue, emailValue) {
     if (!phoneValue || !emailValue) {
-        showBookingMessage('Debe ingresar telefono y email para ver todas las reservas.', 'warning');
+        showBookingMessage('Debe ingresar teléfono y email para ver todas las reservas.', 'warning');
         return;
     }
 
@@ -508,14 +538,21 @@ async function searchCustomerBookings(phoneValue, emailValue) {
         const responseData = await parseJsonResponse(response);
 
         if (!response.ok) {
-            showBookingMessage(responseData.message || 'No encontramos reservas para ese cliente.', 'warning');
+            showBookingMessage(responseData.message || 'No encontramos un cliente con esos datos.', 'warning');
             return;
         }
 
-        if (responseData.data && responseData.data.length > 0) {
-            renderBookingsList(responseData.data);
+        const bookings = Array.isArray(responseData.data) ? responseData.data : [];
+
+        if (bookings.length > 0) {
+            renderBookingsList(bookings);
         } else {
-            showBookingMessage(responseData.message || 'No encontramos reservas para ese cliente.', 'warning');
+            const customerMessage = responseData.message || 'Tus datos están registrados, pero todavía no tenés reservas.';
+            renderNoBookingsState(
+                customerMessage,
+                responseData.customer?.complete_phone || responseData.customer?.phone || phoneValue,
+                responseData.customer?.email || emailValue
+            );
         }
     } catch (error) {
         console.error('Error:', error);
