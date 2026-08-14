@@ -85,7 +85,7 @@
 
 <body>
     <div>
-        <img src="<?= esc(brand_logo_src()) ?>" style="width: 300px;" alt="Logo">
+        <img src="<?= esc(brand_logo_data_uri()) ?>" style="width: 300px;" alt="Logo">
     </div>
 
     <?php $total = 0 ?>

@@ -30,14 +30,6 @@ if (! function_exists('brand_logo_candidates')) {
 
         $candidates = [];
 
-        // Prefer the icon file used by the public branding so the site always
-        // has a visible logo even if the uploaded branding image is missing or
-        // outdated.
-        $candidates[] = [
-            'relative' => 'assets/images/favicon.ico',
-            'absolute' => FCPATH . 'assets/images/favicon.ico',
-        ];
-
         try {
             $uploadModel = new UploadModel();
             $branding = $uploadModel->first() ?: [];
@@ -53,10 +45,13 @@ if (! function_exists('brand_logo_candidates')) {
             // If the database is unavailable, keep the static fallbacks below.
         }
 
+        // Use a real brand image first. The favicon stays as a last-resort
+        // fallback only when none of the logo assets are available.
         foreach ([
             'assets/images/uploads/68d6a48d53bc6.png',
-            'assets/images/logo_pdf.png',
             'assets/images/sinlogo2.png',
+            'assets/images/logo_pdf.png',
+            'assets/images/favicon.ico',
         ] as $relativePath) {
             $candidates[] = [
                 'relative' => $relativePath,
@@ -145,11 +140,6 @@ if (! function_exists('brand_logo_data_uri')) {
 if (! function_exists('brand_logo_src')) {
     function brand_logo_src(): string
     {
-        $dataUri = brand_logo_data_uri();
-        if ($dataUri !== '') {
-            return $dataUri;
-        }
-
         return brand_logo_url();
     }
 }
