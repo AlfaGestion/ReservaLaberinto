@@ -13,8 +13,8 @@
 
     <div class="admin-toolbar__search">
         <div class="form-floating mb-3">
-            <input type="search" class="form-control" id="searchCustomerInput" placeholder="">
-            <label for="searchCustomerInput">Télefono</label>
+            <input type="search" class="form-control" id="searchCustomerInput" placeholder="Nombre, teléfono, email o tipo">
+            <label for="searchCustomerInput">Nombre, teléfono, email o tipo</label>
         </div>
         <button class="btn btn-primary" id="searchCustomerButton">Buscar</button>
     </div>
@@ -41,7 +41,10 @@
             <?php foreach ($customers as $customer) : ?>
                 <tr id="customer-row-<?= $customer['id'] ?>">
                     <td><?= isset($customer['name']) ? $customer['name'] : 'No indicado' ?></td>
-                    <td><?= isset($customer['type_institution']) ? $customer['type_institution'] : 'No indicado' ?></td>
+                    <td>
+                        <?= isset($customer['type_institution']) && $customer['type_institution'] !== '' ? $customer['type_institution'] : 'No indicado' ?><br>
+                        <small class="text-muted">DTO: <?= (float) ($customer['type_discount_percentage'] ?? 0) ?>%</small>
+                    </td>
                     <td><?= isset($customer['dni']) ? $customer['dni'] : 'No indicado' ?></td>
                     <?php if (isset($customer['complete_phone']) && !empty($customer['complete_phone'])) { ?>
                         <td>

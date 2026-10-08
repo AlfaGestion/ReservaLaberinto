@@ -8,6 +8,24 @@ use App\Models\ValuesModel;
 
 class Customers extends BaseController
 {
+    private function attachTypeDiscounts(array $customers): array
+    {
+        $values = (new ValuesModel())->where('disabled', 0)->findAll();
+        $discountsByType = [];
+
+        foreach ($values as $value) {
+            $discountsByType[mb_strtolower(trim((string) ($value['value'] ?? '')))] = (float) ($value['discount_percentage'] ?? 0);
+        }
+
+        foreach ($customers as &$customer) {
+            $type = mb_strtolower(trim((string) ($customer['type_institution'] ?? '')));
+            $customer['type_discount_percentage'] = $discountsByType[$type] ?? 0;
+        }
+        unset($customer);
+
+        return $customers;
+    }
+
     private function resolvePreferredCustomer(array $customers): ?array
     {
         if ($customers === []) {
@@ -628,7 +646,7 @@ class Customers extends BaseController
             ->orderBy('id', 'DESC')
             ->get()
             ->getResultArray();
-        $customer = $this->resolvePreferredCustomer($customers);
+        $customer = $this->resolvePreferredCustomer($this->attachTypeDiscounts($customers));
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customer, 'Operación completada'));
@@ -722,8 +740,23 @@ class Customers extends BaseController
     public function getCustomers()
     {
         $customersModel = new CustomersModel();
+        $search = trim((string) $this->request->getGet('search'));
 
-        $customers = $customersModel->where('deleted', 0)->findAll();
+        $builder = $customersModel->where('deleted', 0);
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('name', $search)
+                ->orLike('last_name', $search)
+                ->orLike('email', $search)
+                ->orLike('phone', $search)
+                ->orLike('complete_phone', $search)
+                ->orLike('dni', $search)
+                ->orLike('city', $search)
+                ->orLike('type_institution', $search)
+            ->groupEnd();
+        }
+
+        $customers = $this->attachTypeDiscounts($builder->findAll());
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Operación completada'));
@@ -736,7 +769,7 @@ class Customers extends BaseController
     {
         $customersModel = new CustomersModel();
 
-        $customers = $customersModel->where('offer', 1)->findAll();
+        $customers = $this->attachTypeDiscounts($customersModel->where('offer >', 0)->where('deleted', 0)->findAll());
 
         try {
             return  $this->response->setJSON($this->setResponse(null, null, $customers, 'Operación completada'));

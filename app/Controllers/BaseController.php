@@ -291,10 +291,12 @@ abstract class BaseController extends Controller
         if ($institutionType !== '') {
             $value = (new ValuesModel())->where('value', $institutionType)->where('disabled', 0)->first();
             $amount = (float) ($value['amount'] ?? 0);
-            $discount = (float) ($value['discount_percentage'] ?? 0);
+            $customerDiscount = (float) ($customer['offer'] ?? 0);
+            $serviceDiscount = (float) ($value['discount_percentage'] ?? 0);
 
             if ($amount > 0) {
-                return max(0, $amount - (($amount * $discount) / 100));
+                $priceAfterServiceDiscount = $amount * (1 - (min(100, max(0, $serviceDiscount)) / 100));
+                return max(0, $priceAfterServiceDiscount * (1 - (min(100, max(0, $customerDiscount)) / 100)));
             }
         }
 

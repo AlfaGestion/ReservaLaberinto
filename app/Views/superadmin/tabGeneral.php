@@ -250,6 +250,33 @@ $uploadData = $uploadModel->first();
                     <div class="mt-4">
                         <button type="button" class="btn btn-primary" id="saveGeneralSettings">Guardar</button>
                     </div>
+
+                    <div class="border rounded-4 p-4 mt-4">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                            <div>
+                                <h6 class="mb-1">Historial de cambios</h6>
+                                <p class="text-muted mb-0">Muestra quién modificó la configuración, cuándo y qué valor cambió.</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="refreshGeneralSettingsHistory">Actualizar historial</button>
+                        </div>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm align-middle" id="generalSettingsHistoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Usuario</th>
+                                        <th>Configuración</th>
+                                        <th>Antes</th>
+                                        <th>Después</th>
+                                        <th>IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="generalSettingsHistoryBody">
+                                    <tr><td colspan="6" class="text-muted">Abrí esta sección para consultar el historial.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

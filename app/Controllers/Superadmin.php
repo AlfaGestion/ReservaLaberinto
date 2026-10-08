@@ -10,6 +10,7 @@ use App\Models\BookingSlotsModel;
 use App\Models\CustomersModel;
 use App\Models\CustomerNoticeModel;
 use App\Models\FieldsModel;
+use App\Models\GeneralSettingsAuditModel;
 use App\Models\MercadoPagoModel;
 use App\Models\MercadoPagoKeysModel;
 use App\Models\OffersModel;
@@ -443,6 +444,15 @@ class Superadmin extends BaseController
         $fields = $fieldsModel->findAll();
 
         $customers = $customersModel->where('deleted', 0)->findAll();
+        $discountsByType = [];
+        foreach ($values as $value) {
+            $discountsByType[mb_strtolower(trim((string) ($value['value'] ?? '')))] = (float) ($value['discount_percentage'] ?? 0);
+        }
+        foreach ($customers as &$customer) {
+            $type = mb_strtolower(trim((string) ($customer['type_institution'] ?? '')));
+            $customer['type_discount_percentage'] = $discountsByType[$type] ?? 0;
+        }
+        unset($customer);
 
         $logo = $uploadModel->first();
 
@@ -1160,16 +1170,6 @@ class Superadmin extends BaseController
                 'allow_group_coordinator' => $allowGroupCoordinator,
             ];
 
-            if ($existingRate) {
-                $rateModel->update($existingRate['id'], $ratePayload);
-            } elseif ($qtyVisitors !== null || $allowGroupCoordinator === 1) {
-                $rateModel->insert([
-                    'value' => 0,
-                    'qty_visitors' => $qtyVisitors,
-                    'allow_group_coordinator' => $allowGroupCoordinator,
-                ]);
-            }
-
             $existingUpload = $uploadModel->first();
             $uploadPayload = [
                 'notification_email' => implode(';', $notificationEmailList),
@@ -1182,6 +1182,18 @@ class Superadmin extends BaseController
                 'pay_by_entries_min_days_before_booking' => $payByEntriesMinDays,
                 'pay_by_entries_default_percentage' => $payByEntriesDefaultPercentage,
             ];
+
+            $this->recordGeneralSettingsAudit($existingRate ?: [], $existingUpload ?: [], $ratePayload, $uploadPayload);
+
+            if ($existingRate) {
+                $rateModel->update($existingRate['id'], $ratePayload);
+            } elseif ($qtyVisitors !== null || $allowGroupCoordinator === 1) {
+                $rateModel->insert([
+                    'value' => 0,
+                    'qty_visitors' => $qtyVisitors,
+                    'allow_group_coordinator' => $allowGroupCoordinator,
+                ]);
+            }
 
             if ($existingUpload) {
                 $uploadModel->update($existingUpload['id'], $uploadPayload);
@@ -1211,6 +1223,98 @@ class Superadmin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST)
                 ->setJSON(['error' => true, 'message' => 'No pudimos guardar la configuración general']);
+        }
+    }
+
+    private function recordGeneralSettingsAudit(array $oldRate, array $oldUpload, array $newRate, array $newUpload): void
+    {
+        $settings = [
+            ['key' => 'qty_visitors', 'label' => 'Visitantes mínimos', 'old' => $oldRate['qty_visitors'] ?? '', 'new' => $newRate['qty_visitors'] ?? ''],
+            ['key' => 'allow_group_coordinator', 'label' => 'Habilitar 1 coordinador por grupo', 'old' => !empty($oldRate['allow_group_coordinator']) ? 'Activado' : 'Desactivado', 'new' => !empty($newRate['allow_group_coordinator']) ? 'Activado' : 'Desactivado'],
+            ['key' => 'notification_email', 'label' => 'Emails para recibir reservas', 'old' => $oldUpload['notification_email'] ?? '', 'new' => $newUpload['notification_email'] ?? ''],
+            ['key' => 'payment_support_email', 'label' => 'Email de soporte', 'old' => $oldUpload['payment_support_email'] ?? '', 'new' => $newUpload['payment_support_email'] ?? ''],
+            ['key' => 'payment_support_phone', 'label' => 'Teléfono de soporte', 'old' => $oldUpload['payment_support_phone'] ?? '', 'new' => $newUpload['payment_support_phone'] ?? ''],
+            ['key' => 'invoice_email_subject', 'label' => 'Asunto de facturas', 'old' => $oldUpload['invoice_email_subject'] ?? '', 'new' => $newUpload['invoice_email_subject'] ?? ''],
+            ['key' => 'invoice_email_message', 'label' => 'Mensaje de facturas', 'old' => $oldUpload['invoice_email_message'] ?? '', 'new' => $newUpload['invoice_email_message'] ?? ''],
+            ['key' => 'enable_pay_by_entries', 'label' => 'Habilitar pago parcial por entradas', 'old' => !empty($oldUpload['enable_pay_by_entries']) ? 'Activado' : 'Desactivado', 'new' => !empty($newUpload['enable_pay_by_entries']) ? 'Activado' : 'Desactivado'],
+            ['key' => 'pay_by_entries_min_entries', 'label' => 'Entradas mínimas para pago parcial', 'old' => $oldUpload['pay_by_entries_min_entries'] ?? '', 'new' => $newUpload['pay_by_entries_min_entries'] ?? ''],
+            ['key' => 'pay_by_entries_min_days_before_booking', 'label' => 'Días mínimos de anticipación', 'old' => $oldUpload['pay_by_entries_min_days_before_booking'] ?? '', 'new' => $newUpload['pay_by_entries_min_days_before_booking'] ?? ''],
+            ['key' => 'pay_by_entries_default_percentage', 'label' => 'Porcentaje de pago parcial', 'old' => $oldUpload['pay_by_entries_default_percentage'] ?? '', 'new' => $newUpload['pay_by_entries_default_percentage'] ?? ''],
+        ];
+
+        try {
+            $this->ensureGeneralSettingsAuditTable();
+            $auditModel = new GeneralSettingsAuditModel();
+            $request = $this->request;
+            $session = session();
+            $userName = $this->getAuditUserLabel('Usuario');
+
+            foreach ($settings as $setting) {
+                $oldValue = trim((string) $setting['old']);
+                $newValue = trim((string) $setting['new']);
+                if ($oldValue === $newValue) {
+                    continue;
+                }
+
+                $auditModel->insert([
+                    'user_id' => (int) ($session->get('id_user') ?? 0) ?: null,
+                    'user_name' => $userName,
+                    'setting_key' => $setting['key'],
+                    'setting_label' => $setting['label'],
+                    'old_value' => $oldValue,
+                    'new_value' => $newValue,
+                    'ip_address' => $request->getIPAddress(),
+                    'user_agent' => substr((string) $request->getUserAgent(), 0, 1000),
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo registrar auditoría de configuración: ' . $e->getMessage());
+        }
+    }
+
+    private function ensureGeneralSettingsAuditTable(): void
+    {
+        $db = db_connect();
+        if ($db->tableExists('general_settings_audit')) {
+            return;
+        }
+
+        $db->query('CREATE TABLE IF NOT EXISTS `general_settings_audit` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id` INT NULL,
+            `user_name` VARCHAR(150) NOT NULL,
+            `setting_key` VARCHAR(100) NOT NULL,
+            `setting_label` VARCHAR(180) NOT NULL,
+            `old_value` TEXT NULL,
+            `new_value` TEXT NULL,
+            `ip_address` VARCHAR(45) NULL,
+            `user_agent` TEXT NULL,
+            `created_at` DATETIME NOT NULL,
+            PRIMARY KEY (`id`),
+            KEY `general_settings_audit_setting_date` (`setting_key`, `created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    }
+
+    public function getGeneralSettingsHistory()
+    {
+        try {
+            $this->ensureGeneralSettingsAuditTable();
+            $history = (new GeneralSettingsAuditModel())
+                ->orderBy('created_at', 'DESC')
+                ->orderBy('id', 'DESC')
+                ->findAll(100);
+
+            return $this->response->setJSON([
+                'error' => false,
+                'data' => $history,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'No se pudo consultar auditoría de configuración: ' . $e->getMessage());
+            return $this->response->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR)->setJSON([
+                'error' => true,
+                'message' => 'El historial todavía no está disponible.',
+            ]);
         }
     }
 

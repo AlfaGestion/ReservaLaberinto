@@ -545,8 +545,8 @@ if (!empty($prefill['time_until'])) {
                         <?php if (session()->logueado) : ?>
                             <div class="mb-3">
                                 <div class="form-floating flex-nowrap mb-3">
-                                    <input type="text" class="form-control" name="adminBookingAmount" id="adminBookingAmount" placeholder="Ingrese el monto" aria-label="Amount" required>
-                                    <label for="adminBookingAmount">Ingresar monto a abonar de la reserva</label>
+                                    <input type="text" class="form-control" name="adminBookingAmount" id="adminBookingAmount" placeholder="Opcional: puede quedar en $0" aria-label="Amount">
+                                    <label for="adminBookingAmount">Monto a abonar (opcional)</label>
                                 </div>
 
                                 <div class="form-floating mb-3">

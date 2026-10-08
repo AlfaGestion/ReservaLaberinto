@@ -1088,15 +1088,19 @@ class Bookings extends BaseController
         $data = $this->request->getJSON();
 
         // Validaciones mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nimas
-        if (!$data || empty($data->fecha) || empty($data->nombre) || empty($data->monto) || empty($data->total) || empty($data->cancha)) {
+        if (!$data || empty($data->fecha) || empty($data->nombre) || !isset($data->total) || empty($data->cancha)) {
             return $this->response->setJSON($this->setResponse(400, true, null, 'Faltan datos obligatorios.'));
         }
 
-        $pagoTotal = ($data->monto == $data->total) ? 1 : 0;
+        $totalAmount = max(0, (float) ($data->total ?? 0));
+        $paidAmount = max(0, (float) ($data->monto ?? 0));
+        if ($paidAmount > $totalAmount) {
+            return $this->response->setJSON($this->setResponse(400, true, null, 'El importe abonado no puede superar el total de la reserva.'));
+        }
+
+        $pagoTotal = $paidAmount > 0 && abs($paidAmount - $totalAmount) < 0.01 ? 1 : 0;
         $telefonoCompleto = $data->telefono;
         $visitors = (int) ($data->visitantes ?? 0);
-        $totalAmount = (float) ($data->total ?? 0);
-        $paidAmount = (float) ($data->monto ?? 0);
         $unitPrice = $visitors > 0 ? $totalAmount / $visitors : 0.0;
         $partialByEntries = !empty($data->partialByEntries) ? 1 : 0;
         $paidEntries = $pagoTotal ? $visitors : 0;
@@ -1132,7 +1136,7 @@ class Bookings extends BaseController
             'code'            => $this->codeGenerate(),
             'diference'       => $partialByEntries ? max(0, $visitors - $paidEntries) * $unitPrice : floatVal($data->total) - floatVal($data->monto),
             'total_payment'   => $pagoTotal,
-            'payment_method'  => $data->metodoDePago,
+            'payment_method'  => $paidAmount > 0 ? ($data->metodoDePago ?? '') : 'Sin pago',
             'approved'        => 1,
             'mp'              => 1,
             'annulled'        => 0,
@@ -1193,7 +1197,9 @@ class Bookings extends BaseController
                     'created_at'     => Time::now(),
                 ];
 
-                $paymentsModel->insert($queryPayment);
+                if ($paidAmount > 0) {
+                    $paymentsModel->insert($queryPayment);
+                }
 
                 $this->logBookingAction($orderId, 'A', 'Alta de reserva por ' . $visitors . ' entradas.');
                 if ($paidAmount > 0) {

@@ -11,6 +11,12 @@ const customerFrame = document.getElementById('customerFrame')
 const customerFrameModal = customerFrameModalElement ? new bootstrap.Modal(customerFrameModalElement) : null
 const customersDiv = document.getElementById('customersDiv')
 
+function customerTypeCell(customer) {
+    const type = customer?.type_institution || 'No indicado'
+    const discount = Number(customer?.type_discount_percentage || 0)
+    return `<td>${type}<br><small class="text-muted">DTO: ${discount}%</small></td>`
+}
+
 function renderCustomerRow(customer) {
     const row = document.createElement('tr')
     row.id = `customer-row-${customer.id}`
@@ -25,7 +31,7 @@ function renderCustomerRow(customer) {
 
     row.innerHTML = `
         <td>${customer?.name ?? 'No indicado'}</td>
-        <td>${customer?.type_institution ?? 'No indicado'}</td>
+        ${customerTypeCell(customer)}
         <td>${customer?.dni ?? 'No indicado'}</td>
         ${phoneCell}
         <td>${customer?.city ?? 'No indicado'}</td>
@@ -93,10 +99,10 @@ document.addEventListener('click', async (e) => {
             const customerPhone = document.getElementById('searchCustomerInput')
             let customers
 
-            if (customerPhone.value == '') {
+            if (customerPhone.value.trim() == '') {
                 customers = await searchCustomer(`${baseUrl}customers/getCustomers`)
             } else {
-                customers = await searchCustomer(`${baseUrl}customers/getCustomer/${customerPhone.value}`)
+                customers = await searchCustomer(`${baseUrl}customers/getCustomers?search=${encodeURIComponent(customerPhone.value.trim())}`)
             }
         } else if (e.target.id == 'setOfferTrue') {
             setOfferTrue(true)
@@ -234,7 +240,7 @@ async function fillCustomersTable(data) {
             tr += `
             <tr id="customer-row-${customer?.id}">
                 <td>${customer?.name}</td>
-                <td>${customer?.type_institution}</td>
+                ${customerTypeCell(customer)}
                 <td>${customer?.dni}</td>
                 ${phoneCell}
                 <td>${customer?.city}</td>
@@ -266,7 +272,7 @@ async function fillCustomersTable(data) {
         tr += `
             <tr id="customer-row-${data?.id}">
                 <td>${data?.name}</td>
-                <td>${data?.type_institution}</td>
+                ${customerTypeCell(data)}
                 <td>${data?.dni}</td>
                 ${phoneCell}
                 <td>${data?.city}</td>

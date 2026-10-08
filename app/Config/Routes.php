@@ -105,6 +105,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->get('configMpView', 'Superadmin::configMpView');
     $routes->post('configMp', 'Superadmin::configMp');
     $routes->post('saveWebGeneral', 'Superadmin::saveWebGeneral');
+    $routes->get('getGeneralSettingsHistory', 'Superadmin::getGeneralSettingsHistory');
     $routes->get('customerNotices', 'Superadmin::customerNotices');
     $routes->post('saveCustomerNotice', 'Superadmin::saveCustomerNotice');
     $routes->post('deleteCustomerNotice/(:num)', 'Superadmin::deleteCustomerNotice/$1');

@@ -104,6 +104,7 @@ const check10Div = document.getElementById('check10Div')
 
 const confirmRulesButton = document.getElementById('confirmRulesButton')
 const validateDataButton = document.getElementById('validateDataButton')
+const inputTelefono = document.getElementById('inputTelefono')
 const inputEmail = document.getElementById('inputEmail')
 const email = document.getElementById('email')
 // const welcomeModal = new bootstrap.Modal('#welcomeModal')
@@ -1989,6 +1990,25 @@ function applyValidatedCustomer(customer, validationResult = {}) {
     setAcceptedTermsInSession(true)
     localStorage.setItem('customer', JSON.stringify(currentCustomer))
 
+    const customerPhone = String(currentCustomer.phone || inputTelefono?.value || '').trim()
+    const customerEmail = String(currentCustomer.email || inputEmail?.value || '').trim()
+
+    if (inputTelefono && customerPhone) {
+        inputTelefono.value = customerPhone
+    }
+
+    if (inputEmail && customerEmail) {
+        inputEmail.value = customerEmail
+    }
+
+    if (telefono && customerPhone) {
+        telefono.value = customerPhone
+    }
+
+    if (email && customerEmail) {
+        email.value = customerEmail
+    }
+
     if (nombre && currentCustomer.name) {
         nombre.value = currentCustomer.name
     }
@@ -2240,7 +2260,15 @@ async function handleValidateCustomerClick() {
                 offer: 0,
             }
 
-            telefono.value = phone
+            if (telefono) {
+                telefono.value = phone
+            }
+
+            const bookingEmailInput = document.getElementById('email')
+            if (bookingEmailInput) {
+                bookingEmailInput.value = email
+            }
+
             setValidationActionButtons(true)
 
             if (divMessages) {
@@ -3350,11 +3378,17 @@ document.addEventListener('click', async (e) => {
             const paymentMethod = document.getElementById('adminPaymentMethod')
             const description = document.getElementById('adminBookingDescription')
             const totalReserva = document.getElementById('adminBookingTotalAmount')
+            const amountValue = normalizeNumericAmount(amount?.value || 0)
 
-            data.monto = amount.value
-            data.metodoDePago = paymentMethod.value
-            data.descripcion = description.value
-            data.total = totalReserva.value
+            if (amountValue > 0 && !paymentMethod?.value) {
+                showPublicNotice('Seleccioná el medio de pago para registrar un importe.')
+                return
+            }
+
+            data.monto = amountValue
+            data.metodoDePago = paymentMethod?.value || 'Sin pago'
+            data.descripcion = description?.value || ''
+            data.total = totalReserva?.value || 0
             data.idCustomer = currentCustomer ? currentCustomer.id : null
 
             saveAdminBooking(data)
@@ -3551,7 +3585,7 @@ async function getValue(type) {
     if (responseData.data) {
         const amount = parseFloat(responseData.data.amount);
         serviceValue = amount;
-        return amount
+        return responseData.data
     }
 
     return null
@@ -3585,11 +3619,15 @@ async function refreshBookingAmount() {
     const institutionType = currentCustomer?.type_institution || ''
 
     if (institutionType) {
-        const amountByInstitution = await getValue(institutionType)
+        const institutionValue = await getValue(institutionType)
+        const amountByInstitution = Number(institutionValue?.amount || 0)
 
         if (Number.isFinite(amountByInstitution) && amountByInstitution > 0) {
             serviceValue = amountByInstitution
-            const unitPrice = amountByInstitution - (amountByInstitution * getCurrentCustomerOffer() / 100)
+            const valueDiscount = Math.min(100, Math.max(0, Number(institutionValue?.discount_percentage || 0)))
+            const customerDiscount = Math.min(100, Math.max(0, getCurrentCustomerOffer()))
+            const valuePrice = amountByInstitution * (1 - (valueDiscount / 100))
+            const unitPrice = valuePrice * (1 - (customerDiscount / 100))
             currentUnitPrice = unitPrice
             const baseAmount = billableVisitors * unitPrice
             totalAmount = baseAmount

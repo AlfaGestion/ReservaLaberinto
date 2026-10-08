@@ -1094,6 +1094,19 @@ html.theme-dark body.admin-page .bg-light {
     color: #dbe9f8 !important;
 }
 
+html.theme-dark body.admin-page .bg-white {
+    background-color: #133253 !important;
+    color: #dbe9f8 !important;
+    border-color: rgba(142, 182, 229, 0.14) !important;
+}
+
+html.theme-dark body.admin-page .bg-white .form-check-label,
+html.theme-dark body.admin-page .bg-white .form-label,
+html.theme-dark body.admin-page .bg-white small,
+html.theme-dark body.admin-page .bg-white h6 {
+    color: #dbe9f8 !important;
+}
+
 html.theme-dark body.admin-page .text-dark {
     color: #dbe9f8 !important;
 }

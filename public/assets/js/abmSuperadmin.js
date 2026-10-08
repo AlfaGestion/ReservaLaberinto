@@ -16,6 +16,9 @@ const inputEnablePayByEntries = document.getElementById('enablePayByEntries')
 const inputPayByEntriesMinEntries = document.getElementById('payByEntriesMinEntries')
 const inputPayByEntriesMinDaysBeforeBooking = document.getElementById('payByEntriesMinDaysBeforeBooking')
 const inputPayByEntriesDefaultPercentage = document.getElementById('payByEntriesDefaultPercentage')
+const generalSettingsHistoryBody = document.getElementById('generalSettingsHistoryBody')
+const refreshGeneralSettingsHistoryButton = document.getElementById('refreshGeneralSettingsHistory')
+const generalConfigTabButton = document.getElementById('general-config-tab')
 const customerNoticeForm = document.getElementById('customerNoticeForm')
 const customerNoticeMessage = document.getElementById('customerNoticeMessage')
 const customerNoticeType = document.getElementById('customerNoticeType')
@@ -814,6 +817,7 @@ async function saveGeneralSettings(url, data) {
 
         if (response.ok) {
             showAdminNotice(responseData.message || 'Configuracion guardada correctamente')
+            loadGeneralSettingsHistory()
             if (responseData.warning) {
                 showAdminNotice(responseData.warning, 'info', 'Aviso')
             }
@@ -826,6 +830,53 @@ async function saveGeneralSettings(url, data) {
         showAdminNotice('No se pudo guardar la configuracion', 'error')
     }
 }
+
+function formatGeneralAuditDate(value) {
+    if (!value) {
+        return 'Sin fecha'
+    }
+
+    const date = new Date(String(value).replace(' ', 'T'))
+    return Number.isNaN(date.getTime())
+        ? value
+        : date.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+async function loadGeneralSettingsHistory() {
+    if (!generalSettingsHistoryBody) {
+        return
+    }
+
+    generalSettingsHistoryBody.innerHTML = '<tr><td colspan="6" class="text-muted">Cargando historial...</td></tr>'
+
+    try {
+        const response = await fetch(`${baseUrl}getGeneralSettingsHistory`)
+        const responseData = await response.json()
+        if (!response.ok || responseData?.error) {
+            throw new Error(responseData?.message || 'No se pudo consultar el historial.')
+        }
+
+        const history = Array.isArray(responseData.data) ? responseData.data : []
+        generalSettingsHistoryBody.innerHTML = history.length
+            ? history.map(item => `
+                <tr>
+                    <td>${escapeHtml(formatGeneralAuditDate(item.created_at))}</td>
+                    <td>${escapeHtml(item.user_name || 'Usuario')}</td>
+                    <td>${escapeHtml(item.setting_label || item.setting_key || '-')}</td>
+                    <td>${escapeHtml(item.old_value || '(vacío)')}</td>
+                    <td>${escapeHtml(item.new_value || '(vacío)')}</td>
+                    <td>${escapeHtml(item.ip_address || 'No registrada')}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="6" class="text-muted">Todavía no hay cambios registrados.</td></tr>'
+    } catch (error) {
+        console.error('Error consultando historial de configuración:', error)
+        generalSettingsHistoryBody.innerHTML = `<tr><td colspan="6" class="text-danger">${escapeHtml(error.message || 'No se pudo cargar el historial.')}</td></tr>`
+    }
+}
+
+generalConfigTabButton?.addEventListener('shown.bs.tab', loadGeneralSettingsHistory)
+refreshGeneralSettingsHistoryButton?.addEventListener('click', loadGeneralSettingsHistory)
 
 async function saveOfferRate(url, data) {
     try {
