@@ -14,29 +14,36 @@ $uploadData = $uploadModel->first();
     data-invoice-email-subject="<?= esc($uploadData['invoice_email_subject'] ?? 'Factura de reserva - Laberinto: {nombre}') ?>"
     data-invoice-email-message="<?= esc($uploadData['invoice_email_message'] ?? "Hola {nombre},\n\nTe enviamos adjunto el comprobante de tu reserva.\n\nFecha: {fecha}\nHorario: {horario}\nCodigo: {codigo}\nPagado: {pagado}\n\nGracias.") ?>">
 
-    <div class="d-flex justify-content-center align-items-center flex-row mt-3 admin-bookings-summary">
-        <strong>Total de reservas para hoy:</strong> <strong id="totalReservasHoy"></strong>
-    </div>
+    <div class="d-flex justify-content-center align-items-end flex-wrap gap-2 mt-1 admin-bookings-controls">
+        <div class="admin-bookings-range-field">
+            <label for="selectDateRangeBooking">Seleccione rango</label>
+            <select class="form-select" id="selectDateRangeBooking" aria-label="Seleccione rango">
+                <option value="">Rango personalizado</option>
+                <option value="FD">Fecha del día</option>
+                <option value="MA">Mes actual</option>
+                <option value="MP">Mes pasado</option>
+                <option value="SA">Semana actual</option>
+                <option value="SP">Semana pasada</option>
+            </select>
+        </div>
 
-
-    <div class="d-flex justify-content-center align-items-center flex-row admin-bookings-dates">
-        <div class="admin-bookings-date-field me-2">
+        <div class="admin-bookings-date-field">
             <label for="fechaDesdeBooking">Desde</label>
             <input type="date" name="fechaDesdeBooking" id="fechaDesdeBooking" class="form-control" value="" aria-label="date">
         </div>
 
-        <div class="admin-bookings-date-field me-2">
+        <div class="admin-bookings-date-field">
             <label for="fechaHastaBooking">Hasta</label>
             <input type="date" name="fechaHastaBooking" id="fechaHastaBooking" class="form-control" value="" aria-label="date">
         </div>
-    </div>
 
-    <div class="d-flex flex-wrap justify-content-center gap-2 admin-bookings-actions">
-        <a href="<?= site_url('/') ?>#formBooking" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-            <i class="fa-solid fa-plus me-1"></i>Nueva reserva
-        </a>
-        <button type="button" id="searchBooking" class="btn btn-success">Buscar activas</button>
-        <button type="button" id="searchAnnulledBooking" class="btn btn-danger">Buscar anuladas</button>
+        <div class="d-flex flex-wrap justify-content-center gap-2 admin-bookings-actions">
+            <a href="<?= site_url('/') ?>#formBooking" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                <i class="fa-solid fa-plus me-1"></i>Nueva reserva
+            </a>
+            <button type="button" id="searchBooking" class="btn btn-success">Buscar activas</button>
+            <button type="button" id="searchAnnulledBooking" class="btn btn-danger">Buscar anuladas</button>
+        </div>
     </div>
 </div>
 
@@ -291,7 +298,7 @@ $uploadData = $uploadModel->first();
                 <th scope="col">Visitantes</th>
                 <th scope="col">Pagado</th>
                 <th scope="col">Total</th>
-                <th scope="col">Saldo</th>
+                <th scope="col">Saldo pendiente</th>
                 <th scope="col">M&eacute;todo de pago</th>
                 <th scope="col">Descripci&oacute;n</th>
                 <th scope="col">Estado</th>
@@ -308,3 +315,27 @@ $uploadData = $uploadModel->first();
     </table>
 </div>
 
+<div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="bookingDetailsModalLabel">Detalle de la reserva</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="bookingDetailsContent">
+                <div class="text-center text-muted py-4">Cargando información...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="adminBookingsStickyHeader" class="admin-bookings-sticky-header" aria-hidden="true">
+    <table class="table align-middle table-striped-columns admin-bookings-sticky-table">
+        <thead></thead>
+    </table>
+</div>
+<div id="adminBookingsStickyScroller" class="admin-bookings-sticky-scroller" aria-label="Desplazamiento horizontal de reservas">
+    <div></div>
+</div>

@@ -323,6 +323,7 @@ async function fillTable(data) {
         if (!groups.has(key)) {
             groups.set(key, {
                 bookingId: pago.bookingId || null,
+                codigoReserva: pago.codigoReserva || '',
                 fecha: pago.fecha,
                 usuario: pago.usuario,
                 cliente: pago.cliente,
@@ -350,6 +351,7 @@ async function fillTable(data) {
         tr += `
         <tr class="report-summary" data-booking="${group.bookingId ?? ''}">
             <td>${group.fecha}</td>
+            <td>${group.codigoReserva || 'N/D'}</td>
             <td>${group.usuario}</td>
             <td>$${totalReserva}</td>
             <td>${methodSummary}</td>
@@ -357,7 +359,7 @@ async function fillTable(data) {
             <td>${group.telefono}</td>
         </tr>
         <tr class="report-detail d-none" data-booking="${group.bookingId ?? ''}">
-            <td colspan="6">
+            <td colspan="7">
                 <div class="report-detail-box">
                     <div><strong>Pagado:</strong> $${totalPagado}</div>
                     <div><strong>Saldo:</strong> $${saldo}</div>

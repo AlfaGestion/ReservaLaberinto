@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Libraries\PrintBookings;
+use App\Libraries\MercadoPagoLibrary;
 use App\Libraries\MercadoPagoReservationService;
 use App\Libraries\EmailDeliveryService;
 use App\Libraries\NotificationSettingsService;
@@ -471,6 +472,105 @@ class Bookings extends BaseController
         }
     }
 
+    public function getBookingDetails($id)
+    {
+        $bookingId = (int) $id;
+        $bookingsModel = new BookingsModel();
+        $fieldsModel = new FieldsModel();
+        $customersModel = new CustomersModel();
+        $paymentsModel = new PaymentsModel();
+        $mercadoPagoModel = new MercadoPagoModel();
+
+        $booking = $bookingsModel->find($bookingId);
+        if (!$booking) {
+            return $this->response->setStatusCode(404)->setJSON($this->setResponse(404, true, null, 'No se encontro la reserva.'));
+        }
+
+        $field = $fieldsModel->find((int) ($booking['id_field'] ?? 0));
+        $customer = !empty($booking['id_customer']) ? $customersModel->find((int) $booking['id_customer']) : null;
+        $payments = $paymentsModel->where('id_booking', $bookingId)->orderBy('date', 'ASC')->findAll();
+        $mpLogs = $mercadoPagoModel->where('id_booking', $bookingId)->orderBy('id', 'ASC')->findAll();
+
+        $paymentIds = [];
+        $isValidMercadoPagoId = static function ($value): bool {
+            $normalized = trim((string) $value);
+            return $normalized !== ''
+                && $normalized !== '-'
+                && $normalized !== '4294967295'
+                && ctype_digit($normalized)
+                && (int) $normalized > 0;
+        };
+
+        foreach (array_merge($payments, $mpLogs) as $payment) {
+            $paymentId = trim((string) ($payment['id_mercado_pago'] ?? $payment['payment_id'] ?? ''));
+            if ($isValidMercadoPagoId($paymentId) && !in_array($paymentId, $paymentIds, true)) {
+                $paymentIds[] = $paymentId;
+            }
+        }
+
+        $mercadoPagoDetails = [];
+        $mercadoPagoLibrary = new MercadoPagoLibrary();
+        foreach ($paymentIds as $paymentId) {
+            $result = $mercadoPagoLibrary->getPaymentByIdWithMeta($paymentId);
+            $mercadoPagoDetails[] = [
+                'payment_id' => $paymentId,
+                'api_reachable' => (bool) ($result['api_reachable'] ?? false),
+                'found' => (bool) ($result['found'] ?? false),
+                'error' => $result['error'] ?? null,
+                'data' => $result['data'] ?? null,
+            ];
+        }
+
+        $data = [
+            'booking' => [
+                'id' => $bookingId,
+                'code' => $booking['code'] ?? '',
+                'date' => date('d/m/Y', strtotime((string) ($booking['date'] ?? ''))),
+                'time' => trim((string) ($booking['time_from'] ?? '') . ' a ' . (string) ($booking['time_until'] ?? '')),
+                'service' => $field['name'] ?? 'No informado',
+                'name' => $booking['name'] ?? '',
+                'phone' => $booking['phone'] ?? '',
+                'email' => $booking['email'] ?? ($customer['email'] ?? ''),
+                'visitors' => (int) ($booking['visitors'] ?? 0),
+                'description' => $booking['description'] ?? '',
+                'payment_method' => $booking['payment_method'] ?? '',
+                'total' => (float) ($booking['total'] ?? 0),
+                'paid' => (float) ($booking['payment'] ?? 0),
+                'balance' => (float) ($booking['diference'] ?? 0),
+                'approved' => (int) ($booking['approved'] ?? 0) === 1,
+                'annulled' => (int) ($booking['annulled'] ?? 0) === 1,
+                'preference_partial' => $booking['id_preference_parcial'] ?? '',
+                'preference_total' => $booking['id_preference_total'] ?? '',
+                'order_id' => $booking['IdPedido'] ?? '',
+                'created_by' => $booking['created_by_name'] ?? ($booking['created_by_type'] ?? 'Cliente'),
+            ],
+            'payments' => array_map(static function (array $payment): array {
+                return [
+                    'date' => $payment['date'] ?? ($payment['created_at'] ?? ''),
+                    'amount' => (float) ($payment['amount'] ?? 0),
+                    'type' => $payment['payment_type'] ?? '',
+                    'method' => $payment['payment_method'] ?? '',
+                    'payment_id' => in_array((string) ($payment['id_mercado_pago'] ?? ''), ['', '-', '4294967295'], true) ? '' : ($payment['id_mercado_pago'] ?? ''),
+                    'entries' => (int) ($payment['paid_entries'] ?? 0),
+                    'origin' => (int) ($payment['created_by_admin'] ?? 0) === 1 ? 'Administrador' : 'Cliente',
+                ];
+            }, $payments),
+            'mercado_pago_logs' => array_map(static function (array $log): array {
+                return [
+                    'date' => $log['created_at'] ?? ($log['updated_at'] ?? ''),
+                    'payment_id' => $log['payment_id'] ?? '',
+                    'status' => $log['status'] ?? '',
+                    'status_detail' => $log['collection_status'] ?? '',
+                    'preference_id' => $log['preference_id'] ?? '',
+                    'merchant_order_id' => $log['merchant_order_id'] ?? '',
+                ];
+            }, $mpLogs),
+            'mercado_pago_details' => $mercadoPagoDetails,
+        ];
+
+        return $this->response->setJSON($this->setResponse(null, false, $data, 'Detalle de reserva obtenido correctamente.'));
+    }
+
     public function getReports()
     {
         $paymentsModel = new PaymentsModel();
@@ -484,10 +584,12 @@ class Bookings extends BaseController
             payments.id_user,
             payments.payment_method,
             payments.id_mercado_pago,
+            payments.created_by_admin,
             users.name as nombre_usuario,
             customers.name as nombre_cliente,
             customers.phone as telefono_cliente,
             bookings.id as booking_id,
+            bookings.code as booking_code,
             bookings.name as booking_name,
             bookings.phone as booking_phone,
             bookings.payment as booking_payment,
@@ -512,21 +614,25 @@ class Bookings extends BaseController
                 $monto = ($payment['booking_total_payment'] ?? 0) ? ($payment['booking_total'] ?? 0) : ($payment['booking_payment'] ?? 0);
             }
 
+            $isAutomaticMercadoPago = $metodo === 'mercado_pago'
+                && (int) ($payment['created_by_admin'] ?? 0) !== 1;
+
             return [
                 'fecha' => date("d/m/Y", strtotime($payment['date'])),
                 'pago' => $monto,
-                'usuario' => $payment['nombre_usuario'] ?? 'N/A',
+                'usuario' => $isAutomaticMercadoPago ? 'CLIENTE' : ($payment['nombre_usuario'] ?? 'N/A'),
                 'idUsuario' => $payment['id_user'],
                 'cliente' => $payment['nombre_cliente'] ?? $payment['booking_name'] ?? 'N/A',
                 'telefonoCliente' => $payment['telefono_cliente'] ?? $payment['booking_phone'] ?? 'N/A',
                 'metodoPago' => $payment['payment_method'],
                 'idMercadoPago' => $payment['id_mercado_pago'],
                 'bookingId' => $payment['booking_id'],
+                'codigoReserva' => $payment['booking_code'],
                 'totalReserva' => $payment['booking_total'],
             ];
         }, $paymentsResult);
 
-        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.code, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
             ->join('customers', 'customers.id = bookings.id_customer', 'left')
             ->join('payments', 'payments.id_booking = bookings.id', 'left')
             ->where('bookings.date >=', $data->fechaDesde)
@@ -548,11 +654,12 @@ class Bookings extends BaseController
                 'metodoPago' => 'mercado_pago',
                 'idMercadoPago' => null,
                 'bookingId' => $booking['id'],
+                'codigoReserva' => $booking['code'],
                 'totalReserva' => $booking['total'],
             ];
         }
 
-        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.code, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
             ->join('customers', 'customers.id = bookings.id_customer', 'left')
             ->join('payments as pmp', "pmp.id_booking = bookings.id AND (pmp.payment_method = 'mercado_pago' OR pmp.payment_method = 'Mercado Pago')", 'left')
             ->where('bookings.date >=', $data->fechaDesde)
@@ -574,6 +681,7 @@ class Bookings extends BaseController
                 'metodoPago' => 'mercado_pago',
                 'idMercadoPago' => null,
                 'bookingId' => $booking['id'],
+                'codigoReserva' => $booking['code'],
                 'totalReserva' => $booking['total'],
             ];
         }
@@ -1320,10 +1428,12 @@ class Bookings extends BaseController
             payments.id_user,
             payments.payment_method,
             payments.id_mercado_pago,
+            payments.created_by_admin,
             users.name as nombre_usuario,
             customers.name as nombre_cliente,
             customers.phone as telefono_cliente,
             bookings.id as booking_id,
+            bookings.code as booking_code,
             bookings.name as booking_name,
             bookings.phone as booking_phone,
             bookings.payment as booking_payment,
@@ -1348,21 +1458,25 @@ class Bookings extends BaseController
                 $monto = ($payment['booking_total_payment'] ?? 0) ? ($payment['booking_total'] ?? 0) : ($payment['booking_payment'] ?? 0);
             }
 
+            $isAutomaticMercadoPago = $metodo === 'mercado_pago'
+                && (int) ($payment['created_by_admin'] ?? 0) !== 1;
+
             return [
                 'fecha' => date("d/m/Y", strtotime($payment['date'])),
                 'pago' => $monto,
-                'usuario' => $payment['nombre_usuario'] ?? 'N/A',
+                'usuario' => $isAutomaticMercadoPago ? 'CLIENTE' : ($payment['nombre_usuario'] ?? 'N/A'),
                 'idUsuario' => $payment['id_user'],
                 'cliente' => $payment['nombre_cliente'] ?? $payment['booking_name'] ?? 'N/A',
                 'telefonoCliente' => $payment['telefono_cliente'] ?? $payment['booking_phone'] ?? 'N/A',
                 'metodoPago' => $payment['payment_method'],
                 'idMercadoPago' => $payment['id_mercado_pago'],
                 'bookingId' => $payment['booking_id'],
+                'codigoReserva' => $payment['booking_code'],
                 'totalReserva' => $payment['booking_total'],
             ];
         }, $paymentsResult);
 
-        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+        $mpBookings = $bookingsModel->select('bookings.date, bookings.payment, bookings.total, bookings.total_payment, bookings.payment_method, bookings.id, bookings.code, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
             ->join('customers', 'customers.id = bookings.id_customer', 'left')
             ->join('payments', 'payments.id_booking = bookings.id', 'left')
             ->where('bookings.date >=', $fechaDesde)
@@ -1384,11 +1498,12 @@ class Bookings extends BaseController
                 'metodoPago' => 'mercado_pago',
                 'idMercadoPago' => null,
                 'bookingId' => $booking['id'],
+                'codigoReserva' => $booking['code'],
                 'totalReserva' => $booking['total'],
             ];
         }
 
-        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
+        $mpReservations = $bookingsModel->select('bookings.date, bookings.reservation, bookings.total, bookings.total_payment, bookings.id, bookings.code, bookings.name as booking_name, bookings.phone as booking_phone, customers.name as customer_name, customers.phone as customer_phone')
             ->join('customers', 'customers.id = bookings.id_customer', 'left')
             ->join('payments as pmp', "pmp.id_booking = bookings.id AND (pmp.payment_method = 'mercado_pago' OR pmp.payment_method = 'Mercado Pago')", 'left')
             ->where('bookings.date >=', $fechaDesde)
@@ -1410,6 +1525,7 @@ class Bookings extends BaseController
                 'metodoPago' => 'mercado_pago',
                 'idMercadoPago' => null,
                 'bookingId' => $booking['id'],
+                'codigoReserva' => $booking['code'],
                 'totalReserva' => $booking['total'],
             ];
         }

@@ -260,19 +260,23 @@ select {
     align-items: center;
     column-gap: 8px;
     width: 100%;
-    min-height: 72px;
+    min-height: 148px;
     padding: 8px 12px;
+    position: relative;
 }
 
 .site-topbar__brand-wrap {
-    grid-column: 2;
-    justify-self: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     justify-content: center;
     min-width: 0;
     margin: 0;
     flex: none;
+    z-index: 1;
 }
 
 .site-navbar-brand {
@@ -293,9 +297,9 @@ select {
 .site-navbar-logo {
     display: block !important;
     width: auto !important;
-    height: 52px !important;
-    max-height: 52px !important;
-    max-width: min(30vw, 150px) !important;
+    height: 136px !important;
+    max-height: 136px !important;
+    max-width: min(46vw, 280px) !important;
     object-fit: contain !important;
 }
 
@@ -1146,19 +1150,18 @@ html.theme-dark .booking-history-btn:focus-visible {
 
 @media (max-width: 768px) {
     .site-topbar__inner {
-        min-height: 64px;
+        min-height: 122px;
         padding: 6px 8px;
     }
 
     .site-topbar__brand-wrap {
-        grid-column: 2;
-        justify-self: center;
         display: flex;
         align-items: center;
         justify-content: center;
         width: 100%;
         min-width: 0;
         margin: 0;
+        left: 50%;
     }
 
     .site-navbar-brand {
@@ -1166,9 +1169,9 @@ html.theme-dark .booking-history-btn:focus-visible {
     }
 
     .site-navbar-logo {
-        height: 46px !important;
-        max-height: 46px !important;
-        max-width: min(40vw, 132px) !important;
+        height: 108px !important;
+        max-height: 108px !important;
+        max-width: min(58vw, 240px) !important;
     }
 
     .site-topbar-actions {
@@ -1400,9 +1403,9 @@ html.theme-dark .booking-history-btn:focus-visible {
     }
 
     .site-navbar-logo {
-        height: 42px !important;
-        max-height: 42px !important;
-        max-width: min(38vw, 122px) !important;
+        height: 92px !important;
+        max-height: 92px !important;
+        max-width: min(54vw, 210px) !important;
     }
 
     #formBooking {

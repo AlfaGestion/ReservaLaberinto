@@ -124,6 +124,7 @@
         <thead>
             <tr>
                 <th scope="col">Fecha</th>
+                <th scope="col">Reserva</th>
                 <th scope="col">Usuario</th>
                 <th scope="col">Cobro</th>
                 <th scope="col">Metodo de pago</th>
@@ -138,6 +139,7 @@
                 <?php $total = intval($cobro['pago']) + $total ?>
                 <tr>
                     <td><?= $cobro['fecha'] ?></td>
+                    <td><?= $cobro['codigoReserva'] ?? 'N/D' ?></td>
                     <td><?= $cobro['usuario'] ?></td>
                     <td>$<?= $cobro['pago'] ?></td>
                     <td><?= $cobro['metodoPago'] ?></td>

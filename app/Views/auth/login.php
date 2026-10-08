@@ -73,11 +73,12 @@
         .login-card__hero {
             padding: 28px 28px 12px;
             text-align: center;
+            background: #0b1c34;
         }
 
         .login-logo {
-            width: min(100%, 260px);
-            max-height: 140px;
+            width: min(100%, 320px);
+            max-height: 180px;
             object-fit: contain;
             display: inline-block;
         }
@@ -88,13 +89,13 @@
             line-height: 1;
             font-weight: 800;
             letter-spacing: -0.04em;
-            color: var(--login-page-title);
+            color: #f5f9fd;
         }
 
         .login-subtitle {
             margin: 0 auto;
             max-width: 380px;
-            color: var(--login-page-muted);
+            color: #cbd9e8;
             font-size: 1rem;
         }
 

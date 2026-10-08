@@ -77,6 +77,7 @@
         <thead>
             <tr>
                 <th scope="col">Fecha</th>
+                <th scope="col">Reserva</th>
                 <th scope="col">Usuario</th>
                 <th scope="col">Pago</th>
                 <th scope="col">Método de pago</th>

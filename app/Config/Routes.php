@@ -123,6 +123,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('resendBookingEmail/(:num)', 'Superadmin::resendBookingEmail/$1');
     $routes->post('saveTime', 'Time::saveTime');
     $routes->post('confirmMP', 'Bookings::confirmMP');
+    $routes->get('getBookingDetails/(:num)', 'Bookings::getBookingDetails/$1');
 
     $routes->post('completePayment/(:any)', 'Bookings::completePayment/$1');
     $routes->post('sendBookingInvoiceEmail/(:num)', 'Bookings::sendBookingInvoiceEmail/$1');

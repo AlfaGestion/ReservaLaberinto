@@ -64,7 +64,7 @@ class Upload extends BaseController
             return view('upload/upload_logo', $data);
         }
 
-        $targetDirectory = ROOTPATH . 'public/assets/images/uploads';
+        $targetDirectory = rtrim(FCPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'uploads';
         if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
             return redirect()->to('uploadLogo')->with('msg', ['type' => 'danger', 'body' => ['No pudimos crear la carpeta de logos en este servidor.']]);
         }

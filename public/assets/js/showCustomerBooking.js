@@ -344,7 +344,7 @@ async function updateBooking() {
 
 
         } else {
-            alert('Algo saliÃ³ mal. No se pudo editar la reserva.');
+            alert('Algo salió mal. No se pudo editar la reserva.');
             return
         }
 
@@ -460,7 +460,7 @@ async function getTime() {
             openingTime = responseData.data
             return responseData.data
         } else {
-            alert('Algo saliÃ³ mal. No se pudo obtener la informaciÃ³n.');
+            alert('Algo salió mal. No se pudo obtener la información.');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -623,16 +623,16 @@ function renderBookingCard(booking) {
                 <div class="row g-3">
                     
                     <div class="col-md-6 border-end">
-                        <p class="mb-2"><strong>ðŸ“… Fecha:</strong> ${booking.date}</p>
-                        <p class="mb-2"><strong>â° Horario:</strong> ${booking.time_from} - ${booking.time_until}</p>
-                        <p class="mb-2"><strong>ðŸ›Žï¸ Servicio:</strong> Laberinto</p>
-                        <p class="mb-0"><strong>ðŸ‘¤ Visitantes:</strong> <span class="badge bg-info text-dark">${booking.visitors}</span></p>
+                        <p class="mb-2"><strong>Fecha:</strong> ${booking.date}</p>
+                        <p class="mb-2"><strong>Horario:</strong> ${booking.time_from} - ${booking.time_until}</p>
+                        <p class="mb-2"><strong>Servicio:</strong> Laberinto</p>
+                        <p class="mb-0"><strong>Visitantes:</strong> <span class="badge bg-info text-dark">${booking.visitors}</span></p>
                     </div>
 
                     <div class="col-md-6">
-                        <p class="mb-2"><strong>ðŸ™‹ Nombre:</strong> ${booking.name}</p>
-                        <p class="mb-2"><strong>ðŸ“ž TelÃ©fono:</strong> ${booking.phone}</p>
-                        <p class="mb-0"><strong>ðŸ“ DescripciÃ³n:</strong> ${booking.description || 'Sin descripciÃ³n'}</p>
+                        <p class="mb-2"><strong>Nombre:</strong> ${booking.name}</p>
+                        <p class="mb-2"><strong>Teléfono:</strong> ${booking.phone}</p>
+                        <p class="mb-0"><strong>Descripción:</strong> ${booking.description || 'Sin descripción'}</p>
                     </div>
                 </div>
             </div>
@@ -641,9 +641,9 @@ function renderBookingCard(booking) {
                 
                 <div class="mb-2 mb-md-0">
                     <p class="mb-1"><strong>Precio por entrada individual:</strong> ${formatBookingMoney(getBookingUnitPrice(booking))}</p>
-                    <p class="mb-1"><strong>ðŸ’° Total:</strong> <span class="text-dark fw-bold">$${booking.total}</span></p>
-                    <p class="mb-1"><strong>âœ… Pagado:</strong> $${booking.payment} (${booking.payment_method})</p>
-                    <p class="mb-0 text-danger fw-bold"><strong>ðŸ’¸ Saldo:</strong> $${booking.diference}</p>
+                    <p class="mb-1"><strong>Total:</strong> <span class="text-dark fw-bold">$${booking.total}</span></p>
+                    <p class="mb-1"><strong>Pagado:</strong> $${booking.payment} (${booking.payment_method})</p>
+                    <p class="mb-0 text-danger fw-bold"><strong>Saldo:</strong> $${booking.diference}</p>
                 </div>
                 
                 <div class="d-flex flex-row justify-content-center align-items-end gap-2">
@@ -662,7 +662,7 @@ function renderBookingWithHistory(selectedBooking, bookings) {
 
     const bookingDate = formatBookingDate(selectedBooking.date);
     const serviceName = selectedBooking.service_name || 'Reserva';
-    const description = selectedBooking.description || 'Sin descripcion';
+    const description = selectedBooking.description || 'Sin descripción';
 
     const otherBookings = (bookings || []).filter((booking) => booking.id !== selectedBooking.id);
     const historyHtml = buildHistorySections(otherBookings);
@@ -682,8 +682,8 @@ function renderBookingWithHistory(selectedBooking, bookings) {
                     </div>
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Nombre:</strong> ${selectedBooking.name}</p>
-                        <p class="mb-2"><strong>Telefono:</strong> ${selectedBooking.phone}</p>
-                        <p class="mb-0"><strong>Descripcion:</strong> ${description}</p>
+                        <p class="mb-2"><strong>Teléfono:</strong> ${selectedBooking.phone}</p>
+                        <p class="mb-0"><strong>Descripción:</strong> ${description}</p>
                     </div>
                 </div>
             </div>
@@ -752,7 +752,7 @@ function isUpcomingBooking(booking) {
 function buildBookingAccordionItems(bookings, prefix) {
     return bookings.map((booking, index) => {
         const bookingDate = formatBookingDate(booking.date);
-        const description = booking.description || 'Sin descripcion';
+        const description = booking.description || 'Sin descripción';
         const serviceName = booking.service_name || 'Reserva';
         const collapseId = `${prefix}-booking-${booking.id}-${index}`;
         const headingId = `${collapseId}-heading`;
@@ -773,15 +773,15 @@ function buildBookingAccordionItems(bookings, prefix) {
                             <div>
                                 <p class="mb-1"><strong>Servicio:</strong> ${serviceName}</p>
                                 <p class="mb-1"><strong>Visitantes:</strong> ${booking.visitors}</p>
-                                <p class="mb-0"><strong>Descripcion:</strong> ${description}</p>
+                                <p class="mb-0"><strong>Descripción:</strong> ${description}</p>
                             </div>
                             <div>${paymentBadge}</div>
                         </div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <p class="mb-1"><strong>Nombre:</strong> ${booking.name}</p>
-                                <p class="mb-1"><strong>Telefono:</strong> ${booking.phone}</p>
-                                <p class="mb-0"><strong>Metodo de pago:</strong> ${booking.payment_method}</p>
+                                <p class="mb-1"><strong>Teléfono:</strong> ${booking.phone}</p>
+                                <p class="mb-0"><strong>Método de pago:</strong> ${booking.payment_method}</p>
                             </div>
                             <div class="col-md-6">
                                 <p class="mb-1"><strong>Precio por entrada individual:</strong> ${formatBookingMoney(getBookingUnitPrice(booking))}</p>

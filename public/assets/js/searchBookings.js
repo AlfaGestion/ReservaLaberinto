@@ -8,13 +8,22 @@ const spinnerCompletarPagos = new bootstrap.Modal('#spinnerCompletarPago')
 const cambiarEstadoMPModal = new bootstrap.Modal('#modalCambiarEstado')
 const sendInvoiceEmailModalElement = document.getElementById('sendInvoiceEmailModal')
 const sendInvoiceEmailModal = sendInvoiceEmailModalElement ? new bootstrap.Modal(sendInvoiceEmailModalElement) : null
-const totalReservasHoy = document.getElementById('totalReservasHoy')
+const bookingDetailsModalElement = document.getElementById('bookingDetailsModal')
+const bookingDetailsModal = bookingDetailsModalElement ? new bootstrap.Modal(bookingDetailsModalElement) : null
+const bookingDetailsContent = document.getElementById('bookingDetailsContent')
 const bookingsTabButton = document.getElementById('nav-bookings-tab')
 const botonCompletarPago = document.getElementById('botonCompletarPago')
 const completarPagoReservaInput = document.getElementById('inputCompletarPagoReserva')
 const medioPagoSelect = document.getElementById('medioPagoSelect')
 
 const selectDateBooking = document.getElementById('selectDateBooking')
+const selectDateRangeBooking = document.getElementById('selectDateRangeBooking')
+const bookingsTableWrap = document.querySelector('.admin-bookings-table-wrap')
+const bookingsTable = document.querySelector('.admin-bookings-table')
+const bookingsStickyHeader = document.getElementById('adminBookingsStickyHeader')
+const bookingsStickyTable = bookingsStickyHeader?.querySelector('.admin-bookings-sticky-table')
+const bookingsStickyScroller = document.getElementById('adminBookingsStickyScroller')
+const bookingsStickyScrollerInner = bookingsStickyScroller?.firstElementChild
 const invoiceEmailBookingIdInput = document.getElementById('invoiceEmailBookingId')
 const invoiceEmailToInput = document.getElementById('invoiceEmailTo')
 const invoiceEmailSubjectInput = document.getElementById('invoiceEmailSubjectModal')
@@ -55,6 +64,99 @@ let originalDocumentTitle = document.title
 let originalBookingsTabLabel = bookingsTabButton?.innerHTML || '<i class="fa-regular fa-calendar-days"></i> Reservas'
 let bookingsViewInitialized = false
 let bookingRefreshIntervalId = null
+
+function updateStickyBookingHeader() {
+    if (!bookingsTableWrap || !bookingsTable || !bookingsStickyHeader || !bookingsStickyTable || isAdminBookingsMobileLayout()) {
+        if (bookingsStickyHeader) {
+            bookingsStickyHeader.classList.remove('is-visible')
+        }
+        return
+    }
+
+    const tableRect = bookingsTable.getBoundingClientRect()
+    const wrapRect = bookingsTableWrap.getBoundingClientRect()
+    const header = bookingsTable.querySelector('thead')
+    const headerHeight = header?.getBoundingClientRect().height || 0
+    const shouldShow = tableRect.top < 0 && tableRect.bottom > headerHeight
+
+    if (!shouldShow) {
+        bookingsStickyHeader.classList.remove('is-visible')
+        return
+    }
+
+    const sourceCells = bookingsTable.querySelectorAll('thead th')
+    const stickyCells = bookingsStickyTable.querySelectorAll('thead th')
+    sourceCells.forEach((cell, index) => {
+        const stickyCell = stickyCells[index]
+        if (stickyCell) {
+            stickyCell.style.width = `${cell.getBoundingClientRect().width}px`
+        }
+    })
+
+    const tableWidth = Math.max(bookingsTable.scrollWidth, bookingsTable.offsetWidth, wrapRect.width)
+    bookingsStickyTable.style.width = `${tableWidth}px`
+    bookingsStickyTable.style.transform = `translateX(-${bookingsTableWrap.scrollLeft}px)`
+    bookingsStickyHeader.style.left = `${wrapRect.left}px`
+    bookingsStickyHeader.style.width = `${wrapRect.width}px`
+    bookingsStickyHeader.classList.add('is-visible')
+}
+
+function updateStickyBookingScroller() {
+    if (!bookingsTableWrap || !bookingsTable || !bookingsStickyScroller || !bookingsStickyScrollerInner || isAdminBookingsMobileLayout()) {
+        bookingsStickyScroller?.classList.remove('is-visible')
+        return
+    }
+
+    const tableRect = bookingsTable.getBoundingClientRect()
+    const wrapRect = bookingsTableWrap.getBoundingClientRect()
+    const scrollWidth = Math.max(bookingsTable.scrollWidth, bookingsTable.offsetWidth)
+    const hasHorizontalOverflow = scrollWidth > bookingsTableWrap.clientWidth + 1
+    const tableIsVisible = tableRect.bottom > 0 && tableRect.top < window.innerHeight
+
+    if (!hasHorizontalOverflow || !tableIsVisible) {
+        bookingsStickyScroller.classList.remove('is-visible')
+        return
+    }
+
+    bookingsStickyScrollerInner.style.width = `${scrollWidth}px`
+    bookingsStickyScroller.style.left = `${wrapRect.left}px`
+    bookingsStickyScroller.style.width = `${wrapRect.width}px`
+    bookingsStickyScroller.scrollLeft = bookingsTableWrap.scrollLeft
+    bookingsStickyScroller.classList.add('is-visible')
+}
+
+function initializeStickyBookingHeader() {
+    if (!bookingsTable || !bookingsStickyTable) {
+        return
+    }
+
+    const sourceHead = bookingsTable.querySelector('thead')
+    const stickyHead = bookingsStickyTable.querySelector('thead')
+    if (sourceHead && stickyHead) {
+        stickyHead.innerHTML = sourceHead.innerHTML
+    }
+
+    updateStickyBookingHeader()
+    updateStickyBookingScroller()
+}
+
+bookingsTableWrap?.addEventListener('scroll', () => {
+    updateStickyBookingHeader()
+    updateStickyBookingScroller()
+}, { passive: true })
+bookingsStickyScroller?.addEventListener('scroll', () => {
+    if (bookingsTableWrap) {
+        bookingsTableWrap.scrollLeft = bookingsStickyScroller.scrollLeft
+    }
+}, { passive: true })
+window.addEventListener('scroll', () => {
+    updateStickyBookingHeader()
+    updateStickyBookingScroller()
+}, { passive: true })
+window.addEventListener('resize', () => {
+    updateStickyBookingHeader()
+    updateStickyBookingScroller()
+})
 
 function isAdminBookingsMobileLayout() {
     return adminBookingsMobileQuery.matches
@@ -120,6 +222,57 @@ function getInitialBookingDateRange() {
     }
 
     return { fechaDesde, fechaHasta }
+}
+
+function applyBookingDateRange(range) {
+    if (!inputDesdeBooking || !inputHastaBooking) {
+        return
+    }
+
+    const today = new Date()
+
+    if (range === 'FD') {
+        inputDesdeBooking.value = formatLocalDate(today)
+        inputHastaBooking.value = formatLocalDate(today)
+        return
+    }
+
+    if (range === 'MA') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        inputDesdeBooking.value = formatLocalDate(firstDay)
+        inputHastaBooking.value = formatLocalDate(lastDay)
+        return
+    }
+
+    if (range === 'MP') {
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        const firstDay = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
+        const lastDay = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0)
+        inputDesdeBooking.value = formatLocalDate(firstDay)
+        inputHastaBooking.value = formatLocalDate(lastDay)
+        return
+    }
+
+    if (range === 'SA') {
+        const weekStart = selectDateBooking?.dataset.weekStart || formatLocalDate(getMondayOfWeek(today))
+        const weekStartDate = new Date(`${weekStart}T00:00:00`)
+        const weekEndDate = new Date(weekStartDate)
+        weekEndDate.setDate(weekStartDate.getDate() + 6)
+        inputDesdeBooking.value = weekStart
+        inputHastaBooking.value = formatLocalDate(weekEndDate)
+        return
+    }
+
+    if (range === 'SP') {
+        const currentWeekStart = getMondayOfWeek(today)
+        const previousWeekStart = new Date(currentWeekStart)
+        previousWeekStart.setDate(currentWeekStart.getDate() - 7)
+        const previousWeekEnd = new Date(previousWeekStart)
+        previousWeekEnd.setDate(previousWeekStart.getDate() + 6)
+        inputDesdeBooking.value = formatLocalDate(previousWeekStart)
+        inputHastaBooking.value = formatLocalDate(previousWeekEnd)
+    }
 }
 
 function getCurrentBookingFilters() {
@@ -398,7 +551,7 @@ function buildAdminBookingCardMarkup({
     const bookingField = escapeHtml(reserva?.cancha || '-')
     const bookingName = escapeHtml(reserva?.nombre || '-')
     const bookingVisitors = escapeHtml(reserva?.visitantes ?? '-')
-    const bookingTotal = escapeHtml(reserva?.total_reserva || '-')
+    const bookingTotal = formatBookingMoney(Number(reserva?.total_reserva || 0))
     const bookingPaymentMethod = escapeHtml(reserva?.metodo_pago || '-')
     const bookingCode = escapeHtml(reserva?.code || '-')
     const bookingState = escapeHtml(state || '-')
@@ -440,7 +593,7 @@ function buildAdminBookingCardMarkup({
                     <strong>${bookingTotal}</strong>
                 </div>
                 <div class="admin-booking-card__field">
-                    <span>Saldo</span>
+                    <span>Saldo pendiente</span>
                     <strong>${pendingAmountDisplay}</strong>
                 </div>
             </div>
@@ -1048,9 +1201,13 @@ async function initializeBookingsView() {
 
     inputDesdeBooking.value = fechaDesde
     inputHastaBooking.value = fechaHasta
+    if (selectDateRangeBooking) {
+        selectDateRangeBooking.value = ''
+    }
 
     bookingData = { fechaDesde, fechaHasta }
     currentBookingListMode = 'active'
+    initializeStickyBookingHeader()
 
     try {
         await getActiveBookings(bookingData, {
@@ -1100,10 +1257,17 @@ document.addEventListener('change', (e) => {
     }
 })
 
+selectDateRangeBooking?.addEventListener('change', () => {
+    applyBookingDateRange(selectDateRangeBooking.value)
+})
+
 
 document.addEventListener('click', async (e) => {
     if (e.target) {
-        if (e.target.id == 'searchBooking') {
+        if (e.target.closest('.view-booking-details')) {
+            const viewButton = e.target.closest('.view-booking-details')
+            await openBookingDetails(viewButton.dataset.id, viewButton)
+        } else if (e.target.id == 'searchBooking') {
             bookingData = getCurrentBookingFilters()
 
             currentBookingListMode = 'active'
@@ -1603,10 +1767,6 @@ async function getActiveBookings(data, options = {}) {
             processIncomingBookings(bookings, notifyOnNew, markAsSeen)
         }
 
-        if (updateSummary && totalReservasHoy) {
-            totalReservasHoy.innerHTML = '&nbsp;' + bookings.length
-        }
-
         if (updateTable) {
             fillTableBookings(bookings, { showPendingMpAlert })
         }
@@ -1714,6 +1874,7 @@ async function fillTableBookings(data, options = {}) {
                         </button>
                         <ul class="dropdown-menu">
                             <input type="text" id="userId" data-id="${sessionUserId}" hidden>                        
+                            <li><button type="button" class="btn btn-primary dropdown-item view-booking-details" data-id="${reserva.id}">Ver reserva</button></li>
                             <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar correo</button></li>
                             <li><button type="button" class="btn btn-primary dropdown-item" id="sendBookingInvoiceEmail" data-id="${reserva.id}">Enviar comprobante</button></li>
                             ${anular}
@@ -1752,6 +1913,7 @@ async function fillTableBookings(data, options = {}) {
                 </button>
                 <ul class="dropdown-menu">
                     <input type="text" id="userId" data-id="${sessionUserId}" hidden>
+                    <li><button type="button" class="btn btn-primary dropdown-item view-booking-details" data-id="${reserva.id}">Ver reserva</button></li>
                     <li><button type="button" class="btn btn-primary dropdown-item" id="resendBookingEmail" data-id="${reserva.id}">Reenviar correo</button></li>
                     ${reserva.diferencia > 0 ? `<li><button type="button" class="btn btn-primary dropdown-item" id="modalCambiarEstado" data-id="${reserva.id}">Cambiar estado de pago</button></li>` : ''
                     }
@@ -1787,10 +1949,10 @@ async function fillTableBookings(data, options = {}) {
         const isEntryPayment = Number(reserva.partial_by_entries || 0) === 1
         const paidAmountDisplay = isEntryPayment
             ? `${formatBookingMoney(reserva.monto_reserva)}<small class="d-block text-muted">${Number(reserva.paid_entries || 0)} entradas abonadas</small>`
-            : escapeHtml(reserva.monto_reserva)
+            : formatBookingMoney(Number(reserva.monto_reserva || 0))
         const pendingAmountDisplay = isEntryPayment
-            ? `${Number(reserva.pending_entries || 0) > 0 ? '-' + formatBookingMoney(reserva.pending_entries_amount) : '0'}<small class="d-block text-muted">${Number(reserva.pending_entries || 0)} entradas pendientes</small>`
-            : `${Number(reserva.diferencia || 0) > 0 ? '-' + escapeHtml(reserva.diferencia) : 0}`
+            ? `${formatBookingMoney(Number(reserva.pending_entries_amount || 0))}<small class="d-block text-muted">${Number(reserva.pending_entries || 0)} entradas pendientes</small>`
+            : formatBookingMoney(Number(reserva.diferencia || 0))
         const paymentBadgeNote = paymentStateData.note !== ''
             ? `<small class="booking-payment-badge__note">${escapeHtml(paymentStateData.note)}</small>`
             : ''
@@ -1831,7 +1993,7 @@ async function fillTableBookings(data, options = {}) {
                 <td>${escapeHtml(reserva.creado_por || '-')}</td>
                 <td>${reserva.visitantes}</td>
                 <td>${paidAmountDisplay}</td>
-                <td>${reserva.total_reserva}</td>
+                <td>${formatBookingMoney(Number(reserva.total_reserva || 0))}</td>
                 <td>${pendingAmountDisplay}</td>
                 <td>${reserva.metodo_pago}</td>
                 <td>${descripcion}</td>
@@ -1845,6 +2007,225 @@ async function fillTableBookings(data, options = {}) {
     });
 
     divBookings.innerHTML = tr
+}
+
+function formatBookingDetailsDate(value) {
+    if (!value) {
+        return 'No informado'
+    }
+
+    const date = new Date(String(value).replace(' ', 'T'))
+    if (Number.isNaN(date.getTime())) {
+        return escapeHtml(value)
+    }
+
+    return date.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function getMercadoPagoStatusPresentation(status, detail = '') {
+    const normalizedStatus = `${status || ''}`.toLowerCase()
+    const normalizedDetail = `${detail || ''}`.toLowerCase()
+
+    if (normalizedStatus === 'approved' && normalizedDetail === 'accredited') {
+        return { label: 'Aprobado y acreditado', className: 'text-bg-success', explanation: 'Mercado Pago confirmó el pago.' }
+    }
+
+    if (normalizedStatus === 'approved') {
+        return { label: 'Aprobado', className: 'text-bg-success', explanation: 'El pago fue aprobado. La disponibilidad del dinero puede depender de la liberación de fondos.' }
+    }
+
+    if (['pending', 'in_process', 'authorized'].includes(normalizedStatus)) {
+        return { label: 'En revisión o pendiente', className: 'text-bg-warning', explanation: 'Mercado Pago todavía no lo confirmó como pago final.' }
+    }
+
+    if (['rejected', 'cancelled', 'failed', 'refunded', 'charged_back'].includes(normalizedStatus)) {
+        return { label: 'No aprobado o revertido', className: 'text-bg-danger', explanation: 'El dinero no debe considerarse cobrado.' }
+    }
+
+    return { label: normalizedStatus || 'Sin información', className: 'text-bg-secondary', explanation: 'No hay un estado confirmado para mostrar.' }
+}
+
+function translateMercadoPagoStatus(value) {
+    const labels = {
+        approved: 'Aprobado',
+        pending: 'Pendiente',
+        in_process: 'En proceso',
+        authorized: 'Autorizado',
+        rejected: 'Rechazado',
+        cancelled: 'Cancelado',
+        failed: 'Fallido',
+        refunded: 'Reintegrado',
+        charged_back: 'Desconocido por contracargo',
+        expired: 'Vencido',
+    }
+    const normalized = `${value || ''}`.toLowerCase()
+    return labels[normalized] || value || 'Sin información'
+}
+
+function translateMercadoPagoDetail(value) {
+    const labels = {
+        accredited: 'Acreditado',
+        pending_waiting_transfer: 'Esperando transferencia',
+        pending_waiting_payment: 'Esperando el pago',
+        pending_contingency: 'En procesamiento',
+        pending_review_manual: 'En revisión manual',
+        offline_process: 'Procesamiento fuera de línea',
+        pending_capture: 'Esperando captura',
+        deferred_retry: 'Reintento programado',
+        partially_refunded: 'Reintegro parcial',
+    }
+    const normalized = `${value || ''}`.toLowerCase()
+    return labels[normalized] || value || 'Sin información'
+}
+
+function translatePaymentMethod(value) {
+    const labels = {
+        mercado_pago: 'Mercado Pago',
+        account_money: 'Dinero en cuenta',
+        credit_card: 'Tarjeta de crédito',
+        debit_card: 'Tarjeta de débito',
+        bank_transfer: 'Transferencia bancaria',
+        efectivo: 'Efectivo',
+        transferencia: 'Transferencia',
+    }
+    const normalized = `${value || ''}`.toLowerCase()
+    return labels[normalized] || value || 'No informado'
+}
+
+function translatePaymentType(value) {
+    const labels = {
+        partial_amount: 'Pago parcial',
+        partial_entries: 'Pago parcial por entradas',
+        total: 'Pago total',
+    }
+    const normalized = `${value || ''}`.toLowerCase()
+    return labels[normalized] || value || 'Pago'
+}
+
+function renderMercadoPagoDetail(item) {
+    const data = item?.data || {}
+    const status = getMercadoPagoStatusPresentation(data.status, data.status_detail)
+    const releaseDate = data.money_release_date ? formatBookingDetailsDate(data.money_release_date) : 'No informada'
+    const apiMessage = item?.api_reachable === false
+        ? 'No pudimos consultar Mercado Pago en este momento.'
+        : (!item?.found ? 'No se encontró este pago en la consulta actual.' : '')
+
+    return `
+        <div class="border rounded-4 p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                <div>
+                    <strong>ID de Mercado Pago: ${escapeHtml(item?.payment_id || data.id || '-')}</strong>
+                    <div class="small text-muted mt-1">${escapeHtml(status.explanation)}</div>
+                </div>
+                <span class="badge ${status.className}">${escapeHtml(status.label)}</span>
+            </div>
+            ${apiMessage ? `<div class="alert alert-warning mt-3 mb-0">${escapeHtml(apiMessage)}</div>` : `
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3"><small class="text-muted d-block">Detalle del estado</small><strong>${escapeHtml(translateMercadoPagoDetail(data.status_detail))}</strong></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Importe</small><strong>${formatBookingMoney(data.transaction_amount || 0)}</strong></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Neto recibido</small><strong>${data.net_received_amount != null ? formatBookingMoney(data.net_received_amount) : 'No informado'}</strong></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Liberación estimada</small><strong>${escapeHtml(releaseDate)}</strong></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Creado</small><span>${escapeHtml(formatBookingDetailsDate(data.date_created))}</span></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Aprobado</small><span>${escapeHtml(formatBookingDetailsDate(data.date_approved))}</span></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Medio</small><span>${escapeHtml(translatePaymentMethod(data.payment_method_id || data.payment_type_id))}</span></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Cuotas</small><span>${escapeHtml(data.installments || 'No informado')}</span></div>
+                </div>
+            `}
+        </div>
+    `
+}
+
+function renderBookingDetails(data) {
+    const booking = data?.booking || {}
+    const payments = Array.isArray(data?.payments) ? data.payments : []
+    const logs = Array.isArray(data?.mercado_pago_logs) ? data.mercado_pago_logs : []
+    const mpDetails = Array.isArray(data?.mercado_pago_details) ? data.mercado_pago_details : []
+
+    const paymentHistory = payments.length
+        ? payments.map(payment => `
+            <tr>
+                <td>${escapeHtml(formatBookingDetailsDate(payment.date))}</td>
+                <td>${formatBookingMoney(payment.amount)}</td>
+                <td>${escapeHtml(translatePaymentMethod(payment.method))}</td>
+                <td>${escapeHtml(translatePaymentType(payment.type))}</td>
+                <td>${escapeHtml(payment.origin || 'No informado')}</td>
+                <td>${escapeHtml(payment.payment_id || 'No tiene')}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="6" class="text-muted">No hay pagos registrados.</td></tr>'
+
+    const mpHistory = logs.length
+        ? logs.map(log => `
+            <tr>
+                <td>${escapeHtml(formatBookingDetailsDate(log.date))}</td>
+                <td>${escapeHtml(log.payment_id || 'Sin ID')}</td>
+                <td>${escapeHtml(translateMercadoPagoStatus(log.status))}</td>
+                <td>${escapeHtml(translateMercadoPagoDetail(log.status_detail))}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="4" class="text-muted">No hay eventos guardados de Mercado Pago.</td></tr>'
+
+    bookingDetailsContent.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+            <div>
+                <div class="text-muted small">Código de reserva</div>
+                <h2 class="h4 mb-1">${escapeHtml(booking.code || '-')}</h2>
+                <div class="text-muted">${escapeHtml(booking.service || 'Reserva')} · ${escapeHtml(booking.date || '-')} · ${escapeHtml(booking.time || '-')}</div>
+            </div>
+            <span class="badge ${booking.annulled ? 'text-bg-danger' : (booking.approved ? 'text-bg-success' : 'text-bg-warning')} fs-6">
+                ${booking.annulled ? 'Anulada' : (booking.approved ? 'Confirmada' : 'Pendiente')}
+            </span>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6"><div class="border rounded-4 p-3 h-100"><small class="text-muted d-block">Cliente</small><strong>${escapeHtml(booking.name || '-')}</strong><div>${escapeHtml(booking.phone || '-')}</div><div>${escapeHtml(booking.email || 'Sin email')}</div></div></div>
+            <div class="col-md-6"><div class="border rounded-4 p-3 h-100"><small class="text-muted d-block">Reserva</small><div>Visitantes: <strong>${escapeHtml(booking.visitors || 0)}</strong></div><div>Creada por: <strong>${escapeHtml(booking.created_by || 'Cliente')}</strong></div><div>Descripción: ${escapeHtml(booking.description || 'Sin descripción')}</div></div></div>
+            <div class="col-md-4"><div class="border rounded-4 p-3"><small class="text-muted d-block">Total</small><strong>${formatBookingMoney(booking.total)}</strong></div></div>
+            <div class="col-md-4"><div class="border rounded-4 p-3"><small class="text-muted d-block">Pagado</small><strong>${formatBookingMoney(booking.paid)}</strong></div></div>
+            <div class="col-md-4"><div class="border rounded-4 p-3"><small class="text-muted d-block">Saldo</small><strong>${formatBookingMoney(booking.balance)}</strong></div></div>
+        </div>
+
+        <h3 class="h5 mb-3">Historial de pagos</h3>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Fecha</th><th>Importe</th><th>Medio</th><th>Tipo</th><th>Origen</th><th>ID MP</th></tr></thead>
+                <tbody>${paymentHistory}</tbody>
+            </table>
+        </div>
+
+        <h3 class="h5 mb-3">Información de Mercado Pago</h3>
+        ${mpDetails.length ? mpDetails.map(renderMercadoPagoDetail).join('') : '<div class="alert alert-light border">Esta reserva no tiene un ID de Mercado Pago para consultar.</div>'}
+
+        ${logs.length ? `<h4 class="h6 mt-4 mb-3">Historial de consultas y notificaciones</h4><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Fecha</th><th>ID MP</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>${mpHistory}</tbody></table></div>` : ''}
+    `
+}
+
+async function openBookingDetails(bookingId, triggerButton = null) {
+    if (!bookingDetailsModal || !bookingDetailsContent) {
+        return
+    }
+
+    if (triggerButton) {
+        triggerButton.disabled = true
+    }
+
+    bookingDetailsContent.innerHTML = '<div class="text-center text-muted py-5">Consultando la reserva y Mercado Pago...</div>'
+    bookingDetailsModal.show()
+
+    try {
+        const response = await fetch(`${baseUrl}getBookingDetails/${bookingId}`)
+        const responseData = await response.json()
+        if (!response.ok || responseData?.error) {
+            throw new Error(responseData?.message || 'No pudimos cargar el detalle de la reserva.')
+        }
+        renderBookingDetails(responseData.data)
+    } catch (error) {
+        bookingDetailsContent.innerHTML = `<div class="alert alert-danger">${escapeHtml(error.message || 'No pudimos cargar el detalle.')}</div>`
+    } finally {
+        if (triggerButton) {
+            triggerButton.disabled = false
+        }
+    }
 }
 })()
 
